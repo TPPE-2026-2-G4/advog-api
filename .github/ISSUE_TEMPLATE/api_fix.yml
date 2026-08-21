@@ -1,0 +1,40 @@
+name: Bug de API / Backend
+description: Relate falhas em rotas, erros de lógica, problemas de banco de dados ou exceções no servidor.
+title: "[API Bug]: "
+labels: ["bug", "backend"]
+body:
+  - type: input
+    id: endpoint
+    attributes:
+      label: Rota / Endpoint Afetado
+      description: Qual é a URL ou o método do serviço que está falhando?
+      placeholder: Ex: GET /api/v1/users ou Serviço de Autenticação
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição do Problema
+      description: Explique o que está acontecendo de errado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Passos para Reproduzir (Curl / Payload)
+      description: Como reproduzir o erro? Forneça o corpo da requisição (JSON) ou o comando Curl.
+      placeholder: |
+        1. Envie uma requisição POST para /api/dados com o payload:
+        { "id": 123, "status": "ativo" }
+        2. Observe o retorno HTTP 500.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Stack Trace / Logs de Erro
+      description: Cole a saída do terminal, logs do servidor ou erros retornados pela API.
+      render: shell
