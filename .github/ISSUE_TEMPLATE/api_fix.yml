@@ -8,7 +8,7 @@ body:
     attributes:
       label: Rota / Endpoint Afetado
       description: Qual é a URL ou o método do serviço que está falhando?
-      placeholder: Ex: GET /api/v1/users ou Serviço de Autenticação
+      placeholder: "Ex: GET /api/v1/users ou Serviço de Autenticação"
     validations:
       required: true
 
