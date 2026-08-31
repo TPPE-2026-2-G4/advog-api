@@ -57,3 +57,53 @@ def test_filtrar_processos_inexistente():
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 0
+
+def test_filtrar_processos_por_tribunal():
+    response = client.get("/processos/?tribunal=trt2")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["tribunal"] == "trt2"
+
+def test_filtrar_processos_por_titulo():
+    response = client.get("/processos/?titulo=Caso Teste 1")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["titulo"] == "Caso Teste 1"
+
+def test_filtrar_processos_por_cliente():
+    response = client.get("/processos/?cliente=Maria")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["cliente"] == "Maria"
+
+def test_filtrar_processos_por_prazo():
+    response = client.get("/processos/?prazo=20/10/2026")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["prazo"] == "20/10/2026"
+
+def test_criar_processo():
+    payload = {
+        "id": "0003",
+        "titulo": "Caso Teste 3",
+        "cliente": "Pedro",
+        "status": "ativo",
+        "tribunal": "tjrj",
+        "area": "penal",
+        "responsavel": "carla",
+        "prazo": "05/12/2026",
+        "diasRestantes": 20,
+    }
+    response = client.post("/processos/", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["id"] == "0003"
+    assert data["cliente"] == "Pedro"
+
+    response = client.get("/processos/?id=0003")
+    assert response.status_code == 200
+    assert len(response.json()) == 1

@@ -5,4 +5,8 @@ coverage/
 __pycache__/
 .venv/
 venv/
-.pytest_cache/*.sqlite
+.pytest_cache/
+*.sqlite
+*.sqlite3
+.coverage
+htmlcov/
