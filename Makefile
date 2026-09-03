@@ -11,14 +11,14 @@ setup:
 	install -m 755 scripts/hooks/prepare-commit-msg.sh "$$(git rev-parse --git-path hooks/prepare-commit-msg)"
 	docker compose --profile dev up -d --build
 	@echo "\n✅ Ambiente de desenvolvimento configurado com sucesso!"
-	@echo "\n\n Portas disponíveis: \n"
+	@echo "🔗 Portas disponíveis:"
 	@echo " - pgAdmin: http://localhost:8080 \n"
 
 up:
 	@echo "\n\n⚙️ Subindo containers do Docker... \n"
 	docker compose --profile dev up -d --build
 	@echo "\n✅ Containers do Docker executados com sucesso! \n"
-	@echo "\n\n Portas disponíveis: \n"
+	@echo "🔗 Portas disponíveis:"
 	@echo " - pgAdmin: http://localhost:8080 \n"
 
 test:
