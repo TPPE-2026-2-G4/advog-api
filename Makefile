@@ -10,12 +10,16 @@ setup:
 	uv run pre-commit install --hook-type commit-msg --hook-type pre-push
 	install -m 755 scripts/hooks/prepare-commit-msg.sh "$$(git rev-parse --git-path hooks/prepare-commit-msg)"
 	docker compose --profile dev up -d --build
-	@echo "\n\n✅ Ambiente de desenvolvimento configurado com sucesso! \n"
+	@echo "\n✅ Ambiente de desenvolvimento configurado com sucesso!"
+	@echo "\n\n Portas disponíveis: \n"
+	@echo " - pgAdmin: http://localhost:8080 \n"
 
 up:
 	@echo "\n\n⚙️ Subindo containers do Docker... \n"
 	docker compose --profile dev up -d --build
-	@echo "\n\n✅ Containers do Docker subidos com sucesso! \n"
+	@echo "\n✅ Containers do Docker executados com sucesso! \n"
+	@echo "\n\n Portas disponíveis: \n"
+	@echo " - pgAdmin: http://localhost:8080 \n"
 
 test:
 	@echo "\n\n🧪 Rodando testes com cobertura... \n"
