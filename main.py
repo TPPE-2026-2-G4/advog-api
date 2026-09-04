@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.config.database import engine, Base
 from app.controllers import processo_controller
+from app.controllers import funcionario
 
 # Cria as tabelas no banco de dados, caso não existam (SQLite development mode)
 Base.metadata.create_all(bind=engine)
@@ -12,6 +13,7 @@ app = FastAPI(
 )
 
 app.include_router(processo_controller.router)
+app.include_router(funcionario.router)
 
 @app.get("/")
 def root():
