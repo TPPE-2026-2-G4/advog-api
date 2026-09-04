@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "commitizen>=4.18.0",
     "fastapi[standard]>=0.141.1",
+    "psycopg2-binary>=2.9.12",
     "sqlalchemy>=2.0.52",
 ]
 
