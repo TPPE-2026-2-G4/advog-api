@@ -35,6 +35,15 @@ services:
       - "8080:80"
     depends_on:
       - advog-db
+  
+  advog-mailpit:
+    image: axllent/mailpit:latest
+    container_name: advog-mailpit
+    restart: unless-stopped
+    profiles: ["dev"]
+    ports:
+      - "8025:8025"
+      - "1025:1025"
 
 volumes:
   db-data:
