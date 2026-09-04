@@ -2,6 +2,7 @@ help:
 	@echo "Comandos disponíveis:"
 	@echo " make setup                            # Configura o ambiente de desenvolvimento"
 	@echo " make up                               # Sobe os containers do Docker"
+	@echo " make local                            # Roda a aplicação localmente"
 	@echo " make test                             # Roda os testes com checagem de cobertura (>95%)"
 
 setup:
@@ -26,6 +27,12 @@ up:
 	@echo " - FastAPI: http://localhost:8000"
 	@echo " - Swagger: http://localhost:8000/docs"
 	@echo " - MailPit: http://localhost:8025"
+
+local:
+	@echo "\n\n⚙️ Rodando aplicação localmente... \n"
+	docker compose down advog-api
+	docker compose --profile dev up -d --build advog-db advog-mailpit
+	uv run fastapi dev
 
 test:
 	@echo "\n\n🧪 Rodando testes com cobertura... \n"

@@ -18,6 +18,7 @@ dependencies = [
     { name = "fastapi-mail" },
     { name = "passlib" },
     { name = "psycopg2-binary" },
+    { name = "python-dotenv" },
     { name = "sqlalchemy" },
 ]
 
@@ -36,6 +37,7 @@ requires-dist = [
     { name = "fastapi-mail", specifier = ">=1.6.8" },
     { name = "passlib", specifier = ">=1.7.4" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
+    { name = "python-dotenv", specifier = ">=1.2.3" },
     { name = "sqlalchemy", specifier = ">=2.0.52" },
 ]
 

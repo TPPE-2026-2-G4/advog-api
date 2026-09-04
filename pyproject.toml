@@ -10,6 +10,7 @@ dependencies = [
     "fastapi-mail>=1.6.8",
     "fastapi[standard]>=0.141.1",
     "passlib>=1.7.4",
+    "python-dotenv>=1.2.3",
     "psycopg2-binary>=2.9.12",
     "sqlalchemy>=2.0.52",
 ]

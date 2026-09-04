@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+load_dotenv()
+load_dotenv(".env.local", override=True)  # overrides p/ rodar localmente fora do Docker (ver .env.local.example)
+
 from fastapi import FastAPI
 from app.config.database import engine, Base
 from app.controllers import processo_controller
