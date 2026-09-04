@@ -8,6 +8,8 @@ help:
 setup:
 	@echo "\n\n ⚙️ Configurando o ambiente de desenvolvimento... \n"
 	uv sync
+	cp .env.local.example .env.local
+	cp .env.example .env
 	uv run pre-commit install --hook-type commit-msg --hook-type pre-push
 	install -m 755 scripts/hooks/prepare-commit-msg.sh "$$(git rev-parse --git-path hooks/prepare-commit-msg)"
 	docker compose --profile dev up -d --build
@@ -32,6 +34,7 @@ local:
 	@echo "\n\n⚙️ Rodando aplicação localmente... \n"
 	docker compose down advog-api
 	docker compose --profile dev up -d --build advog-db advog-mailpit
+	cp .env.local.example .env.local
 	uv run fastapi dev
 
 test:
