@@ -6,6 +6,8 @@ __pycache__/
 htmlcov/
 .git
 .env
+.env.*
+!.env.local.example
 tests/
 Dockerfile
 compose.yml

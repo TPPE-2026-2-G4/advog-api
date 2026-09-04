@@ -8,6 +8,9 @@ from app.utils.seguranca import hash_senha
 class FuncionarioService:
   def __init__(self, db_session: Session):
     self.repository = FuncionarioRepository(db_session)
+
+  def buscar_todos(self) -> list[Funcionario]:
+    return self.repository.buscar_todos()
     
   def criar_funcionario(self, dados: FuncionarioCreate) -> Funcionario:
     if self.repository.buscar_por_email(dados.email):

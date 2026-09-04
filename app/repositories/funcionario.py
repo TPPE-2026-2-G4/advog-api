@@ -6,6 +6,9 @@ class FuncionarioRepository:
   def __init__(self, db_session: Session):
     self.db = db_session
 
+  def buscar_todos(self) -> list[Funcionario]:
+    return self.db.query(Funcionario).all()
+
   def buscar_por_id(self, funcionario_id: int) -> Funcionario | None:
     return self.db.query(Funcionario).filter_by(funcionario_id = funcionario_id).first()
   

@@ -32,3 +32,9 @@ def primeiro_acesso(funcionario_id: int, dados: FuncionarioPrimeiroAcesso, db: S
         raise HTTPException(status_code=400, detail=str(e))
 
     return funcionario
+
+@router.get("", response_model=list[FuncionarioResponse])
+def buscar_todos_funcionarios(db: Session = Depends(get_db)):
+    service = FuncionarioService(db)
+    funcionarios = service.buscar_todos()
+    return funcionarios
