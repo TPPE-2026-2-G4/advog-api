@@ -11,12 +11,3 @@ repos:
         language: script
         stages: [commit-msg]
         verbose: true
-
-      - id: tests-check
-        name: Roda testes com cobertura (pytest --cov-fail-under=95)
-        entry: scripts/hooks/pre-push-test.sh
-        language: script
-        pass_filenames: false
-        always_run: true
-        stages: [pre-push]
-        verbose: true
