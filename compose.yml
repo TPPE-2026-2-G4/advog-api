@@ -1,4 +1,18 @@
 services:
+  advog-api:
+    container_name: advog-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - advog-db
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@advog-db:5432/${POSTGRES_DB}
   advog-db:
     image: postgres:16-alpine
     container_name: advog-db
@@ -19,6 +33,8 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "8080:80"
+    depends_on:
+      - advog-db
 
 volumes:
   db-data:

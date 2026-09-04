@@ -1,4 +1,3 @@
-node_modules/
 .env
 .env.*
 !.env.example
@@ -11,4 +10,3 @@ venv/
 *.sqlite
 *.sqlite3
 .coverage
-htmlcov/
