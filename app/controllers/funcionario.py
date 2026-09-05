@@ -8,7 +8,7 @@ from app.utils.email import enviar_email_boas_vindas
 
 router = APIRouter(prefix="/funcionarios", tags=["Funcionários"])
 
-@router.post("", response_model=FuncionarioResponse)
+@router.post("", response_model=FuncionarioResponse, status_code=201)
 def criar_funcionario(
         dados: FuncionarioCreate,
         background_tasks: BackgroundTasks,

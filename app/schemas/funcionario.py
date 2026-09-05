@@ -21,6 +21,6 @@ class FuncionarioResponse(FuncionarioBase):
     status: StatusFuncionario
     uf_oab: Optional[str] = None
     numero_oab: Optional[str] = None
+    exibicaoInstitucional: bool = False
 
-    class Config:
-        model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True)

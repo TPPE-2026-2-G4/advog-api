@@ -13,12 +13,12 @@ class FuncionarioService:
     return self.repository.buscar_todos()
     
   def criar_funcionario(self, dados: FuncionarioCreate) -> Funcionario:
-    if self.repository.buscar_por_email(dados.email):
+    if self.repository.buscar_por_email(dados.email.lower()):
       raise ValueError("Email já cadastrado")
     
     req = Funcionario(
       nome=dados.nome,
-      email=dados.email
+      email=dados.email.lower()
     )
     return self.repository.criar(req)
 
@@ -57,7 +57,7 @@ class FuncionarioService:
       funcionario.status = StatusFuncionario.INATIVO
     return self.repository.atualizar(funcionario)
   
-  def apagar_funcionario(self, funcionario_id: int) -> None:
+  def apagar_funcionario(self, funcionario_id: int) -> Funcionario:
     funcionario = self.repository.buscar_por_id(funcionario_id)
     if not funcionario:
       raise ValueError("Funcionário não encontrado")
