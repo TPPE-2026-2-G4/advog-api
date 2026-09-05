@@ -43,3 +43,13 @@ class FuncionarioService:
     funcionario.status = StatusFuncionario.ATIVO
     
     return self.repository.atualizar(funcionario)
+
+  def revogar_acesso(self, funcionario_id: int) -> Funcionario:
+    funcionario = self.repository.buscar_por_id(funcionario_id)
+    if not funcionario:
+      raise ValueError("Funcionário não encontrado")
+    if funcionario and funcionario.status != StatusFuncionario.ATIVO:
+      raise ValueError("Funcionário não está ativo")
+
+    funcionario.status = StatusFuncionario.INATIVO
+    return self.repository.atualizar(funcionario)
