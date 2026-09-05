@@ -12,14 +12,18 @@ setup:
 	docker compose --profile dev up -d --build
 	@echo "\n✅ Ambiente de desenvolvimento configurado com sucesso!"
 	@echo "🔗 Portas disponíveis:"
-	@echo " - pgAdmin: http://localhost:8080 \n"
+	@echo " - pgAdmin: http://localhost:8080"
+	@echo " - MinIO Console: http://localhost:9001"
+	@echo " - MinIO API: http://localhost:9000 \n"
 
 up:
 	@echo "\n\n⚙️ Subindo containers do Docker... \n"
 	docker compose --profile dev up -d --build
 	@echo "\n✅ Containers do Docker executados com sucesso! \n"
 	@echo "🔗 Portas disponíveis:"
-	@echo " - pgAdmin: http://localhost:8080 \n"
+	@echo " - pgAdmin: http://localhost:8080"
+	@echo " - MinIO Console: http://localhost:9001"
+	@echo " - MinIO API: http://localhost:9000 \n"
 
 test:
 	@echo "\n\n🧪 Rodando testes com cobertura... \n"
