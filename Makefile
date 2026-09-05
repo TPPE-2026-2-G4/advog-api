@@ -18,7 +18,10 @@ setup:
 	@echo " - pgAdmin: http://localhost:8080"
 	@echo " - FastAPI: http://localhost:8000"
 	@echo " - Swagger: http://localhost:8000/docs"
-	@echo " - MailPit: http://localhost:8025"
+	@echo " - MailPit Console: http://localhost:8025"
+	@echo " - MailPit API: http://localhost:1025"
+	@echo " - MinIO Console: http://localhost:9001"
+	@echo " - MinIO API: http://localhost:9000 \n"
 
 up:
 	@echo "\n\n⚙️ Subindo containers do Docker... \n"
@@ -28,7 +31,10 @@ up:
 	@echo " - pgAdmin: http://localhost:8080"
 	@echo " - FastAPI: http://localhost:8000"
 	@echo " - Swagger: http://localhost:8000/docs"
-	@echo " - MailPit: http://localhost:8025"
+	@echo " - MailPit Console: http://localhost:8025"
+	@echo " - MailPit API: http://localhost:1025"
+	@echo " - MinIO Console: http://localhost:9001"
+	@echo " - MinIO API: http://localhost:9000 \n"
 
 local:
 	@echo "\n\n⚙️ Rodando aplicação localmente... \n"
