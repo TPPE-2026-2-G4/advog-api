@@ -19,7 +19,7 @@ O FastAPI também disponibiliza a documentação interativa em:
 
 - [Python](https://www.python.org/) 3.11 ou superior.
 - [uv](https://docs.astral.sh/uv/) para gerenciamento do ambiente e das dependências.
-- [Docker](https://www.docker.com/) e Docker Compose para executar os serviços do banco de dados.
+- [Docker](https://www.docker.com/) e Docker Compose para executar os serviços de banco de dados e armazenamento de arquivos (MinIO).
 
 ### Configuração e execução
 
@@ -36,7 +36,7 @@ O FastAPI também disponibiliza a documentação interativa em:
     cp .env.example .env
     ```
 
-    Preencha no `.env` os valores de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. As variáveis `PGADMIN_DEFAULT_EMAIL` e `PGADMIN_DEFAULT_PASSWORD` controlam o acesso ao pgAdmin.
+    Preencha no `.env` os valores de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. As variáveis `PGADMIN_DEFAULT_EMAIL` e `PGADMIN_DEFAULT_PASSWORD` controlam o acesso ao pgAdmin, enquanto `MINIO_ROOT_USER` e `MINIO_ROOT_PASSWORD` controlam as credenciais de acesso ao MinIO.
 
 3. **Configure o ambiente completo de desenvolvimento:**
 
@@ -44,7 +44,7 @@ O FastAPI também disponibiliza a documentação interativa em:
     make setup
     ```
 
-    Esse comando sincroniza as dependências com o `uv.lock`, instala os hooks do pre-commit e sobe os containers. A API fica em `http://localhost:8000/` e o pgAdmin em `http://localhost:8080/`.
+    Esse comando sincroniza as dependências com o `uv.lock`, instala os hooks do pre-commit e sobe os containers. A API fica em `http://localhost:8000/`, o pgAdmin em `http://localhost:8080/` e o console do MinIO em `http://localhost:9001/` (com API S3 em `http://localhost:9000/`).
 
 ### Execução manual
 
@@ -59,7 +59,7 @@ Sem uma variável `DATABASE_URL`, a aplicação usa o banco SQLite `advog_db.sql
 
 ### Execução com Docker Compose
 
-Para subir a API e o PostgreSQL:
+Para subir a API, o PostgreSQL e o MinIO:
 
 ```bash
 make up
@@ -71,7 +71,7 @@ O comando equivale a `docker compose --profile dev up -d --build`. Para interrom
 docker compose down
 ```
 
-O volume `db-data` preserva os dados do PostgreSQL entre reinicializações. Para removê-lo também, use `docker compose down -v`.
+Os volumes `db-data` e `minio-data` preservam os dados do PostgreSQL e os arquivos do MinIO entre reinicializações. Para removê-los também, use `docker compose down -v`.
 
 ## Endpoints disponíveis
 
@@ -133,7 +133,7 @@ uv run pytest
 ## Comandos disponíveis
 
 - `make setup` — Configura o ambiente, instala os hooks e sobe os containers de desenvolvimento.
-- `make up` — Sobe os containers da API, PostgreSQL e pgAdmin.
+- `make up` — Sobe os containers da API, PostgreSQL, pgAdmin e MinIO.
 - `make test` — Executa os testes com relatório de cobertura.
 - `uv sync` — Instala ou sincroniza as dependências do projeto.
 - `uv run uvicorn main:app --reload` — Inicia a API em modo de desenvolvimento.
@@ -154,7 +154,7 @@ uv run pytest
 - `pyproject.toml`: Metadados, dependências, configurações do Pytest, cobertura e Commitizen.
 - `uv.lock`: Versões fixadas das dependências.
 - `Dockerfile`: Imagem da API em produção.
-- `compose.yml`: Configuração dos serviços da API, PostgreSQL e pgAdmin.
+- `compose.yml`: Configuração dos serviços da API, PostgreSQL, pgAdmin e MinIO.
 - `Makefile`: Atalhos para configuração, execução dos containers e testes.
 - `.env.example`: Modelo das variáveis de ambiente necessárias.
 - `.pre-commit-config.yaml`: Configuração dos hooks de commit e pre-push.
