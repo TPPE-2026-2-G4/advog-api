@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+!.env.local.example
 dist/
 coverage/
 __pycache__/
@@ -10,3 +11,4 @@ venv/
 *.sqlite
 *.sqlite3
 .coverage
+htmlcov/

@@ -5,8 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "argon2-cffi>=25.1.0",
     "commitizen>=4.18.0",
+    "fastapi-mail>=1.6.8",
     "fastapi[standard]>=0.141.1",
+    "passlib>=1.7.4",
+    "python-dotenv>=1.2.3",
     "psycopg2-binary>=2.9.12",
     "sqlalchemy>=2.0.52",
 ]
@@ -15,6 +19,7 @@ dependencies = [
 dev = [
     "pre-commit>=4.6.2",
     "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
 ]
 
@@ -27,6 +32,7 @@ tag_format = "v$version"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 addopts = "--cov=app --cov-report=term-missing"
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["app"]
