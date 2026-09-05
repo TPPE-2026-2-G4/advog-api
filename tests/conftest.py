@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -20,6 +22,13 @@ database.engine = engine
 database.SessionLocal = TestingSessionLocal
 
 from main import app
+
+@pytest.fixture(autouse=True)
+def mock_enviar_email_boas_vindas(monkeypatch):
+    # Evita que os testes disparem envio de e-mail real via background task
+    mock = AsyncMock()
+    monkeypatch.setattr("app.controllers.funcionario.enviar_email_boas_vindas", mock)
+    return mock
 
 @pytest.fixture()
 def db_session():
