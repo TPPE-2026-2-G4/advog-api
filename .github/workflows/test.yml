@@ -8,6 +8,12 @@ jobs:
   test:
     name: Pytest Check [Coverage > 95%]
     runs-on: ubuntu-latest
+    env:
+      SMTP_HOST: localhost
+      SMTP_PORT: 1025
+      SMTP_USER: advog
+      SMTP_PASSWORD: advog
+      SMTP_FROM: nao-responda@escritorio.com.br
     steps:
       - uses: actions/checkout@v4
 
