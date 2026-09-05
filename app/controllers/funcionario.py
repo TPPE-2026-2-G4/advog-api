@@ -39,11 +39,21 @@ def primeiro_acesso(funcionario_id: int, dados: FuncionarioPrimeiroAcesso, db: S
 
     return funcionario
 
-@router.patch("/{funcionario_id}/revogar-acesso", response_model=FuncionarioResponse)
-def revogar_acesso(funcionario_id: int, db: Session = Depends(get_db)):
+@router.patch("/{funcionario_id}/mudar-acesso", response_model=FuncionarioResponse)
+def mudar_acesso(funcionario_id: int, db: Session = Depends(get_db)):
     service = FuncionarioService(db)
     try:
-        funcionario = service.revogar_acesso(funcionario_id)
+        funcionario = service.mudar_acesso(funcionario_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return funcionario
+
+@router.delete("/{funcionario_id}", response_model=FuncionarioResponse)
+def apagar_funcionario(funcionario_id: int, db: Session = Depends(get_db)):
+    service = FuncionarioService(db)
+    try:
+        funcionario = service.apagar_funcionario(funcionario_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

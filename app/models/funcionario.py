@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Boolean, CheckConstraint
 from sqlalchemy.orm import relationship
 from app.config.database import Base
 import enum
@@ -24,3 +24,8 @@ class Funcionario(Base):
     # cargo_id = Column(Long, ForeignKey("cargos.cargo_id"), nullable=False)
 
     # cargos = relationship("Cargo", back_populates="funcionarios")
+
+    __table_args__ = (
+      CheckConstraint("uf_oab IS NULL OR length(uf_oab) = 2", name="ck_uf_oab_tamanho"),
+      CheckConstraint("numero_oab IS NULL OR length(numero_oab) = 5", name="ck_numero_oab_tamanho"),
+    )

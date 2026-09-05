@@ -25,3 +25,8 @@ class FuncionarioRepository:
     self.db.commit()
     self.db.refresh(funcionario)
     return funcionario
+
+  def deletar(self, funcionario: Funcionario) -> Funcionario:
+    self.db.delete(funcionario)
+    self.db.commit()
+    return funcionario
