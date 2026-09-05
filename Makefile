@@ -39,5 +39,5 @@ local:
 
 test:
 	@echo "\n\n🧪 Rodando testes com cobertura... \n"
-	uv run pytest
+	uv run pytest --cov-report=html --cov-report=term-missing
 	@echo "\n\n✅ Testes concluídos com sucesso! \n"
