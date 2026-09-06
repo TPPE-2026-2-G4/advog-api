@@ -1,22 +1,23 @@
 import os
 
 from dotenv import load_dotenv
-load_dotenv()
-load_dotenv(".env.local", override=True)  # overrides p/ rodar localmente fora do Docker (ver .env.local.example)
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.config.database import engine, Base
-from app.controllers import processo_controller
-from app.controllers import funcionario
+load_dotenv()
+load_dotenv(
+    ".env.local", override=True
+)  # overrides p/ rodar localmente fora do Docker (ver .env.local.example)
+
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
+from app.config.database import Base, engine  # noqa: E402
+from app.controllers import funcionario, processo_controller  # noqa: E402
 
 # Cria as tabelas no banco de dados, caso não existam (SQLite development mode)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Advocacia API",
-    description="API para gestão de processos da advocacia",
-    version="1.0.0"
+    title="Advocacia API", description="API para gestão de processos da advocacia", version="1.0.0"
 )
 
 FRONTEND_URLS = [
@@ -35,6 +36,7 @@ app.add_middleware(
 
 app.include_router(processo_controller.router)
 app.include_router(funcionario.router)
+
 
 @app.get("/")
 def root():

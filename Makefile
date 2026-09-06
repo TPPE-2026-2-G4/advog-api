@@ -4,13 +4,14 @@ help:
 	@echo " make up                               # Sobe os containers do Docker"
 	@echo " make local                            # Roda a aplicação localmente"
 	@echo " make test                             # Roda os testes com checagem de cobertura (>95%)"
+	@echo " make lint                             # Roda o Ruff (lint + format) e o Mypy"
 
 setup:
 	@echo "\n\n ⚙️ Configurando o ambiente de desenvolvimento... \n"
 	uv sync
 	cp .env.local.example .env.local
 	cp .env.example .env
-	uv run pre-commit install --hook-type commit-msg --hook-type pre-push
+	uv run pre-commit install --hook-type commit-msg --hook-type pre-push --hook-type pre-commit
 	install -m 755 scripts/hooks/prepare-commit-msg.sh "$$(git rev-parse --git-path hooks/prepare-commit-msg)"
 	docker compose --profile dev up -d --build
 	@echo "\n✅ Ambiente de desenvolvimento configurado com sucesso!"
@@ -47,3 +48,10 @@ test:
 	@echo "\n\n🧪 Rodando testes com cobertura... \n"
 	uv run pytest --cov-report=html --cov-report=term-missing
 	@echo "\n\n✅ Testes concluídos com sucesso! \n"
+
+lint:
+	@echo "\n\n🔍 Rodando lint e checagem de tipos... \n"
+	uv run ruff check .
+	uv run ruff format --check .
+	uv run mypy .
+	@echo "\n\n✅ Lint concluído com sucesso! \n"

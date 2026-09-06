@@ -17,10 +17,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mypy>=2.3.1",
     "pre-commit>=4.6.2",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
+    "ruff>=0.16.6",
 ]
 
 [tool.commitizen]
@@ -40,3 +42,30 @@ source = ["app"]
 [tool.coverage.report]
 fail_under = 95
 show_missing = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "SIM",
+]
+ignore = [
+    "E501",
+    "B008",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+ignore_missing_imports = true
+plugins = ["sqlalchemy.ext.mypy.plugin"]

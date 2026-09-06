@@ -1,6 +1,7 @@
 default_install_hook_types:
   - commit-msg
   - pre-push
+  - pre-commit
 
 repos:
   - repo: local
@@ -11,3 +12,24 @@ repos:
         language: script
         stages: [commit-msg]
         verbose: true
+
+      - id: ruff-check
+        name: Lint com Ruff
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+        stages: [pre-commit]
+
+      - id: ruff-format
+        name: Formata código com Ruff
+        entry: uv run ruff format
+        language: system
+        types: [python]
+        stages: [pre-commit]
+
+      - id: mypy
+        name: Checagem de tipos com Mypy
+        entry: uv run mypy
+        language: system
+        types: [python]
+        stages: [pre-commit]

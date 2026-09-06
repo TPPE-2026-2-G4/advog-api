@@ -12,3 +12,5 @@ venv/
 *.sqlite3
 .coverage
 htmlcov/
+.ruff_cache
+.mypy_cache

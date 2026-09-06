@@ -1,6 +1,7 @@
-from typing import List, Optional
 from sqlalchemy.orm import Session
+
 from app.models.processo_model import Processo
+
 
 class ProcessoRepository:
     def __init__(self, db: Session):
@@ -13,16 +14,16 @@ class ProcessoRepository:
         return processo
 
     def find_all_by_filters(
-        self, 
-        id: Optional[str] = None,
-        tribunal: Optional[str] = None,
-        titulo: Optional[str] = None,
-        cliente: Optional[str] = None,
-        area: Optional[str] = None,
-        responsavel: Optional[str] = None,
-        status: Optional[str] = None,
-        prazo: Optional[str] = None
-    ) -> List[Processo]:
+        self,
+        id: str | None = None,
+        tribunal: str | None = None,
+        titulo: str | None = None,
+        cliente: str | None = None,
+        area: str | None = None,
+        responsavel: str | None = None,
+        status: str | None = None,
+        prazo: str | None = None,
+    ) -> list[Processo]:
         query = self.db.query(Processo)
 
         if id:
