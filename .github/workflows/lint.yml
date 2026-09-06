@@ -1,0 +1,29 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Ruff + Mypy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Instalar dependências
+        run: uv sync --all-groups
+
+      - name: Lint com Ruff
+        run: uv run ruff check .
+
+      - name: Formatação com Ruff
+        run: uv run ruff format --check .
+
+      - name: Checagem de tipos com Mypy
+        run: uv run mypy .
