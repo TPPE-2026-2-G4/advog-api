@@ -1,12 +1,15 @@
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 import os
+from typing import cast
+
+from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
+from pydantic import EmailStr, NameEmail, SecretStr
 
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv("SMTP_USER", ""),
-    MAIL_PASSWORD=os.getenv("SMTP_PASSWORD", ""),
-    MAIL_FROM=os.getenv("SMTP_FROM"),
-    MAIL_PORT=int(os.getenv("SMTP_PORT")),
-    MAIL_SERVER=os.getenv("SMTP_HOST"),
+    MAIL_PASSWORD=SecretStr(os.getenv("SMTP_PASSWORD", "")),
+    MAIL_FROM=cast(EmailStr, os.getenv("SMTP_FROM", "")),
+    MAIL_PORT=int(os.getenv("SMTP_PORT", "1025")),
+    MAIL_SERVER=os.getenv("SMTP_HOST", ""),
     MAIL_STARTTLS=False,
     MAIL_SSL_TLS=False,
     USE_CREDENTIALS=False,
@@ -18,7 +21,7 @@ LINK_LOGIN = "https://www.google.com"  # TODO: substituir pelo link da página d
 async def enviar_email_boas_vindas(email_destino: str, nome: str):
     mensagem = MessageSchema(
         subject="Bem-vindo(a) ao escritório",
-        recipients=[email_destino],
+        recipients=[cast(NameEmail, email_destino)],
         body=f"""
         <div style="background-color:#f4f2ed; padding:32px 16px; font-family:Georgia,'Times New Roman',serif;">
           <table role="presentation" width="100%" style="max-width:520px; margin:0 auto; background-color:#ffffff; border:1px solid #e2ddd1;">

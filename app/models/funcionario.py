@@ -1,12 +1,15 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Boolean, CheckConstraint
-from sqlalchemy.orm import relationship
-from app.config.database import Base
 import enum
 
-class StatusFuncionario(str, enum.Enum):
-  PENDENTE = "Pendente"
-  ATIVO = "Ativo"
-  INATIVO = "Inativo"
+from sqlalchemy import Boolean, CheckConstraint, Column, Enum, Integer, String
+
+from app.config.database import Base
+
+
+class StatusFuncionario(enum.StrEnum):
+    PENDENTE = "Pendente"
+    ATIVO = "Ativo"
+    INATIVO = "Inativo"
+
 
 class Funcionario(Base):
     __tablename__ = "funcionarios"
@@ -19,13 +22,15 @@ class Funcionario(Base):
     senha_hash = Column(String(255), nullable=True)
     status = Column(Enum(StatusFuncionario), nullable=False, default=StatusFuncionario.PENDENTE)
     exibicaoInstitucional = Column(Boolean, nullable=False, default=False)
-    
+
     # TODO: APAGAR LINHAS ABAIXO QUANDO TABELA CARGOS FOR IMPLEMENTADA
     # cargo_id = Column(Long, ForeignKey("cargos.cargo_id"), nullable=False)
 
     # cargos = relationship("Cargo", back_populates="funcionarios")
 
     __table_args__ = (
-      CheckConstraint("uf_oab IS NULL OR length(uf_oab) = 2", name="ck_uf_oab_tamanho"),
-      CheckConstraint("numero_oab IS NULL OR length(numero_oab) = 5", name="ck_numero_oab_tamanho"),
+        CheckConstraint("uf_oab IS NULL OR length(uf_oab) = 2", name="ck_uf_oab_tamanho"),
+        CheckConstraint(
+            "numero_oab IS NULL OR length(numero_oab) = 5", name="ck_numero_oab_tamanho"
+        ),
     )

@@ -1,10 +1,10 @@
 from unittest.mock import AsyncMock
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from fastapi.testclient import TestClient
 
 from app.config import database
 from app.config.database import Base, get_db
@@ -21,7 +21,8 @@ TestingSessionLocal = sessionmaker(bind=engine)
 database.engine = engine
 database.SessionLocal = TestingSessionLocal
 
-from main import app
+from main import app  # noqa: E402
+
 
 @pytest.fixture(autouse=True)
 def mock_enviar_email_boas_vindas(monkeypatch):
@@ -29,6 +30,7 @@ def mock_enviar_email_boas_vindas(monkeypatch):
     mock = AsyncMock()
     monkeypatch.setattr("app.controllers.funcionario.enviar_email_boas_vindas", mock)
     return mock
+
 
 @pytest.fixture()
 def db_session():
@@ -39,6 +41,7 @@ def db_session():
     finally:
         session.close()
         Base.metadata.drop_all(bind=engine)
+
 
 @pytest.fixture()
 def client(db_session):

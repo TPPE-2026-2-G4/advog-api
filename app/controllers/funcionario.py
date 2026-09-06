@@ -1,27 +1,35 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from typing import cast
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
+from app.schemas.funcionario import (
+    FuncionarioCreate,
+    FuncionarioPrimeiroAcesso,
+    FuncionarioResponse,
+)
 from app.services.funcionario import FuncionarioService
-from app.schemas.funcionario import FuncionarioCreate, FuncionarioPrimeiroAcesso, FuncionarioResponse
 from app.utils.email import enviar_email_boas_vindas
 
 router = APIRouter(prefix="/funcionarios", tags=["Funcionários"])
 
+
 @router.post("", response_model=FuncionarioResponse, status_code=201)
 def criar_funcionario(
-        dados: FuncionarioCreate,
-        background_tasks: BackgroundTasks,
-        db: Session = Depends(get_db)
-    ):
+    dados: FuncionarioCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
+):
     service = FuncionarioService(db)
     try:
         funcionario = service.criar_funcionario(dados)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
-    background_tasks.add_task(enviar_email_boas_vindas, funcionario.email, funcionario.nome)
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    background_tasks.add_task(
+        enviar_email_boas_vindas, cast(str, funcionario.email), cast(str, funcionario.nome)
+    )
     return funcionario
+
 
 @router.get("", response_model=list[FuncionarioResponse])
 def buscar_todos_funcionarios(db: Session = Depends(get_db)):
@@ -29,15 +37,19 @@ def buscar_todos_funcionarios(db: Session = Depends(get_db)):
     funcionarios = service.buscar_todos()
     return funcionarios
 
+
 @router.patch("/{funcionario_id}/primeiro-acesso", response_model=FuncionarioResponse)
-def primeiro_acesso(funcionario_id: int, dados: FuncionarioPrimeiroAcesso, db: Session = Depends(get_db)):
+def primeiro_acesso(
+    funcionario_id: int, dados: FuncionarioPrimeiroAcesso, db: Session = Depends(get_db)
+):
     service = FuncionarioService(db)
     try:
         funcionario = service.primeiro_acesso(funcionario_id, dados)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     return funcionario
+
 
 @router.patch("/{funcionario_id}/mudar-acesso", response_model=FuncionarioResponse)
 def mudar_acesso(funcionario_id: int, db: Session = Depends(get_db)):
@@ -45,9 +57,10 @@ def mudar_acesso(funcionario_id: int, db: Session = Depends(get_db)):
     try:
         funcionario = service.mudar_acesso(funcionario_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     return funcionario
+
 
 @router.delete("/{funcionario_id}", response_model=FuncionarioResponse)
 def apagar_funcionario(funcionario_id: int, db: Session = Depends(get_db)):
@@ -55,6 +68,6 @@ def apagar_funcionario(funcionario_id: int, db: Session = Depends(get_db)):
     try:
         funcionario = service.apagar_funcionario(funcionario_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     return funcionario
