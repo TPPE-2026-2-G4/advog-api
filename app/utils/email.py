@@ -7,9 +7,9 @@ from pydantic import EmailStr, NameEmail, SecretStr
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv("SMTP_USER", ""),
     MAIL_PASSWORD=SecretStr(os.getenv("SMTP_PASSWORD", "")),
-    MAIL_FROM=cast(EmailStr, os.getenv("SMTP_FROM", "")),
+    MAIL_FROM=cast(EmailStr, os.getenv("SMTP_FROM") or "nao-responda@escritorio.com.br"),
     MAIL_PORT=int(os.getenv("SMTP_PORT", "1025")),
-    MAIL_SERVER=os.getenv("SMTP_HOST", ""),
+    MAIL_SERVER=os.getenv("SMTP_HOST", "localhost"),
     MAIL_STARTTLS=False,
     MAIL_SSL_TLS=False,
     USE_CREDENTIALS=False,
