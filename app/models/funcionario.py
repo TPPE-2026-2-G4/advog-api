@@ -1,8 +1,21 @@
 import enum
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, CheckConstraint, Column, Enum, Integer, String
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+)
+from sqlalchemy.orm import Mapped, relationship
 
 from app.config.database import Base
+
+if TYPE_CHECKING:
+    from app.models.cargo import Cargo
 
 
 class StatusFuncionario(enum.StrEnum):
@@ -23,10 +36,9 @@ class Funcionario(Base):
     status = Column(Enum(StatusFuncionario), nullable=False, default=StatusFuncionario.PENDENTE)
     exibicaoInstitucional = Column(Boolean, nullable=False, default=False)
 
-    # TODO: APAGAR LINHAS ABAIXO QUANDO TABELA CARGOS FOR IMPLEMENTADA
-    # cargo_id = Column(Long, ForeignKey("cargos.cargo_id"), nullable=False)
+    cargo_id = Column(Integer, ForeignKey("cargos.cargo_id"), nullable=False)
 
-    # cargos = relationship("Cargo", back_populates="funcionarios")
+    cargo: Mapped["Cargo"] = relationship("Cargo", back_populates="funcionarios")
 
     __table_args__ = (
         CheckConstraint("uf_oab IS NULL OR length(uf_oab) = 2", name="ck_uf_oab_tamanho"),
