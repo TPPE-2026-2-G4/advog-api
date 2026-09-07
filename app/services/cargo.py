@@ -16,5 +16,5 @@ class CargoService:
         if self.repository.buscar_por_nome(dados.nome_cargo):
             raise ValueError("Cargo já cadastrado")
 
-        cargo = Cargo(nome_cargo=dados.nome_cargo)
+        cargo = Cargo(**dados.model_dump(exclude_unset=True))
         return self.repository.criar(cargo)
