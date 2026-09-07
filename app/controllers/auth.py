@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.config.database import get_db
 from app.config.limiter import limiter
 from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.funcionario import FuncionarioResponse
 from app.services.auth import AuthService, ContaNaoAtivaError, CredenciaisInvalidasError
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
@@ -27,12 +28,14 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
 )
 @limiter.limit("10/minute")
 def login(request: Request, dados: LoginRequest, db: Session = Depends(get_db)):
-    # Realiza o login de funcionários com e-mail e senha. Retorna um token JWT válido por 60 minutos e os dados cadastrais do funcionário logado
-
     service = AuthService(db)
     try:
         token, funcionario = service.autenticar(dados)
-        return TokenResponse(access_token=token, token_type="bearer", funcionario=funcionario)
+        return TokenResponse(
+            access_token=token,
+            token_type="bearer",
+            funcionario=FuncionarioResponse.model_validate(funcionario),
+        )
     except CredenciaisInvalidasError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e)) from e
     except ContaNaoAtivaError as e:

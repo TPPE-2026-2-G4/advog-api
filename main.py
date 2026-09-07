@@ -7,10 +7,13 @@ load_dotenv(
     ".env.local", override=True
 )  # overrides p/ rodar localmente fora do Docker (ver .env.local.example)
 
+from typing import cast  # noqa: E402
+
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from slowapi import _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
+from starlette.types import ExceptionHandler  # noqa: E402
 
 from app.config.database import Base, engine  # noqa: E402
 from app.config.limiter import limiter  # noqa: E402
@@ -23,7 +26,7 @@ app = FastAPI(
     title="Advocacia API", description="API para gestão de processos da advocacia", version="1.0.0"
 )
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, cast(ExceptionHandler, _rate_limit_exceeded_handler))
 
 FRONTEND_URLS = [
     origem.strip()
