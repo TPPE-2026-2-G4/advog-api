@@ -9,7 +9,7 @@ class FuncionarioBase(BaseModel):
 
 
 class FuncionarioCreate(FuncionarioBase):
-    pass
+    cargo_id: int
 
 
 class FuncionarioPrimeiroAcesso(BaseModel):
@@ -21,6 +21,7 @@ class FuncionarioPrimeiroAcesso(BaseModel):
 
 class FuncionarioResponse(FuncionarioBase):
     funcionario_id: int
+    cargo_id: int
     status: StatusFuncionario
     uf_oab: str | None = None
     numero_oab: str | None = None

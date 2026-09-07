@@ -2,7 +2,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from app.models.cargo import Cargo
 from app.models.funcionario import Funcionario, StatusFuncionario
+from app.repositories.cargo import CargoRepository
 from app.repositories.funcionario import FuncionarioRepository
 from app.schemas.funcionario import FuncionarioCreate, FuncionarioPrimeiroAcesso
 from app.services.funcionario import FuncionarioService
@@ -14,11 +16,12 @@ def test_criar_funcionario_com_email_duplicado_gera_erro():
     service.repository.buscar_por_email.return_value = Funcionario(
         nome="Outro Usuário",
         email="ana.souza@test.com",
+        cargo_id=1,
     )
 
     with pytest.raises(ValueError, match="Email já cadastrado"):
         service.criar_funcionario(
-            FuncionarioCreate(nome="Ana Beatriz Souza", email="ana.souza@test.com")
+            FuncionarioCreate(nome="Ana Beatriz Souza", email="ana.souza@test.com", cargo_id=1)
         )
 
 
@@ -35,23 +38,29 @@ def test_criar_funcionario_com_email_duplicado_gera_erro():
 def test_criar_funcionario_com_email_unico(nome, email):
     service = FuncionarioService.__new__(FuncionarioService)
     service.repository = MagicMock(spec=FuncionarioRepository)
+
+    service.cargo_repository = MagicMock(spec=CargoRepository)
+    service.cargo_repository.buscar_por_id.return_value = Cargo(cargo_id=1, nome_cargo="Advogado")
+
     service.repository.buscar_por_email.return_value = None
     service.repository.criar.return_value = Funcionario(
         nome=nome,
         email=email.lower(),
         funcionario_id=1,
+        cargo_id=1,
         status=StatusFuncionario.PENDENTE,
         uf_oab=None,
         numero_oab=None,
         exibicaoInstitucional=False,
     )
 
-    funcionario = service.criar_funcionario(FuncionarioCreate(nome=nome, email=email))
+    funcionario = service.criar_funcionario(FuncionarioCreate(nome=nome, email=email, cargo_id=1))
 
     assert isinstance(funcionario, Funcionario)
     assert funcionario is not None
     assert funcionario.nome == nome
     assert funcionario.email == email.lower()
+    assert funcionario.cargo_id == 1
     assert funcionario.status == StatusFuncionario.PENDENTE
 
 
@@ -63,6 +72,7 @@ def test_buscar_todos_retorna_lista_de_funcionarios():
             nome="Ana Beatriz Souza",
             email="ana.souza@test.com",
             funcionario_id=1,
+            cargo_id=1,
             status=StatusFuncionario.PENDENTE,
             uf_oab=None,
             numero_oab=None,
@@ -72,6 +82,7 @@ def test_buscar_todos_retorna_lista_de_funcionarios():
             nome="Outro Usuário",
             email="outro.usuario@test.com",
             funcionario_id=2,
+            cargo_id=1,
             status=StatusFuncionario.PENDENTE,
             uf_oab=None,
             numero_oab=None,
@@ -107,6 +118,7 @@ def test_primeiro_acesso_funcionario_com_conta_pendente_gera_erro():
         nome="Usuário Teste",
         email="usuario.teste@test.com",
         funcionario_id=1,
+        cargo_id=1,
         status=StatusFuncionario.ATIVO,
         uf_oab=None,
         numero_oab=None,
@@ -126,6 +138,7 @@ def test_primeiro_acesso_funcionario_com_sucesso():
         nome="Ana Beatriz Souza",
         email="ana.souza@test.com",
         funcionario_id=1,
+        cargo_id=1,
         status=StatusFuncionario.PENDENTE,
         uf_oab=None,
         numero_oab=None,
@@ -164,6 +177,7 @@ def test_mudar_acesso_funcionario_com_conta_pendente_gera_erro():
         nome="Usuário Teste",
         email="usuario.teste@test.com",
         funcionario_id=1,
+        cargo_id=1,
         status=StatusFuncionario.PENDENTE,
         uf_oab=None,
         numero_oab=None,
@@ -183,6 +197,7 @@ def test_mudar_acesso_funcionario_com_conta_ativa_para_inativa():
         nome="Usuário Teste",
         email="usuario.teste@test.com",
         funcionario_id=1,
+        cargo_id=1,
         status=StatusFuncionario.ATIVO,
         uf_oab=None,
         numero_oab=None,
@@ -206,6 +221,7 @@ def test_mudar_acesso_funcionario_com_conta_inativa_para_ativa():
         nome="Usuário Teste",
         email="usuario.teste@test.com",
         funcionario_id=1,
+        cargo_id=1,
         status=StatusFuncionario.INATIVO,
         uf_oab=None,
         numero_oab=None,
@@ -238,6 +254,7 @@ def test_apagar_funcionario_retorna_funcionario_apagado():
         nome="Usuário Teste",
         email="usuario.teste@test.com",
         funcionario_id=1,
+        cargo_id=1,
         status=StatusFuncionario.ATIVO,
         uf_oab=None,
         numero_oab=None,
