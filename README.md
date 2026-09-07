@@ -111,6 +111,7 @@ Com a API rodando, consulte o Swagger UI (`http://localhost:8000/docs`) para a d
 | `PATCH`  | `/funcionarios/{funcionario_id}/primeiro-acesso`    | Funcionários |
 | `PATCH`  | `/funcionarios/{funcionario_id}/mudar-acesso`       | Funcionários |
 | `DELETE` | `/funcionarios/{funcionario_id}`                    | Funcionários |
+| `POST`   | `/auth/login`                                       | Autenticação |
 
 ## CORS
 
@@ -151,11 +152,11 @@ Todo Pull Request para `main` dispara o workflow [`test.yml`](.github/workflows/
 - `main.py`: Ponto de entrada da aplicação FastAPI — carrega `.env`/`.env.local`, cria as tabelas, configura CORS e registra as rotas.
 - `app/`: Código-fonte da API.
   - `config/database.py`: Configuração do SQLAlchemy, conexão e sessões do banco.
-  - `controllers/`: Rotas e controladores HTTP (`processo_controller.py`, `funcionario.py`).
+  - `controllers/`: Rotas e controladores HTTP (`processo_controller.py`, `funcionario.py`, `auth.py`).
   - `models/`: Modelos de dados do SQLAlchemy (`processo_model.py`, `funcionario.py`).
   - `repositories/`: Operações de persistência e consultas ao banco.
-  - `schemas/`: Schemas de entrada, resposta e filtros com Pydantic.
-  - `services/`: Regras de negócio da aplicação.
+  - `schemas/`: Schemas de entrada, resposta e filtros com Pydantic (`auth.py`, `funcionario.py`, `processo_schema.py`).
+  - `services/`: Regras de negócio da aplicação (`auth.py`, `funcionario.py`, `processo_service.py`).
   - `utils/`: Utilitários — hash de senha (`seguranca.py`) e envio de e-mail (`email.py`).
 - `tests/`: Testes automatizados — `unit/` (services, repositories, utils) e `integration/` (controllers via `TestClient`).
 - `scripts/hooks/`: Hooks de commit e pre-push.
