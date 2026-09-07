@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 class Cargo(Base):
     __tablename__ = "cargos"
 
-    cargo_id = Column(Integer, primary_key=True, index=True)
+    cargo_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     nome_cargo = Column(String(100), nullable=False)
     descricao = Column(String(255), nullable=True)
     permissao = Column(JSON, nullable=True)
