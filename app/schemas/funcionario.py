@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.funcionario import StatusFuncionario
+from app.schemas.cargo import CargoResponse
 
 
 class FuncionarioBase(BaseModel):
@@ -20,11 +21,11 @@ class FuncionarioPrimeiroAcesso(BaseModel):
 
 
 class FuncionarioResponse(FuncionarioBase):
-    funcionario_id: int
     cargo_id: int
+    cargo: CargoResponse | None = None
+    exibicaoInstitucional: bool = False
+    funcionario_id: int
+    numero_oab: str | None = None
     status: StatusFuncionario
     uf_oab: str | None = None
-    numero_oab: str | None = None
-    exibicaoInstitucional: bool = False
-
     model_config = ConfigDict(from_attributes=True)
