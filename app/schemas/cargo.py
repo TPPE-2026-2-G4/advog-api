@@ -16,7 +16,7 @@ class PermissaoBase(BaseModel):
 class CargoBase(BaseModel):
     nome_cargo: str = Field(..., min_length=2, max_length=100)
     descricao: str | None = Field(default=None, max_length=255)
-    permissao: PermissaoBase = PermissaoBase()
+    permissao: PermissaoBase = Field(default_factory=PermissaoBase)
 
 
 class CargoCreate(CargoBase):

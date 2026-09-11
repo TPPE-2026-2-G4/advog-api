@@ -44,3 +44,18 @@ def atualizar_cargo(cargo_id: int, dados: CargoUpdate, db: Session = Depends(get
             else status.HTTP_400_BAD_REQUEST
         )
         raise HTTPException(status_code=status_code, detail=str(e)) from e
+
+
+@router.delete("/{cargo_id}", response_model=CargoResponse, status_code=status.HTTP_200_OK)
+def deletar_cargo(cargo_id: int, db: Session = Depends(get_db)):
+    service = CargoService(db)
+    try:
+        return service.deletar_cargo(cargo_id)
+    except ValueError as e:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if str(e) == "Cargo não encontrado"
+            else status.HTTP_400_BAD_REQUEST
+        )
+
+        raise HTTPException(status_code=status_code, detail=str(e)) from e

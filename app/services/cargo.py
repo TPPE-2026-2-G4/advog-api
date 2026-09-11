@@ -41,3 +41,11 @@ class CargoService:
             cargo.permissao = dados.permissao.model_dump()
 
         return self.repository.atualizar(cargo)
+
+    def deletar_cargo(self, cargo_id: int) -> Cargo:
+        cargo = self.buscar_por_id(cargo_id)
+
+        if cargo.funcionarios:
+            raise ValueError("Não é possível excluir um cargo associado a funcionários")
+
+        return self.repository.deletar(cargo)
