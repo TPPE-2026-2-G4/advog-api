@@ -247,7 +247,7 @@ def test_apagar_funcionario_nao_encontrado_gera_erro():
         service.apagar_funcionario(1)
 
 
-def test_apagar_funcionario_retorna_funcionario_apagado():
+def test_apagar_funcionario_retorna_sucesso():
     service = FuncionarioService.__new__(FuncionarioService)
     service.repository = MagicMock(spec=FuncionarioRepository)
     funcionario = Funcionario(
@@ -261,12 +261,12 @@ def test_apagar_funcionario_retorna_funcionario_apagado():
         exibicaoInstitucional=False,
     )
     service.repository.buscar_por_id.return_value = funcionario
-    service.repository.deletar.return_value = funcionario
 
-    funcionario = service.apagar_funcionario(1)
+    resultado = service.apagar_funcionario(1)
 
-    assert isinstance(funcionario, Funcionario)
-    assert funcionario.funcionario_id == 1
+    assert resultado is None
+    service.repository.buscar_por_id.assert_called_once_with(1)
+    service.repository.deletar.assert_called_once_with(funcionario)
 
 
 def test_construtor_cria_repository_com_a_sessao_informada(db_session):

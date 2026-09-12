@@ -241,7 +241,7 @@ def test_mudar_acesso_funcionario_com_conta_pendente_retorna_erro(client, cargo_
         ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
     ],
 )
-def test_apagar_funcionario_retorna_funcionario_apagado(client, cargo_padrao, nome, email):
+def test_apagar_funcionario_retorna_sucesso(client, cargo_padrao, nome, email):
     response = client.post(
         "/funcionarios", json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id}
     )
@@ -249,9 +249,8 @@ def test_apagar_funcionario_retorna_funcionario_apagado(client, cargo_padrao, no
 
     funcionario_id = response.json()["funcionario_id"]
     response = client.delete(f"/funcionarios/{funcionario_id}")
-    assert response.status_code == 200
-    assert response.json()["nome"] == nome
-    assert response.json()["email"] == email.lower()
+    assert response.status_code == 204
+    assert response.content == b""
 
 
 def test_apagar_funcionario_nao_encontrado_retorna_erro(client):

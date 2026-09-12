@@ -61,9 +61,9 @@ class FuncionarioService:
             funcionario.status = StatusFuncionario.INATIVO
         return self.repository.atualizar(funcionario)
 
-    def apagar_funcionario(self, funcionario_id: int) -> Funcionario:
+    def apagar_funcionario(self, funcionario_id: int) -> None:
         funcionario = self.repository.buscar_por_id(funcionario_id)
         if not funcionario:
             raise ValueError("Funcionário não encontrado")
 
-        return self.repository.deletar(funcionario)
+        self.repository.deletar(funcionario)
