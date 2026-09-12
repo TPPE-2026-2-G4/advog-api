@@ -1,6 +1,6 @@
 from typing import cast
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
@@ -62,12 +62,10 @@ def mudar_acesso(funcionario_id: int, db: Session = Depends(get_db)):
     return funcionario
 
 
-@router.delete("/{funcionario_id}", response_model=FuncionarioResponse)
+@router.delete("/{funcionario_id}", status_code=status.HTTP_204_NO_CONTENT)
 def apagar_funcionario(funcionario_id: int, db: Session = Depends(get_db)):
     service = FuncionarioService(db)
     try:
-        funcionario = service.apagar_funcionario(funcionario_id)
+        service.apagar_funcionario(funcionario_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-
-    return funcionario

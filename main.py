@@ -17,7 +17,7 @@ from starlette.types import ExceptionHandler  # noqa: E402
 
 from app.config.database import Base, engine  # noqa: E402
 from app.config.limiter import limiter  # noqa: E402
-from app.controllers import auth, funcionario, processo_controller  # noqa: E402
+from app.controllers import auth, cargo, funcionario, processo_controller  # noqa: E402
 
 # Cria as tabelas no banco de dados, caso não existam (SQLite development mode)
 Base.metadata.create_all(bind=engine)
@@ -42,6 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(cargo.router)
 app.include_router(processo_controller.router)
 app.include_router(funcionario.router)
 app.include_router(auth.router)
