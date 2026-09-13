@@ -1,15 +1,17 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.models.processo import StatusProcesso
 
 
 class ProcessoBase(BaseModel):
-    id: str  # Nº do Processo
+    id: str = Field(max_length=25)
     titulo: str
     cliente: str
-    status: str
+    status: StatusProcesso
     tribunal: str
     area: str
     responsavel: str
-    prazo: str
+    prazo: str = Field(max_length=10)
     diasRestantes: int | None = 15
 
 

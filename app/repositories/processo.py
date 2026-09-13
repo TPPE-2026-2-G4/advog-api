@@ -1,19 +1,16 @@
 from sqlalchemy.orm import Session
 
-from app.models.processo_model import Processo
+from app.models.processo import Processo, StatusProcesso
 
 
 class ProcessoRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def save(self, processo: Processo) -> Processo:
-        self.db.add(processo)
-        self.db.commit()
-        self.db.refresh(processo)
-        return processo
+    def buscar_todos(self) -> list[Processo]:
+        return self.db.query(Processo).all()
 
-    def find_all_by_filters(
+    def buscar_por_filtros(
         self,
         id: str | None = None,
         tribunal: str | None = None,
@@ -21,7 +18,7 @@ class ProcessoRepository:
         cliente: str | None = None,
         area: str | None = None,
         responsavel: str | None = None,
-        status: str | None = None,
+        status: StatusProcesso | None = None,
         prazo: str | None = None,
     ) -> list[Processo]:
         query = self.db.query(Processo)
@@ -38,9 +35,24 @@ class ProcessoRepository:
             query = query.filter(Processo.area.ilike(f"%{area}%"))
         if responsavel:
             query = query.filter(Processo.responsavel.ilike(f"%{responsavel}%"))
-        if status and status.lower() != "todos":
-            query = query.filter(Processo.status.ilike(f"%{status}%"))
+        if status:
+            query = query.filter(Processo.status == status)
         if prazo:
             query = query.filter(Processo.prazo.ilike(f"%{prazo}%"))
 
         return query.all()
+
+    def criar(self, processo: Processo) -> Processo:
+        self.db.add(processo)
+        self.db.commit()
+        self.db.refresh(processo)
+        return processo
+
+    def atualizar(self, processo: Processo) -> Processo:
+        self.db.commit()
+        self.db.refresh(processo)
+        return processo
+
+    def deletar(self, processo: Processo) -> None:
+        self.db.delete(processo)
+        self.db.commit()

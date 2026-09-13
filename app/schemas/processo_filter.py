@@ -1,5 +1,7 @@
 from fastapi import Query
 
+from app.models.processo import StatusProcesso
+
 
 class ProcessoFilter:
     def __init__(
@@ -10,7 +12,7 @@ class ProcessoFilter:
         cliente: str | None = Query(None, description="Filtrar por cliente"),
         area: str | None = Query(None, description="Filtrar por área"),
         responsavel: str | None = Query(None, description="Filtrar por responsável"),
-        status: str | None = Query(None, description="Filtrar por status"),
+        status: StatusProcesso | None = Query(None, description="Filtrar por status"),
         prazo: str | None = Query(None, description="Filtrar por prazo"),
     ):
         self.id = id

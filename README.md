@@ -152,7 +152,7 @@ Todo Pull Request para `main` dispara o workflow [`test.yml`](.github/workflows/
 - `main.py`: Ponto de entrada da aplicação FastAPI — carrega `.env`/`.env.local`, cria as tabelas, configura CORS e registra as rotas.
 - `app/`: Código-fonte da API.
   - `config/database.py`: Configuração do SQLAlchemy, conexão e sessões do banco.
-  - `controllers/`: Rotas e controladores HTTP (`processo_controller.py`, `funcionario.py`, `auth.py`).
+  - `controllers/`: Rotas e controladores HTTP (`processo.py`, `funcionario.py`, `auth.py`).
   - `models/`: Modelos de dados do SQLAlchemy (`processo_model.py`, `funcionario.py`).
   - `repositories/`: Operações de persistência e consultas ao banco.
   - `schemas/`: Schemas de entrada, resposta e filtros com Pydantic (`auth.py`, `funcionario.py`, `processo_schema.py`).
