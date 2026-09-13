@@ -1,18 +1,20 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+
 
 class LancamentoBase(BaseModel):
     tipo: str
     titulo: str
-    descricao: Optional[str] = None
+    descricao: str | None = None
     valor: float
     data: str
     categoria: str
-    status: Optional[str] = "Pendente"
-    recorrente: Optional[bool] = False
+    status: str | None = "Pendente"
+    recorrente: bool | None = False
+
 
 class LancamentoCreate(LancamentoBase):
     pass
+
 
 class LancamentoResponse(LancamentoBase):
     id: int

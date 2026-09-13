@@ -1,13 +1,14 @@
 from sqlalchemy.orm import Session
-from typing import List
+
 from app.models.lancamento import Lancamento
 from app.schemas.lancamento import LancamentoCreate
+
 
 class LancamentoRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self) -> List[Lancamento]:
+    def get_all(self) -> list[Lancamento]:
         return self.db.query(Lancamento).all()
 
     def create(self, lancamento_data: LancamentoCreate) -> Lancamento:
@@ -19,7 +20,7 @@ class LancamentoRepository:
             data=lancamento_data.data,
             categoria=lancamento_data.categoria,
             status=lancamento_data.status,
-            recorrente=lancamento_data.recorrente
+            recorrente=lancamento_data.recorrente,
         )
         self.db.add(db_lancamento)
         self.db.commit()

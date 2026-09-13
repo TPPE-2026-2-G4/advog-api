@@ -1,5 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean
+from sqlalchemy import Boolean, Column, Float, Integer, String
+
 from app.config.database import Base
+
 
 class Lancamento(Base):
     __tablename__ = "lancamentos"
