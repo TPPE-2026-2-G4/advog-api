@@ -73,7 +73,7 @@ def test_buscar_todos_funcionarios_sem_funcionarios_cadastrados_retorna_lista_va
         ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
     ],
 )
-def test_primeiro_acesso_retorna_funcionario_atualizado(client, nome, email):
+def test_primeiro_acesso_retorna_funcionario_atualizado(client, nome, email, token_primeiro_acesso):
     response = client.post("/funcionarios", json={"nome": nome, "email": email})
     assert response.status_code == 201
     assert response.json()["nome"] == nome
@@ -82,7 +82,8 @@ def test_primeiro_acesso_retorna_funcionario_atualizado(client, nome, email):
 
     funcionario_id = response.json()["funcionario_id"]
     response = client.patch(
-        f"/funcionarios/{funcionario_id}/primeiro-acesso", json={"senha": "senha123"}
+        "/funcionarios/primeiro-acesso",
+        json={"senha": "senha123", "token": token_primeiro_acesso(funcionario_id)},
     )
     assert response.status_code == 200
     assert response.json()["nome"] == nome
@@ -90,26 +91,40 @@ def test_primeiro_acesso_retorna_funcionario_atualizado(client, nome, email):
     assert response.json()["status"] == StatusFuncionario.ATIVO.value
 
 
-def test_primeiro_acesso_funcionario_nao_encontrado_retorna_erro(client):
-    response = client.patch("/funcionarios/999/primeiro-acesso", json={"senha": "senha123"})
+def test_primeiro_acesso_funcionario_nao_encontrado_retorna_erro(client, token_primeiro_acesso):
+    response = client.patch(
+        "/funcionarios/primeiro-acesso",
+        json={"senha": "senha123", "token": token_primeiro_acesso(999)},
+    )
     assert response.status_code == 400
     assert response.json()["detail"] == "Funcionário não encontrado"
 
 
-def test_primeiro_acesso_funcionario_ja_ativado_retorna_erro(client):
+def test_primeiro_acesso_com_token_invalido_retorna_401(client):
+    response = client.patch(
+        "/funcionarios/primeiro-acesso",
+        json={"senha": "senha123", "token": "token-invalido"},
+    )
+    assert response.status_code == 401
+
+
+def test_primeiro_acesso_funcionario_ja_ativado_retorna_erro(client, token_primeiro_acesso):
     response = client.post(
         "/funcionarios", json={"nome": "Funcionario Ativo", "email": "funcionario.ativo@test.com"}
     )
     assert response.status_code == 201
 
     funcionario_id = response.json()["funcionario_id"]
+    token = token_primeiro_acesso(funcionario_id)
     response = client.patch(
-        f"/funcionarios/{funcionario_id}/primeiro-acesso", json={"senha": "senha123"}
+        "/funcionarios/primeiro-acesso",
+        json={"senha": "senha123", "token": token},
     )
     assert response.status_code == 200
 
     response = client.patch(
-        f"/funcionarios/{funcionario_id}/primeiro-acesso", json={"senha": "senha456"}
+        "/funcionarios/primeiro-acesso",
+        json={"senha": "senha456", "token": token},
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Funcionário já teve a conta ativada"
@@ -126,14 +141,15 @@ def test_primeiro_acesso_funcionario_ja_ativado_retorna_erro(client):
     ],
 )
 def test_mudar_acesso_funcionario_muda_atividade_e_manda_funcionario_atualizado(
-    client, nome, email
+    client, nome, email, token_primeiro_acesso
 ):
     response = client.post("/funcionarios", json={"nome": nome, "email": email})
     assert response.status_code == 201
 
     funcionario_id = response.json()["funcionario_id"]
     response = client.patch(
-        f"/funcionarios/{funcionario_id}/primeiro-acesso", json={"senha": "senha123"}
+        "/funcionarios/primeiro-acesso",
+        json={"senha": "senha123", "token": token_primeiro_acesso(funcionario_id)},
     )
     assert response.status_code == 200
 

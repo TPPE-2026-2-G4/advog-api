@@ -11,6 +11,7 @@ from app.schemas.funcionario import (
 )
 from app.services.funcionario import FuncionarioService
 from app.utils.email import enviar_email_boas_vindas
+from app.utils.seguranca import validar_token_primeiro_acesso
 
 router = APIRouter(prefix="/funcionarios", tags=["Funcionários"])
 
@@ -26,7 +27,10 @@ def criar_funcionario(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     background_tasks.add_task(
-        enviar_email_boas_vindas, cast(str, funcionario.email), cast(str, funcionario.nome)
+        enviar_email_boas_vindas,
+        cast(str, funcionario.email),
+        cast(str, funcionario.nome),
+        cast(int, funcionario.funcionario_id),
     )
     return funcionario
 
@@ -38,10 +42,13 @@ def buscar_todos_funcionarios(db: Session = Depends(get_db)):
     return funcionarios
 
 
-@router.patch("/{funcionario_id}/primeiro-acesso", response_model=FuncionarioResponse)
-def primeiro_acesso(
-    funcionario_id: int, dados: FuncionarioPrimeiroAcesso, db: Session = Depends(get_db)
-):
+@router.patch("/primeiro-acesso", response_model=FuncionarioResponse)
+def primeiro_acesso(dados: FuncionarioPrimeiroAcesso, db: Session = Depends(get_db)):
+    try:
+        funcionario_id = validar_token_primeiro_acesso(dados.token)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e)) from e
+
     service = FuncionarioService(db)
     try:
         funcionario = service.primeiro_acesso(funcionario_id, dados)
