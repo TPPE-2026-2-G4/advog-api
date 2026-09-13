@@ -1,6 +1,16 @@
 import pytest
 
+from app.models.cargo import Cargo
 from app.models.funcionario import StatusFuncionario
+
+
+@pytest.fixture
+def cargo_padrao(db_session):
+    cargo = Cargo(nome_cargo="Advogado", descricao="Cargo de teste")
+    db_session.add(cargo)
+    db_session.commit()
+    db_session.refresh(cargo)
+    return cargo
 
 
 @pytest.mark.parametrize(
@@ -13,36 +23,70 @@ from app.models.funcionario import StatusFuncionario
         ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
     ],
 )
-def test_criar_funcionario_retorna_funcionario_criado(client, nome, email):
-    response = client.post("/funcionarios", json={"nome": nome, "email": email})
+def test_criar_funcionario_retorna_funcionario_criado(client, cargo_padrao, nome, email):
+    response = client.post(
+        "/funcionarios", json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id}
+    )
     assert response.status_code == 201
     assert response.json()["nome"] == nome
     assert response.json()["email"] == email.lower()
+    assert response.json()["cargo_id"] == cargo_padrao.cargo_id
 
 
-def test_criar_funcionario_com_email_existente_retorna_erro(client):
+def test_criar_funcionario_com_cargo_inexistente_retorna_erro(client):
     response = client.post(
         "/funcionarios",
-        json={"nome": "Funcionario Existente", "email": "funcionario.existente@test.com"},
+        json={
+            "nome": "Funcionario Existente",
+            "email": "funcionario.existente@test.com",
+            "cargo_id": 9999,
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Cargo não encontrado"
+
+
+def test_criar_funcionario_com_email_existente_retorna_erro(client, cargo_padrao):
+    response = client.post(
+        "/funcionarios",
+        json={
+            "nome": "Funcionario Existente",
+            "email": "funcionario.existente@test.com",
+            "cargo_id": cargo_padrao.cargo_id,
+        },
     )
     assert response.status_code == 201
 
     response_erro = client.post(
         "/funcionarios",
-        json={"nome": "Funcionario Existente 2", "email": "funcionario.existente@test.com"},
+        json={
+            "nome": "Funcionario Existente 2",
+            "email": "funcionario.existente@test.com",
+            "cargo_id": cargo_padrao.cargo_id,
+        },
     )
 
     assert response_erro.status_code == 400
     assert response_erro.json()["detail"] == "Email já cadastrado"
 
 
-def test_buscar_todos_funcionarios_com_funcionarios_cadastrados_retorna_lista(client):
+def test_buscar_todos_funcionarios_com_funcionarios_cadastrados_retorna_lista(client, cargo_padrao):
     response = client.post(
-        "/funcionarios", json={"nome": "Funcionario 1", "email": "funcionario.1@test.com"}
+        "/funcionarios",
+        json={
+            "nome": "Funcionario 1",
+            "email": "funcionario.1@test.com",
+            "cargo_id": cargo_padrao.cargo_id,
+        },
     )
     assert response.status_code == 201
     response = client.post(
-        "/funcionarios", json={"nome": "Funcionario 2", "email": "funcionario.2@test.com"}
+        "/funcionarios",
+        json={
+            "nome": "Funcionario 2",
+            "email": "funcionario.2@test.com",
+            "cargo_id": cargo_padrao.cargo_id,
+        },
     )
     assert response.status_code == 201
 
@@ -73,8 +117,15 @@ def test_buscar_todos_funcionarios_sem_funcionarios_cadastrados_retorna_lista_va
         ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
     ],
 )
-def test_primeiro_acesso_retorna_funcionario_atualizado(client, nome, email):
-    response = client.post("/funcionarios", json={"nome": nome, "email": email})
+def test_primeiro_acesso_retorna_funcionario_atualizado(client, cargo_padrao, nome, email):
+    response = client.post(
+        "/funcionarios",
+        json={
+            "nome": nome,
+            "email": email,
+            "cargo_id": cargo_padrao.cargo_id,
+        },
+    )
     assert response.status_code == 201
     assert response.json()["nome"] == nome
     assert response.json()["email"] == email.lower()
@@ -96,9 +147,14 @@ def test_primeiro_acesso_funcionario_nao_encontrado_retorna_erro(client):
     assert response.json()["detail"] == "Funcionário não encontrado"
 
 
-def test_primeiro_acesso_funcionario_ja_ativado_retorna_erro(client):
+def test_primeiro_acesso_funcionario_ja_ativado_retorna_erro(client, cargo_padrao):
     response = client.post(
-        "/funcionarios", json={"nome": "Funcionario Ativo", "email": "funcionario.ativo@test.com"}
+        "/funcionarios",
+        json={
+            "nome": "Funcionario Ativo",
+            "email": "funcionario.ativo@test.com",
+            "cargo_id": cargo_padrao.cargo_id,
+        },
     )
     assert response.status_code == 201
 
@@ -126,9 +182,11 @@ def test_primeiro_acesso_funcionario_ja_ativado_retorna_erro(client):
     ],
 )
 def test_mudar_acesso_funcionario_muda_atividade_e_manda_funcionario_atualizado(
-    client, nome, email
+    client, cargo_padrao, nome, email
 ):
-    response = client.post("/funcionarios", json={"nome": nome, "email": email})
+    response = client.post(
+        "/funcionarios", json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id}
+    )
     assert response.status_code == 201
 
     funcionario_id = response.json()["funcionario_id"]
@@ -156,10 +214,14 @@ def test_mudar_acesso_funcionario_nao_encontrado_retorna_erro(client):
     assert response.json()["detail"] == "Funcionário não encontrado"
 
 
-def test_mudar_acesso_funcionario_com_conta_pendente_retorna_erro(client):
+def test_mudar_acesso_funcionario_com_conta_pendente_retorna_erro(client, cargo_padrao):
     response = client.post(
         "/funcionarios",
-        json={"nome": "Funcionario Pendente", "email": "funcionario.pendente@test.com"},
+        json={
+            "nome": "Funcionario Pendente",
+            "email": "funcionario.pendente@test.com",
+            "cargo_id": cargo_padrao.cargo_id,
+        },
     )
     assert response.status_code == 201
 
@@ -179,15 +241,16 @@ def test_mudar_acesso_funcionario_com_conta_pendente_retorna_erro(client):
         ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
     ],
 )
-def test_apagar_funcionario_retorna_funcionario_apagado(client, nome, email):
-    response = client.post("/funcionarios", json={"nome": nome, "email": email})
+def test_apagar_funcionario_retorna_sucesso(client, cargo_padrao, nome, email):
+    response = client.post(
+        "/funcionarios", json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id}
+    )
     assert response.status_code == 201
 
     funcionario_id = response.json()["funcionario_id"]
     response = client.delete(f"/funcionarios/{funcionario_id}")
-    assert response.status_code == 200
-    assert response.json()["nome"] == nome
-    assert response.json()["email"] == email.lower()
+    assert response.status_code == 204
+    assert response.content == b""
 
 
 def test_apagar_funcionario_nao_encontrado_retorna_erro(client):

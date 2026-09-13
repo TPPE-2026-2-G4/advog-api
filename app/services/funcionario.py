@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.models.funcionario import Funcionario, StatusFuncionario
+from app.repositories.cargo import CargoRepository
 from app.repositories.funcionario import FuncionarioRepository
 from app.schemas.funcionario import FuncionarioCreate, FuncionarioPrimeiroAcesso
 from app.utils.seguranca import hash_senha
@@ -9,6 +10,7 @@ from app.utils.seguranca import hash_senha
 class FuncionarioService:
     def __init__(self, db_session: Session):
         self.repository = FuncionarioRepository(db_session)
+        self.cargo_repository = CargoRepository(db_session)
 
     def buscar_todos(self) -> list[Funcionario]:
         return self.repository.buscar_todos()
@@ -17,7 +19,11 @@ class FuncionarioService:
         if self.repository.buscar_por_email(dados.email.lower()):
             raise ValueError("Email já cadastrado")
 
-        req = Funcionario(nome=dados.nome, email=dados.email.lower())
+        cargo = self.cargo_repository.buscar_por_id(dados.cargo_id)
+        if not cargo:
+            raise ValueError("Cargo não encontrado")
+
+        req = Funcionario(nome=dados.nome, email=dados.email.lower(), cargo_id=dados.cargo_id)
         return self.repository.criar(req)
 
     def primeiro_acesso(self, funcionario_id: int, dados: FuncionarioPrimeiroAcesso) -> Funcionario:
@@ -55,9 +61,9 @@ class FuncionarioService:
             funcionario.status = StatusFuncionario.INATIVO
         return self.repository.atualizar(funcionario)
 
-    def apagar_funcionario(self, funcionario_id: int) -> Funcionario:
+    def apagar_funcionario(self, funcionario_id: int) -> None:
         funcionario = self.repository.buscar_por_id(funcionario_id)
         if not funcionario:
             raise ValueError("Funcionário não encontrado")
 
-        return self.repository.deletar(funcionario)
+        self.repository.deletar(funcionario)

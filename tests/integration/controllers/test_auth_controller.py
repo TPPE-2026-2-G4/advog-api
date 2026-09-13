@@ -1,7 +1,17 @@
 import pytest
 
 from app.config.limiter import limiter
+from app.models.cargo import Cargo
 from app.models.funcionario import StatusFuncionario
+
+
+@pytest.fixture
+def cargo_padrao(db_session):
+    cargo = Cargo(nome_cargo="Advogado")
+    db_session.add(cargo)
+    db_session.commit()
+    db_session.refresh(cargo)
+    return cargo
 
 
 @pytest.fixture(autouse=True)
@@ -19,8 +29,10 @@ def reset_rate_limiter():
         ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM", "senhaComLetrasEMais"),
     ],
 )
-def test_login_com_sucesso_retorna_token_e_dados(client, nome, email, senha):
-    criacao = client.post("/funcionarios", json={"nome": nome, "email": email})
+def test_login_com_sucesso_retorna_token_e_dados(client, cargo_padrao, nome, email, senha):
+    criacao = client.post(
+        "/funcionarios", json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id}
+    )
     assert criacao.status_code == 201
     funcionario_id = criacao.json()["funcionario_id"]
 
@@ -47,9 +59,14 @@ def test_login_email_nao_cadastrado_retorna_401(client):
     assert response.json()["detail"] == "Email ou senha incorretos"
 
 
-def test_login_senha_incorreta_retorna_401(client):
+def test_login_senha_incorreta_retorna_401(client, cargo_padrao):
     criacao = client.post(
-        "/funcionarios", json={"nome": "Advogado Teste", "email": "advogado@test.com"}
+        "/funcionarios",
+        json={
+            "nome": "Advogado Teste",
+            "email": "advogado@test.com",
+            "cargo_id": cargo_padrao.cargo_id,
+        },
     )
     funcionario_id = criacao.json()["funcionario_id"]
     client.patch(
@@ -72,7 +89,7 @@ def test_login_usuario_pendente_retorna_403(client):
     assert response.status_code == 401
 
 
-def test_login_usuario_com_senha_mas_pendente_retorna_403(client, db_session):
+def test_login_usuario_com_senha_mas_pendente_retorna_403(client, db_session, cargo_padrao):
     from app.models.funcionario import Funcionario
     from app.utils.seguranca import hash_senha
 
@@ -81,6 +98,7 @@ def test_login_usuario_com_senha_mas_pendente_retorna_403(client, db_session):
         email="pendente.senha@test.com",
         senha_hash=hash_senha("senha123"),
         status=StatusFuncionario.PENDENTE,
+        cargo_id=cargo_padrao.cargo_id,
     )
     db_session.add(func)
     db_session.commit()
@@ -92,9 +110,14 @@ def test_login_usuario_com_senha_mas_pendente_retorna_403(client, db_session):
     assert "primeiro acesso" in response.json()["detail"]
 
 
-def test_login_usuario_inativo_retorna_403(client):
+def test_login_usuario_inativo_retorna_403(client, cargo_padrao):
     criacao = client.post(
-        "/funcionarios", json={"nome": "Inativo Teste", "email": "inativo@test.com"}
+        "/funcionarios",
+        json={
+            "nome": "Inativo Teste",
+            "email": "inativo@test.com",
+            "cargo_id": cargo_padrao.cargo_id,
+        },
     )
     funcionario_id = criacao.json()["funcionario_id"]
     client.patch(
