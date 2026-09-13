@@ -12,16 +12,7 @@ class LancamentoRepository:
         return self.db.query(Lancamento).all()
 
     def create(self, lancamento_data: LancamentoCreate) -> Lancamento:
-        db_lancamento = Lancamento(
-            tipo=lancamento_data.tipo,
-            titulo=lancamento_data.titulo,
-            descricao=lancamento_data.descricao,
-            valor=lancamento_data.valor,
-            data=lancamento_data.data,
-            categoria=lancamento_data.categoria,
-            status=lancamento_data.status,
-            recorrente=lancamento_data.recorrente,
-        )
+        db_lancamento = Lancamento(**lancamento_data.model_dump())
         self.db.add(db_lancamento)
         self.db.commit()
         self.db.refresh(db_lancamento)
