@@ -13,6 +13,7 @@ class FuncionarioCreate(FuncionarioBase):
 
 
 class FuncionarioPrimeiroAcesso(BaseModel):
+    token: str
     nome: str | None = None
     senha: str
     uf_oab: str | None = Field(default=None, min_length=2, max_length=2)

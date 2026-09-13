@@ -97,7 +97,7 @@ def test_primeiro_acesso_funcionario_nao_encontrado_gera_erro():
     service.repository.buscar_por_id.return_value = None
 
     with pytest.raises(ValueError, match="Funcionário não encontrado"):
-        service.primeiro_acesso(1, FuncionarioPrimeiroAcesso(senha="test123"))
+        service.primeiro_acesso(1, FuncionarioPrimeiroAcesso(token="token-teste", senha="test123"))
 
 
 def test_primeiro_acesso_funcionario_com_conta_pendente_gera_erro():
@@ -116,7 +116,7 @@ def test_primeiro_acesso_funcionario_com_conta_pendente_gera_erro():
     service.repository.buscar_por_id.return_value = funcionario
 
     with pytest.raises(ValueError, match="Funcionário já teve a conta ativada"):
-        service.primeiro_acesso(1, FuncionarioPrimeiroAcesso(senha="test123"))
+        service.primeiro_acesso(1, FuncionarioPrimeiroAcesso(token="token-teste", senha="test123"))
 
 
 def test_primeiro_acesso_funcionario_com_sucesso():
@@ -136,7 +136,11 @@ def test_primeiro_acesso_funcionario_com_sucesso():
     service.repository.atualizar.return_value = funcionario
 
     dados_acesso = FuncionarioPrimeiroAcesso(
-        senha="test123", nome="Ana Beatriz Souza", uf_oab="SP", numero_oab="12345"
+        token="token-teste",
+        senha="test123",
+        nome="Ana Beatriz Souza",
+        uf_oab="SP",
+        numero_oab="12345",
     )
     funcionario_atualizado = service.primeiro_acesso(1, dados_acesso)
 
