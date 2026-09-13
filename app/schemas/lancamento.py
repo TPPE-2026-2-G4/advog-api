@@ -6,7 +6,8 @@ class LancamentoBase(BaseModel):
     titulo: str
     descricao: str | None = None
     valor: float
-    data: str
+    data_vencimento: str
+    data_pagamento: str | None = None
     categoria: str
     status: str | None = "Pendente"
     recorrente: bool | None = False
@@ -17,6 +18,6 @@ class LancamentoCreate(LancamentoBase):
 
 
 class LancamentoResponse(LancamentoBase):
-    id: int
+    lancamento_id: int
 
     model_config = ConfigDict(from_attributes=True)

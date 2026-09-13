@@ -25,7 +25,8 @@ def test_criar_lancamento_entrada():
         "titulo": "Honorários",
         "descricao": "Pagamento de honorários cliente X",
         "valor": 1500.0,
-        "data": "2026-10-15",
+        "data_vencimento": "2026-10-15",
+        "data_pagamento": "2026-10-15",
         "categoria": "honorarios",
         "status": "Pago",
         "recorrente": False,
@@ -34,7 +35,7 @@ def test_criar_lancamento_entrada():
     assert response.status_code == 201
     data = response.json()
     assert data["titulo"] == "Honorários"
-    assert data["id"] is not None
+    assert data["lancamento_id"] is not None
 
 
 def test_criar_lancamento_tipo_invalido():
@@ -42,7 +43,7 @@ def test_criar_lancamento_tipo_invalido():
         "tipo": "Transferencia",
         "titulo": "Investimento",
         "valor": 500.0,
-        "data": "2026-10-15",
+        "data_vencimento": "2026-10-15",
         "categoria": "outros",
     }
     response = client.post("/lancamentos/", json=payload)
