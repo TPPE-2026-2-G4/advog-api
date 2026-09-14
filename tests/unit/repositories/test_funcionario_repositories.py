@@ -1,7 +1,17 @@
 import pytest
 
+from app.models.cargo import Cargo
 from app.models.funcionario import Funcionario, StatusFuncionario
 from app.repositories.funcionario import FuncionarioRepository
+
+
+@pytest.fixture
+def cargo_padrao(db_session):
+    cargo = Cargo(nome_cargo="Advogado")
+    db_session.add(cargo)
+    db_session.commit()
+    db_session.refresh(cargo)
+    return cargo
 
 
 @pytest.mark.parametrize(
@@ -14,11 +24,12 @@ from app.repositories.funcionario import FuncionarioRepository
         ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
     ],
 )
-def test_criar_funcionario(db_session, nome, email):
+def test_criar_funcionario(db_session, cargo_padrao, nome, email):
     repository = FuncionarioRepository(db_session)
     funcionario = Funcionario(
         nome=nome,
         email=email,
+        cargo_id=cargo_padrao.cargo_id,
     )
 
     criacao = repository.criar(funcionario)
@@ -26,6 +37,7 @@ def test_criar_funcionario(db_session, nome, email):
     assert criacao.funcionario_id is not None
     assert criacao.nome == nome
     assert criacao.email == email
+    assert criacao.cargo_id == cargo_padrao.cargo_id
     assert criacao.senha_hash is None
     assert criacao.uf_oab is None
     assert criacao.numero_oab is None
@@ -33,15 +45,17 @@ def test_criar_funcionario(db_session, nome, email):
     assert criacao.exibicaoInstitucional is False
 
 
-def test_obter_todos_funcionarios(db_session):
+def test_obter_todos_funcionarios(db_session, cargo_padrao):
     repository = FuncionarioRepository(db_session)
     funcionario1 = Funcionario(
         nome="Ana Beatriz Souza",
         email="ana.souza@test.com",
+        cargo_id=cargo_padrao.cargo_id,
     )
     funcionario2 = Funcionario(
         nome="Outro Usuário",
         email="outro.usuario@test.com",
+        cargo_id=cargo_padrao.cargo_id,
     )
 
     repository.criar(funcionario1)
@@ -56,15 +70,17 @@ def test_obter_todos_funcionarios(db_session):
     assert todos[1].email == "outro.usuario@test.com"
 
 
-def test_buscar_por_id(db_session):
+def test_buscar_por_id(db_session, cargo_padrao):
     repository = FuncionarioRepository(db_session)
     funcionario1 = Funcionario(
         nome="Ana Beatriz Souza",
         email="ana.souza@test.com",
+        cargo_id=cargo_padrao.cargo_id,
     )
     funcionario2 = Funcionario(
         nome="Outro Usuário",
         email="outro.usuario@test.com",
+        cargo_id=cargo_padrao.cargo_id,
     )
 
     criacao1 = repository.criar(funcionario1)
@@ -80,9 +96,11 @@ def test_buscar_por_id(db_session):
     assert encontrado2.email == "outro.usuario@test.com"
 
 
-def test_buscar_por_email(db_session):
+def test_buscar_por_email(db_session, cargo_padrao):
     repository = FuncionarioRepository(db_session)
-    funcionario = Funcionario(nome="Ana Beatriz Souza", email="ana.souza@test.com")
+    funcionario = Funcionario(
+        nome="Ana Beatriz Souza", email="ana.souza@test.com", cargo_id=cargo_padrao.cargo_id
+    )
 
     criacao = repository.criar(funcionario)
     encontrado = repository.buscar_por_email(criacao.email)
@@ -92,9 +110,11 @@ def test_buscar_por_email(db_session):
     assert encontrado.email == "ana.souza@test.com"
 
 
-def test_atualizar_funcionario(db_session):
+def test_atualizar_funcionario(db_session, cargo_padrao):
     repository = FuncionarioRepository(db_session)
-    funcionario = Funcionario(nome="Ana Beatriz Souza", email="ana.souza@test.com")
+    funcionario = Funcionario(
+        nome="Ana Beatriz Souza", email="ana.souza@test.com", cargo_id=cargo_padrao.cargo_id
+    )
 
     criacao = repository.criar(funcionario)
 
@@ -108,15 +128,17 @@ def test_atualizar_funcionario(db_session):
     assert atualizacao.email == "ana.souza_updated@test.com"
 
 
-def test_apagar_funcionario(db_session):
+def test_apagar_funcionario(db_session, cargo_padrao):
     repository = FuncionarioRepository(db_session)
     funcionario1 = Funcionario(
         nome="Ana Beatriz Souza",
         email="ana.souza@test.com",
+        cargo_id=cargo_padrao.cargo_id,
     )
     funcionario2 = Funcionario(
         nome="Outro Usuário",
         email="outro.usuario@test.com",
+        cargo_id=cargo_padrao.cargo_id,
     )
 
     funcionarioADeletar = repository.criar(funcionario1)

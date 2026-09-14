@@ -58,3 +58,16 @@ def validar_token_primeiro_acesso(token: str) -> int:
         raise ValueError("Token de primeiro acesso inválido")
 
     return int(payload["funcionario_id"])
+
+
+def extrair_funcionario_id_do_token(token: str) -> int:
+    try:
+        payload = decodificar_token(token)
+    except jwt.PyJWTError as e:
+        raise ValueError("Token inválido ou expirado") from e
+
+    sub = payload.get("sub")
+    if sub is None:
+        raise ValueError("Token inválido")
+
+    return int(sub)
