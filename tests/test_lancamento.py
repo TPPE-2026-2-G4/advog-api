@@ -80,14 +80,50 @@ def test_atualizar_status_lancamento_entrada():
     assert response.json()["status"] == "Recebido"
 
 
+def test_atualizar_status_lancamento_entrada_atrasado():
+    response = client.get("/lancamentos/")
+    lancamento_id = response.json()[0]["lancamento_id"]
+
+    payload = {"status": "Atrasado"}
+    response = client.patch(f"/lancamentos/{lancamento_id}/status", json=payload)
+    assert response.status_code == 200
+    assert response.json()["status"] == "Atrasado"
+
+
 def test_atualizar_status_invalido():
     response = client.get("/lancamentos/")
     lancamento_id = response.json()[0]["lancamento_id"]
 
-    # Lançamento do tipo Entrada não pode ter status "Pago"
     payload = {"status": "Pago"}
     response = client.patch(f"/lancamentos/{lancamento_id}/status", json=payload)
     assert response.status_code == 400
+
+
+def test_atualizar_status_lancamento_saida():
+    payload = {
+        "tipo": "Saída",
+        "titulo": "Aluguel",
+        "descricao": "Aluguel do escritório",
+        "valor": 2000.0,
+        "data_vencimento": "2026-10-10",
+        "categoria": "escritorio",
+    }
+    response = client.post("/lancamentos/", json=payload)
+    assert response.status_code == 201
+    saida_id = response.json()["lancamento_id"]
+
+    res_atrasado = client.patch(f"/lancamentos/{saida_id}/status", json={"status": "Atrasado"})
+    assert res_atrasado.status_code == 200
+    assert res_atrasado.json()["status"] == "Atrasado"
+
+    res_pago = client.patch(f"/lancamentos/{saida_id}/status", json={"status": "Pago"})
+    assert res_pago.status_code == 200
+    assert res_pago.json()["status"] == "Pago"
+
+    res_invalido = client.patch(f"/lancamentos/{saida_id}/status", json={"status": "Recebido"})
+    assert res_invalido.status_code == 400
+
+    client.delete(f"/lancamentos/{saida_id}")
 
 
 def test_remover_lancamento():
@@ -99,3 +135,29 @@ def test_remover_lancamento():
 
     response = client.get("/lancamentos/")
     assert len(response.json()) == 0
+
+
+def test_lancamento_nao_encontrado_e_tipo_invalido():
+    res = client.put("/lancamentos/99999", json={"titulo": "Inexistente"})
+    assert res.status_code == 404
+
+    res = client.patch("/lancamentos/99999/status", json={"status": "Atrasado"})
+    assert res.status_code == 404
+
+    res = client.delete("/lancamentos/99999")
+    assert res.status_code == 404
+
+    payload = {
+        "tipo": "Entrada",
+        "titulo": "Teste Tipo",
+        "valor": 100.0,
+        "data_vencimento": "2026-10-10",
+        "categoria": "outros",
+    }
+    create_res = client.post("/lancamentos/", json=payload)
+    novo_id = create_res.json()["lancamento_id"]
+
+    res_tipo = client.put(f"/lancamentos/{novo_id}", json={"tipo": "Invalido"})
+    assert res_tipo.status_code == 400
+
+    client.delete(f"/lancamentos/{novo_id}")

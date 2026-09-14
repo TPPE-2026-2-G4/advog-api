@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 
-from app.models.lancamento import Lancamento
+from app.models.lancamento import Lancamento, StatusLancamento
 from app.repositories.lancamento import LancamentoRepository
 from app.schemas.lancamento import (
     LancamentoCreate,
@@ -45,11 +45,11 @@ class LancamentoService:
         status = status_update.status
         tipo = db_lancamento.tipo
 
-        valid_statuses = ["Pendente"]
+        valid_statuses = [StatusLancamento.PENDENTE, StatusLancamento.ATRASADO]
         if tipo == "Saída":
-            valid_statuses.append("Pago")
+            valid_statuses.append(StatusLancamento.PAGO)
         elif tipo == "Entrada":
-            valid_statuses.append("Recebido")
+            valid_statuses.append(StatusLancamento.RECEBIDO)
 
         if status not in valid_statuses:
             raise HTTPException(

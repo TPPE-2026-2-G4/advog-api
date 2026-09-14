@@ -1,6 +1,15 @@
+import enum
+
 from sqlalchemy import Boolean, Column, Float, Integer, String
 
 from app.config.database import Base
+
+
+class StatusLancamento(enum.StrEnum):
+    PENDENTE = "Pendente"
+    PAGO = "Pago"
+    RECEBIDO = "Recebido"
+    ATRASADO = "Atrasado"
 
 
 class Lancamento(Base):
@@ -14,5 +23,5 @@ class Lancamento(Base):
     data_vencimento = Column(String)
     data_pagamento = Column(String, nullable=True)
     categoria = Column(String)
-    status = Column(String, default="Pendente")
+    status = Column(String, default=StatusLancamento.PENDENTE)
     recorrente = Column(Boolean, default=False)
