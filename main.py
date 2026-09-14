@@ -17,7 +17,7 @@ from starlette.types import ExceptionHandler  # noqa: E402
 
 from app.config.database import Base, engine  # noqa: E402
 from app.config.limiter import limiter  # noqa: E402
-from app.controllers import auth, cargo, funcionario, processo_controller, lancamento # noqa: E402
+from app.controllers import auth, cargo, funcionario, lancamento, processo_controller  # noqa: E402
 
 Base.metadata.create_all(bind=engine)
 
