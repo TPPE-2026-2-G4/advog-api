@@ -1,13 +1,17 @@
 from typing import cast
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
+from app.dependencies import obter_funcionario_atual
+from app.models.funcionario import Funcionario
 from app.schemas.funcionario import (
     FuncionarioCreate,
+    FuncionarioMudarCargo,
     FuncionarioPrimeiroAcesso,
     FuncionarioResponse,
+    FuncionarioUpdate,
 )
 from app.services.funcionario import FuncionarioService
 from app.utils.email import enviar_email_boas_vindas
@@ -58,6 +62,32 @@ def primeiro_acesso(dados: FuncionarioPrimeiroAcesso, db: Session = Depends(get_
     return funcionario
 
 
+@router.patch("/{funcionario_id}/mudar-cargo", response_model=FuncionarioResponse)
+def mudar_cargo(funcionario_id: int, dados: FuncionarioMudarCargo, db: Session = Depends(get_db)):
+    service = FuncionarioService(db)
+    try:
+        funcionario = service.mudar_cargo(funcionario_id, dados.cargo_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return funcionario
+
+
+@router.patch("", response_model=FuncionarioResponse)
+def editar_dados(
+    dados: FuncionarioUpdate,
+    funcionario_atual: Funcionario = Depends(obter_funcionario_atual),
+    db: Session = Depends(get_db),
+):
+    service = FuncionarioService(db)
+    try:
+        funcionario = service.editar_dados(funcionario_atual.funcionario_id, dados)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return funcionario
+
+
 @router.patch("/{funcionario_id}/mudar-acesso", response_model=FuncionarioResponse)
 def mudar_acesso(funcionario_id: int, db: Session = Depends(get_db)):
     service = FuncionarioService(db)
@@ -69,12 +99,10 @@ def mudar_acesso(funcionario_id: int, db: Session = Depends(get_db)):
     return funcionario
 
 
-@router.delete("/{funcionario_id}", response_model=FuncionarioResponse)
+@router.delete("/{funcionario_id}", status_code=status.HTTP_204_NO_CONTENT)
 def apagar_funcionario(funcionario_id: int, db: Session = Depends(get_db)):
     service = FuncionarioService(db)
     try:
-        funcionario = service.apagar_funcionario(funcionario_id)
+        service.apagar_funcionario(funcionario_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-
-    return funcionario

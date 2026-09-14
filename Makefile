@@ -5,6 +5,7 @@ help:
 	@echo " make local                            # Roda a aplicação localmente"
 	@echo " make test                             # Roda os testes com checagem de cobertura (>95%)"
 	@echo " make lint                             # Roda o Ruff (lint + format) e o Mypy"
+	@echo " make down                             # Derruba os containers do Docker"
 
 setup:
 	@echo "\n\n ⚙️ Configurando o ambiente de desenvolvimento... \n"
@@ -41,7 +42,7 @@ local:
 	@echo "\n\n⚙️ Rodando aplicação localmente... \n"
 	docker compose down advog-api
 	docker compose --profile dev up -d --build advog-db advog-mailpit
-	cp .env.local.example .env.local
+	cp -n .env.local.example .env.local
 	uv run fastapi dev
 
 test:
@@ -55,3 +56,8 @@ lint:
 	uv run ruff format --check .
 	uv run mypy .
 	@echo "\n\n✅ Lint concluído com sucesso! \n"
+
+down:
+	@echo "\n\n⚙️ Derrubando containers do Docker... \n"
+	docker compose --profile dev down
+	@echo "\n✅ Containers do Docker finalizados com sucesso! \n"
