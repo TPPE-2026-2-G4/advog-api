@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app.config import database
 from app.config.database import Base, get_db
 from app.models.cargo import Cargo
+from app.utils.seguranca import criar_token_acesso, criar_token_primeiro_acesso
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
@@ -41,6 +42,19 @@ def db_session():
     finally:
         session.close()
         Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture()
+def token_primeiro_acesso():
+    return criar_token_primeiro_acesso
+
+
+@pytest.fixture()
+def token_acesso():
+    def _criar(funcionario_id: int, email: str = "teste@test.com") -> str:
+        return criar_token_acesso({"sub": str(funcionario_id), "email": email})
+
+    return _criar
 
 
 @pytest.fixture()

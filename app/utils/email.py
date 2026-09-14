@@ -4,6 +4,8 @@ from typing import cast
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 from pydantic import EmailStr, NameEmail, SecretStr
 
+from app.utils.seguranca import criar_token_primeiro_acesso
+
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv("SMTP_USER", ""),
     MAIL_PASSWORD=SecretStr(os.getenv("SMTP_PASSWORD", "")),
@@ -15,10 +17,12 @@ conf = ConnectionConfig(
     USE_CREDENTIALS=False,
 )
 
-LINK_LOGIN = "https://www.google.com"  # TODO: substituir pelo link da página de login quando estiver disponível
+LINK_PRIMEIRO_ACESSO = os.getenv("FRONTEND_URL", "http://localhost:3000") + "/primeiro-acesso"
 
 
-async def enviar_email_boas_vindas(email_destino: str, nome: str):
+async def enviar_email_boas_vindas(email_destino: str, nome: str, funcionario_id: int):
+    token = criar_token_primeiro_acesso(funcionario_id)
+    link_primeiro_acesso = f"{LINK_PRIMEIRO_ACESSO}?token={token}"
     mensagem = MessageSchema(
         subject="Bem-vindo(a) ao escritório",
         recipients=[cast(NameEmail, email_destino)],
@@ -39,13 +43,13 @@ async def enviar_email_boas_vindas(email_destino: str, nome: str):
                   poderá finalizar seu cadastro e definir sua senha de acesso.
                 </p>
                 <div style="text-align:center; margin:32px 0;">
-                  <a href="{LINK_LOGIN}" style="background-color:#0c2340; color:#c9a44c; text-decoration:none; padding:14px 32px; font-size:15px; letter-spacing:0.5px; display:inline-block;">
+                  <a href="{link_primeiro_acesso}" style="background-color:#0c2340; color:#c9a44c; text-decoration:none; padding:14px 32px; font-size:15px; letter-spacing:0.5px; display:inline-block;">
                     ACESSAR MINHA CONTA
                   </a>
                 </div>
                 <p style="font-size:13px; color:#666666; line-height:1.6;">
                   Caso o botão acima não funcione, copie e cole o endereço abaixo em seu navegador:<br>
-                  <a href="{LINK_LOGIN}" style="color:#0c2340;">{LINK_LOGIN}</a>
+                  <a href="{link_primeiro_acesso}" style="color:#0c2340;">{link_primeiro_acesso}</a>
                 </p>
                 <p style="font-size:14px; color:#333333; margin-bottom:0;">Atenciosamente,<br>Equipe do Escritório</p>
               </td>

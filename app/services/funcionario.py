@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.funcionario import Funcionario, StatusFuncionario
 from app.repositories.cargo import CargoRepository
 from app.repositories.funcionario import FuncionarioRepository
-from app.schemas.funcionario import FuncionarioCreate, FuncionarioPrimeiroAcesso
+from app.schemas.funcionario import FuncionarioCreate, FuncionarioPrimeiroAcesso, FuncionarioUpdate
 from app.utils.seguranca import hash_senha
 
 
@@ -35,9 +35,9 @@ class FuncionarioService:
 
         dados_enviados = dados.model_dump(exclude_unset=True)
 
-        if "nome" in dados_enviados:
+        if dados.nome is not None:
             funcionario.nome = dados.nome
-        if "senha" in dados_enviados:
+        if dados.senha is not None:
             funcionario.senha_hash = hash_senha(dados.senha)
         if "uf_oab" in dados_enviados:
             funcionario.uf_oab = dados.uf_oab
@@ -45,6 +45,36 @@ class FuncionarioService:
             funcionario.numero_oab = dados.numero_oab
 
         funcionario.status = StatusFuncionario.ATIVO
+
+        return self.repository.atualizar(funcionario)
+
+    def mudar_cargo(self, funcionario_id: int, cargo_id: int) -> Funcionario:
+        funcionario = self.repository.buscar_por_id(funcionario_id)
+        if not funcionario:
+            raise ValueError("Funcionário não encontrado")
+
+        cargo = self.cargo_repository.buscar_por_id(cargo_id)
+        if not cargo:
+            raise ValueError("Cargo não encontrado")
+
+        funcionario.cargo_id = cargo_id
+        return self.repository.atualizar(funcionario)
+
+    def editar_dados(self, funcionario_id: int, dados: FuncionarioUpdate) -> Funcionario:
+        funcionario = self.repository.buscar_por_id(funcionario_id)
+        if not funcionario:
+            raise ValueError("Funcionário não encontrado")
+
+        dados_enviados = dados.model_dump(exclude_unset=True)
+
+        if dados.nome is not None:
+            funcionario.nome = dados.nome
+        if dados.senha is not None:
+            funcionario.senha_hash = hash_senha(dados.senha)
+        if "uf_oab" in dados_enviados:
+            funcionario.uf_oab = dados.uf_oab
+        if "numero_oab" in dados_enviados:
+            funcionario.numero_oab = dados.numero_oab
 
         return self.repository.atualizar(funcionario)
 

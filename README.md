@@ -36,7 +36,7 @@ O FastAPI também disponibiliza a documentação interativa em:
     cp .env.example .env
     ```
 
-    Preencha no `.env` os valores de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. As variáveis `PGADMIN_DEFAULT_EMAIL` e `PGADMIN_DEFAULT_PASSWORD` controlam o acesso ao pgAdmin, `SMTP_*` controla a conexão com o Mailpit (servidor de e-mail de testes), `MINIO_ROOT_USER` e `MINIO_ROOT_PASSWORD` controlam as credenciais de acesso ao MinIO, e `FRONTEND_URL` define quais origens têm permissão de CORS para consumir a API (aceita múltiplas URLs separadas por vírgula).
+    Preencha no `.env` os valores de `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. As variáveis `PGADMIN_DEFAULT_EMAIL` e `PGADMIN_DEFAULT_PASSWORD` controlam o acesso ao pgAdmin, `SMTP_*` controla a conexão com o Mailpit (servidor de e-mail de testes), `MINIO_ROOT_USER` e `MINIO_ROOT_PASSWORD` controlam as credenciais de acesso ao MinIO, e `FRONTEND_URL` define quais origens têm permissão de CORS para consumir a API (aceita múltiplas URLs separadas por vírgula) — essa URL também é usada para montar o link de primeiro acesso enviado por e-mail. `JWT_SECRET` assina os tokens de autenticação (login, primeiro acesso e edição de perfil); sem ela definida, a API usa uma chave fixa de desenvolvimento (ver `app/utils/seguranca.py`), então defina um valor próprio antes de qualquer deploy real.
 
 3. **Configure o ambiente completo de desenvolvimento:**
 
@@ -82,7 +82,7 @@ make up
 O comando equivale a `docker compose --profile dev up -d --build`. Para interromper os serviços:
 
 ```bash
-docker compose down
+make down
 ```
 
 Serviços e portas disponíveis:
@@ -101,17 +101,21 @@ Os volumes `db-data` e `minio-data` preservam os dados do PostgreSQL e os arquiv
 
 Com a API rodando, consulte o Swagger UI (`http://localhost:8000/docs`) para a documentação completa e sempre atualizada de cada rota (payloads, respostas e erros). Resumo dos endpoints existentes:
 
-| Método   | Rota                                              | Recurso     |
-| -------- | -------------------------------------------------- | ----------- |
-| `GET`    | `/`                                                 | Health check |
-| `POST`   | `/processos/`                                       | Processos   |
-| `GET`    | `/processos/`                                       | Processos   |
-| `POST`   | `/funcionarios`                                     | Funcionários |
-| `GET`    | `/funcionarios`                                     | Funcionários |
-| `PATCH`  | `/funcionarios/{funcionario_id}/primeiro-acesso`    | Funcionários |
-| `PATCH`  | `/funcionarios/{funcionario_id}/mudar-acesso`       | Funcionários |
-| `DELETE` | `/funcionarios/{funcionario_id}`                    | Funcionários |
-| `POST`   | `/auth/login`                                       | Autenticação |
+| Método   | Rota                                              | Recurso     | Autenticação |
+| -------- | -------------------------------------------------- | ----------- | ------------ |
+| `GET`    | `/`                                                 | Health check | -           |
+| `POST`   | `/processos/`                                       | Processos   | -            |
+| `GET`    | `/processos/`                                       | Processos   | -            |
+| `POST`   | `/funcionarios`                                     | Funcionários | -           |
+| `GET`    | `/funcionarios`                                     | Funcionários | -           |
+| `PATCH`  | `/funcionarios`                                     | Funcionários | JWT (edita os próprios dados) |
+| `PATCH`  | `/funcionarios/primeiro-acesso`                     | Funcionários | Token de primeiro acesso |
+| `PATCH`  | `/funcionarios/{funcionario_id}/mudar-cargo`        | Funcionários | -            |
+| `PATCH`  | `/funcionarios/{funcionario_id}/mudar-acesso`       | Funcionários | -            |
+| `DELETE` | `/funcionarios/{funcionario_id}`                    | Funcionários | -            |
+| `POST`   | `/auth/login`                                       | Autenticação | -            |
+
+A rota `PATCH /funcionarios` é a única protegida por JWT no momento: o funcionário autenticado (identificado pelo token enviado em `Authorization: Bearer <token>`, obtido em `/auth/login`) só pode editar os próprios `nome`, `senha`, `uf_oab` e `numero_oab` — `funcionario_id`, `email`, `status` e `exibicaoInstitucional` não são alteráveis por essa rota.
 
 ## CORS
 
@@ -142,7 +146,9 @@ Todo Pull Request para `main` dispara o workflow [`test.yml`](.github/workflows/
 - `make setup` — Configura o ambiente, instala os hooks, cria `.env`/`.env.local` e sobe os containers de desenvolvimento.
 - `make up` — Sobe os containers da API, PostgreSQL, pgAdmin, Mailpit e MinIO.
 - `make local` — Sobe só o PostgreSQL e o Mailpit em Docker e roda a API localmente com hot-reload (`uv run fastapi dev`).
+- `make down` — Derruba os containers do Docker (perfil `dev`).
 - `make test` — Executa os testes com relatório de cobertura (terminal + HTML).
+- `make lint` — Roda `ruff check`, `ruff format --check` e `mypy` no projeto.
 - `uv sync` — Instala ou sincroniza as dependências do projeto.
 - `uv run uvicorn main:app --reload` — Inicia a API em modo de desenvolvimento.
 - `uv run cz commit` — Abre o assistente para mensagens de commit no padrão Conventional Commits.
@@ -152,12 +158,13 @@ Todo Pull Request para `main` dispara o workflow [`test.yml`](.github/workflows/
 - `main.py`: Ponto de entrada da aplicação FastAPI — carrega `.env`/`.env.local`, cria as tabelas, configura CORS e registra as rotas.
 - `app/`: Código-fonte da API.
   - `config/database.py`: Configuração do SQLAlchemy, conexão e sessões do banco.
+  - `dependencies.py`: Dependências do FastAPI reutilizadas entre rotas (ex.: `obter_funcionario_atual`, que extrai o funcionário autenticado a partir do JWT enviado em `Authorization: Bearer`).
   - `controllers/`: Rotas e controladores HTTP (`processo_controller.py`, `funcionario.py`, `auth.py`).
   - `models/`: Modelos de dados do SQLAlchemy (`processo_model.py`, `funcionario.py`).
   - `repositories/`: Operações de persistência e consultas ao banco.
   - `schemas/`: Schemas de entrada, resposta e filtros com Pydantic (`auth.py`, `funcionario.py`, `processo_schema.py`).
   - `services/`: Regras de negócio da aplicação (`auth.py`, `funcionario.py`, `processo_service.py`).
-  - `utils/`: Utilitários — hash de senha (`seguranca.py`) e envio de e-mail (`email.py`).
+  - `utils/`: Utilitários — hash de senha e JWT (`seguranca.py`) e envio de e-mail (`email.py`).
 - `tests/`: Testes automatizados — `unit/` (services, repositories, utils) e `integration/` (controllers via `TestClient`).
 - `scripts/hooks/`: Hooks de commit e pre-push.
 - `pyproject.toml`: Metadados, dependências, configurações do Pytest, cobertura e Commitizen.

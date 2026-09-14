@@ -8,6 +8,9 @@ JWT_SECRET = os.getenv("JWT_SECRET") or "advog-jwt-secret-key-development-minimu
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_MINUTES = 60
 
+TOKEN_PRIMEIRO_ACESSO_TIPO = "primeiro_acesso"
+TOKEN_PRIMEIRO_ACESSO_MINUTOS = 60 * 24
+
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
@@ -36,3 +39,35 @@ def criar_token_acesso(dados: dict, tempo_expiracao_minutos: int = JWT_EXPIRATIO
 
 def decodificar_token(token: str) -> dict:
     return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+
+
+def criar_token_primeiro_acesso(funcionario_id: int) -> str:
+    return criar_token_acesso(
+        {"funcionario_id": funcionario_id, "tipo": TOKEN_PRIMEIRO_ACESSO_TIPO},
+        tempo_expiracao_minutos=TOKEN_PRIMEIRO_ACESSO_MINUTOS,
+    )
+
+
+def validar_token_primeiro_acesso(token: str) -> int:
+    try:
+        payload = decodificar_token(token)
+    except jwt.PyJWTError as e:
+        raise ValueError("Token de primeiro acesso inválido ou expirado") from e
+
+    if payload.get("tipo") != TOKEN_PRIMEIRO_ACESSO_TIPO:
+        raise ValueError("Token de primeiro acesso inválido")
+
+    return int(payload["funcionario_id"])
+
+
+def extrair_funcionario_id_do_token(token: str) -> int:
+    try:
+        payload = decodificar_token(token)
+    except jwt.PyJWTError as e:
+        raise ValueError("Token inválido ou expirado") from e
+
+    sub = payload.get("sub")
+    if sub is None:
+        raise ValueError("Token inválido")
+
+    return int(sub)
