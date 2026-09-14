@@ -17,3 +17,17 @@ class LancamentoRepository:
         self.db.commit()
         self.db.refresh(db_lancamento)
         return db_lancamento
+
+    def get_by_id(self, lancamento_id: int) -> Lancamento | None:
+        return self.db.query(Lancamento).filter(Lancamento.lancamento_id == lancamento_id).first()
+
+    def update(self, db_lancamento: Lancamento, update_data: dict) -> Lancamento:
+        for key, value in update_data.items():
+            setattr(db_lancamento, key, value)
+        self.db.commit()
+        self.db.refresh(db_lancamento)
+        return db_lancamento
+
+    def delete(self, db_lancamento: Lancamento) -> None:
+        self.db.delete(db_lancamento)
+        self.db.commit()

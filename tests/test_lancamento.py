@@ -56,3 +56,49 @@ def test_listar_lancamentos():
     assert response.status_code == 200
     data = response.json()
     assert len(data) >= 1
+
+
+def test_atualizar_lancamento():
+    response = client.get("/lancamentos/")
+    lancamento_id = response.json()[0]["lancamento_id"]
+    
+    payload = {
+        "titulo": "Honorários - Atualizado",
+        "valor": 3000.0
+    }
+    response = client.put(f"/lancamentos/{lancamento_id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["titulo"] == "Honorários - Atualizado"
+    assert data["valor"] == 3000.0
+
+
+def test_atualizar_status_lancamento_entrada():
+    response = client.get("/lancamentos/")
+    lancamento_id = response.json()[0]["lancamento_id"]
+    
+    payload = {"status": "Recebido"}
+    response = client.patch(f"/lancamentos/{lancamento_id}/status", json=payload)
+    assert response.status_code == 200
+    assert response.json()["status"] == "Recebido"
+
+
+def test_atualizar_status_invalido():
+    response = client.get("/lancamentos/")
+    lancamento_id = response.json()[0]["lancamento_id"]
+    
+    # Lançamento do tipo Entrada não pode ter status "Pago"
+    payload = {"status": "Pago"}
+    response = client.patch(f"/lancamentos/{lancamento_id}/status", json=payload)
+    assert response.status_code == 400
+
+
+def test_remover_lancamento():
+    response = client.get("/lancamentos/")
+    lancamento_id = response.json()[0]["lancamento_id"]
+    
+    response = client.delete(f"/lancamentos/{lancamento_id}")
+    assert response.status_code == 204
+    
+    response = client.get("/lancamentos/")
+    assert len(response.json()) == 0
