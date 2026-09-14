@@ -22,7 +22,9 @@ class LancamentoService:
 
         return self.repository.create(lancamento_data)
 
-    def update_lancamento(self, lancamento_id: int, lancamento_data: LancamentoUpdate) -> Lancamento:
+    def update_lancamento(
+        self, lancamento_id: int, lancamento_data: LancamentoUpdate
+    ) -> Lancamento:
         db_lancamento = self.repository.get_by_id(lancamento_id)
         if not db_lancamento:
             raise HTTPException(status_code=404, detail="Lançamento não encontrado")
@@ -33,7 +35,9 @@ class LancamentoService:
         update_data = lancamento_data.model_dump(exclude_unset=True)
         return self.repository.update(db_lancamento, update_data)
 
-    def update_status(self, lancamento_id: int, status_update: LancamentoStatusUpdate) -> Lancamento:
+    def update_status(
+        self, lancamento_id: int, status_update: LancamentoStatusUpdate
+    ) -> Lancamento:
         db_lancamento = self.repository.get_by_id(lancamento_id)
         if not db_lancamento:
             raise HTTPException(status_code=404, detail="Lançamento não encontrado")
@@ -50,7 +54,7 @@ class LancamentoService:
         if status not in valid_statuses:
             raise HTTPException(
                 status_code=400,
-                detail=f"Status '{status}' inválido para lançamento do tipo '{tipo}'. Valores permitidos: {', '.join(valid_statuses)}"
+                detail=f"Status '{status}' inválido para lançamento do tipo '{tipo}'. Valores permitidos: {', '.join(valid_statuses)}",
             )
 
         return self.repository.update(db_lancamento, {"status": status})
@@ -59,5 +63,5 @@ class LancamentoService:
         db_lancamento = self.repository.get_by_id(lancamento_id)
         if not db_lancamento:
             raise HTTPException(status_code=404, detail="Lançamento não encontrado")
-            
+
         self.repository.delete(db_lancamento)
