@@ -11,7 +11,7 @@ class FuncionarioRepository:
         return self.db.query(Funcionario).all()
 
     def buscar_por_id(self, funcionario_id: int) -> Funcionario | None:
-        return self.db.query(Funcionario).filter_by(funcionario_id=funcionario_id).first()
+        return self.db.get(Funcionario, funcionario_id)
 
     def buscar_por_email(self, email: str) -> Funcionario | None:
         return self.db.query(Funcionario).filter_by(email=email).first()

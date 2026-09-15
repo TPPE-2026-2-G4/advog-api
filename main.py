@@ -22,16 +22,15 @@ from app.controllers import (  # noqa: E402
     cargo,
     funcionario,
     institucional,
+    lancamento,
     processo_controller,
 )
 from app.models.institucional import Institucional  # noqa: E402
 
-# Cria as tabelas no banco de dados, caso não existam (SQLite development mode)
 Base.metadata.create_all(bind=engine)
 
 
 def _seed_institucional() -> None:
-    """Garante que sempre existe uma linha de configurações institucionais (id=1)."""
     from sqlalchemy import insert
 
     db = SessionLocal()
@@ -71,6 +70,7 @@ app.include_router(auth.router)
 app.include_router(cargo.router)
 app.include_router(funcionario.router)
 app.include_router(institucional.router)
+app.include_router(lancamento.router)
 app.include_router(processo_controller.router)
 
 

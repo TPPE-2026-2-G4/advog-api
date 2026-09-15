@@ -6,7 +6,7 @@ from app.models.cargo import Cargo
 from app.models.funcionario import Funcionario, StatusFuncionario
 from app.repositories.cargo import CargoRepository
 from app.repositories.funcionario import FuncionarioRepository
-from app.schemas.funcionario import FuncionarioCreate, FuncionarioPrimeiroAcesso
+from app.schemas.funcionario import FuncionarioCreate, FuncionarioPrimeiroAcesso, FuncionarioUpdate
 from app.services.funcionario import FuncionarioService
 
 
@@ -108,7 +108,7 @@ def test_primeiro_acesso_funcionario_nao_encontrado_gera_erro():
     service.repository.buscar_por_id.return_value = None
 
     with pytest.raises(ValueError, match="Funcionário não encontrado"):
-        service.primeiro_acesso(1, FuncionarioPrimeiroAcesso(senha="test123"))
+        service.primeiro_acesso(1, FuncionarioPrimeiroAcesso(token="token-teste", senha="test123"))
 
 
 def test_primeiro_acesso_funcionario_com_conta_pendente_gera_erro():
@@ -128,7 +128,7 @@ def test_primeiro_acesso_funcionario_com_conta_pendente_gera_erro():
     service.repository.buscar_por_id.return_value = funcionario
 
     with pytest.raises(ValueError, match="Funcionário já teve a conta ativada"):
-        service.primeiro_acesso(1, FuncionarioPrimeiroAcesso(senha="test123"))
+        service.primeiro_acesso(1, FuncionarioPrimeiroAcesso(token="token-teste", senha="test123"))
 
 
 def test_primeiro_acesso_funcionario_com_sucesso():
@@ -149,7 +149,11 @@ def test_primeiro_acesso_funcionario_com_sucesso():
     service.repository.atualizar.return_value = funcionario
 
     dados_acesso = FuncionarioPrimeiroAcesso(
-        senha="test123", nome="Ana Beatriz Souza", uf_oab="SP", numero_oab="12345"
+        token="token-teste",
+        senha="test123",
+        nome="Ana Beatriz Souza",
+        uf_oab="SP",
+        numero_oab="12345",
     )
     funcionario_atualizado = service.primeiro_acesso(1, dados_acesso)
 
@@ -159,6 +163,125 @@ def test_primeiro_acesso_funcionario_com_sucesso():
     assert funcionario_atualizado.uf_oab == "SP"
     assert funcionario_atualizado.numero_oab == "12345"
     assert funcionario_atualizado.status == StatusFuncionario.ATIVO
+
+
+def test_mudar_cargo_funcionario_nao_encontrado_gera_erro():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    service.repository.buscar_por_id.return_value = None
+
+    with pytest.raises(ValueError, match="Funcionário não encontrado"):
+        service.mudar_cargo(1, 2)
+
+
+def test_mudar_cargo_com_cargo_inexistente_gera_erro():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    funcionario = Funcionario(
+        nome="Usuário Teste",
+        email="usuario.teste@test.com",
+        funcionario_id=1,
+        cargo_id=1,
+        status=StatusFuncionario.ATIVO,
+        uf_oab=None,
+        numero_oab=None,
+        exibicaoInstitucional=False,
+    )
+    service.repository.buscar_por_id.return_value = funcionario
+
+    service.cargo_repository = MagicMock(spec=CargoRepository)
+    service.cargo_repository.buscar_por_id.return_value = None
+
+    with pytest.raises(ValueError, match="Cargo não encontrado"):
+        service.mudar_cargo(1, 999)
+
+
+def test_mudar_cargo_com_sucesso():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    funcionario = Funcionario(
+        nome="Usuário Teste",
+        email="usuario.teste@test.com",
+        funcionario_id=1,
+        cargo_id=1,
+        status=StatusFuncionario.ATIVO,
+        uf_oab=None,
+        numero_oab=None,
+        exibicaoInstitucional=False,
+    )
+    service.repository.buscar_por_id.return_value = funcionario
+    service.repository.atualizar.return_value = funcionario
+
+    service.cargo_repository = MagicMock(spec=CargoRepository)
+    service.cargo_repository.buscar_por_id.return_value = Cargo(cargo_id=2, nome_cargo="Sócio")
+
+    funcionario_atualizado = service.mudar_cargo(1, 2)
+
+    assert isinstance(funcionario_atualizado, Funcionario)
+    assert funcionario_atualizado.cargo_id == 2
+
+
+def test_editar_dados_funcionario_nao_encontrado_gera_erro():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    service.repository.buscar_por_id.return_value = None
+
+    with pytest.raises(ValueError, match="Funcionário não encontrado"):
+        service.editar_dados(1, FuncionarioUpdate(nome="Novo Nome"))
+
+
+def test_editar_dados_atualiza_campos_permitidos():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    funcionario = Funcionario(
+        nome="Usuário Teste",
+        email="usuario.teste@test.com",
+        funcionario_id=1,
+        cargo_id=1,
+        status=StatusFuncionario.ATIVO,
+        uf_oab=None,
+        numero_oab=None,
+        exibicaoInstitucional=False,
+    )
+    service.repository.buscar_por_id.return_value = funcionario
+    service.repository.atualizar.return_value = funcionario
+
+    dados = FuncionarioUpdate(
+        nome="Nome Atualizado", senha="nova-senha123", uf_oab="SP", numero_oab="12345"
+    )
+    funcionario_atualizado = service.editar_dados(1, dados)
+
+    assert funcionario_atualizado.nome == "Nome Atualizado"
+    assert funcionario_atualizado.uf_oab == "SP"
+    assert funcionario_atualizado.numero_oab == "12345"
+    assert funcionario_atualizado.senha_hash is not None
+    assert funcionario_atualizado.senha_hash != "nova-senha123"
+    assert funcionario_atualizado.email == "usuario.teste@test.com"
+    assert funcionario_atualizado.status == StatusFuncionario.ATIVO
+
+
+def test_editar_dados_sem_campos_nao_altera_dados_sensiveis():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    funcionario = Funcionario(
+        nome="Usuário Teste",
+        email="usuario.teste@test.com",
+        funcionario_id=1,
+        cargo_id=1,
+        status=StatusFuncionario.ATIVO,
+        uf_oab=None,
+        numero_oab=None,
+        exibicaoInstitucional=False,
+    )
+    service.repository.buscar_por_id.return_value = funcionario
+    service.repository.atualizar.return_value = funcionario
+
+    funcionario_atualizado = service.editar_dados(1, FuncionarioUpdate())
+
+    assert funcionario_atualizado.nome == "Usuário Teste"
+    assert funcionario_atualizado.email == "usuario.teste@test.com"
+    assert funcionario_atualizado.status == StatusFuncionario.ATIVO
+    assert funcionario_atualizado.cargo_id == 1
 
 
 def test_mudar_acesso_funcionario_nao_encontrado_gera_erro():

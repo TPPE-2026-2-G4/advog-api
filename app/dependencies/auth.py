@@ -9,23 +9,24 @@ from app.utils.seguranca import decodificar_token
 security = HTTPBearer()
 
 
-def get_current_funcionario(
+def obter_funcionario_atual(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ) -> Funcionario:
-
     try:
         payload = decodificar_token(credentials.credentials)
+        funcionario_id_raw = payload.get("sub")
+        if funcionario_id_raw is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+        funcionario_id = int(funcionario_id_raw)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido ou expirado"
         ) from e
 
-    funcionario_id = payload.get("sub")
-    if funcionario_id is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
-
-    funcionario = db.get(Funcionario, int(funcionario_id))
+    funcionario = db.get(Funcionario, funcionario_id)
     if funcionario is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Funcionário não encontrado"
@@ -37,7 +38,7 @@ def get_current_funcionario(
 def exigir_permissao(permissao: str):
 
     def verificar(
-        funcionario: Funcionario = Depends(get_current_funcionario),
+        funcionario: Funcionario = Depends(obter_funcionario_atual),
     ) -> Funcionario:
         permissoes = funcionario.cargo.permissao or {}  # type: ignore[attr-defined]
         if not permissoes.get(permissao, False):

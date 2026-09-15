@@ -4,13 +4,12 @@ from typing import TYPE_CHECKING
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
-    Column,
     Enum,
     ForeignKey,
     Integer,
     String,
 )
-from sqlalchemy.orm import Mapped, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.config.database import Base
 
@@ -27,17 +26,19 @@ class StatusFuncionario(enum.StrEnum):
 class Funcionario(Base):
     __tablename__ = "funcionarios"
 
-    funcionario_id = Column(Integer, primary_key=True, index=True)
-    uf_oab = Column(String(2), nullable=True)
-    numero_oab = Column(String(5), nullable=True)
-    nome = Column(String(100), nullable=False)
-    email = Column(String(100), nullable=False, unique=True)
-    senha_hash = Column(String(255), nullable=True)
-    status = Column(Enum(StatusFuncionario), nullable=False, default=StatusFuncionario.PENDENTE)
-    exibicaoInstitucional = Column(Boolean, nullable=False, default=False)
-
-    cargo_id = Column(Integer, ForeignKey("cargos.cargo_id"), nullable=False)
-
+    funcionario_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    uf_oab: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    numero_oab: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    nome: Mapped[str] = mapped_column(String(100), nullable=False)
+    email: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    senha_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[StatusFuncionario] = mapped_column(
+        Enum(StatusFuncionario), nullable=False, default=StatusFuncionario.PENDENTE
+    )
+    exibicao_institucional: Mapped[bool] = mapped_column(
+        "exibicaoInstitucional", Boolean, nullable=False, default=False
+    )
+    cargo_id: Mapped[int] = mapped_column(Integer, ForeignKey("cargos.cargo_id"), nullable=False)
     cargo: Mapped["Cargo"] = relationship("Cargo", back_populates="funcionarios")
 
     __table_args__ = (

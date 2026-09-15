@@ -14,8 +14,20 @@ class FuncionarioCreate(FuncionarioBase):
 
 
 class FuncionarioPrimeiroAcesso(BaseModel):
+    token: str
     nome: str | None = None
     senha: str
+    uf_oab: str | None = Field(default=None, min_length=2, max_length=2)
+    numero_oab: str | None = Field(default=None, min_length=5, max_length=5)
+
+
+class FuncionarioMudarCargo(BaseModel):
+    cargo_id: int
+
+
+class FuncionarioUpdate(BaseModel):
+    nome: str | None = None
+    senha: str | None = None
     uf_oab: str | None = Field(default=None, min_length=2, max_length=2)
     numero_oab: str | None = Field(default=None, min_length=5, max_length=5)
 
