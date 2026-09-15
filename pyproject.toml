@@ -16,6 +16,10 @@ dependencies = [
     "bcrypt<=4.0.1",
     "pyjwt>=2.13.0",
     "slowapi>=0.1.10",
+    "boto3>=1.43.93",
+    "filetype>=1.2.0",
+    "defusedxml>=0.7.1",
+    "pillow>=12.3.0",
 ]
 
 [dependency-groups]

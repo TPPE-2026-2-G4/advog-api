@@ -1,6 +1,4 @@
-from datetime import datetime
-
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.config.database import Base
@@ -24,6 +22,3 @@ class Institucional(Base):
 
     logotipo: Mapped[str | None] = mapped_column(String(255), nullable=True)
     banner_hero: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    atualizado_em: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.timetz, onupdate=datetime.timetz
-    )
