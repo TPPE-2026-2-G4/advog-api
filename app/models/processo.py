@@ -20,7 +20,11 @@ class Processo(Base):
     titulo: Mapped[str] = mapped_column(String(100), nullable=False)
     cliente: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[StatusProcesso] = mapped_column(
-        Enum(StatusProcesso), nullable=False, default=StatusProcesso.EM_ANALISE
+        Enum(
+            StatusProcesso, values_callable=lambda statuses: [status.value for status in statuses]
+        ),
+        nullable=False,
+        default=StatusProcesso.EM_ANALISE,
     )
     tribunal: Mapped[str] = mapped_column(String(20), nullable=False)
     area: Mapped[str] = mapped_column(String(100), nullable=False)

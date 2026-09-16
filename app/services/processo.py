@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.models.processo import Processo
 from app.repositories.processo import ProcessoRepository
-from app.schemas.processo import ProcessoCreate
+from app.schemas.processo import ProcessoCreate, ProcessoUpdate
 from app.schemas.processo_filter import ProcessoFilter
 
 
@@ -26,15 +26,16 @@ class ProcessoService:
         )
 
     def criar_processo(self, dados: ProcessoCreate) -> Processo:
+        if self.repository.buscar_por_id(dados.id):
+            raise ValueError("Processo já cadastrado")
+
         processo_model = Processo(**dados.model_dump())
         return self.repository.criar(processo_model)
 
-    def atualizar_processo(self, processo_id: str, dados: ProcessoCreate) -> Processo:
-        processos = self.repository.buscar_por_filtros(processo_id)
-        if not processos:
+    def atualizar_processo(self, processo_id: str, dados: ProcessoUpdate) -> Processo:
+        processo = self.repository.buscar_por_id(processo_id)
+        if processo is None:
             raise ValueError("Processo não encontrado")
-
-        processo = processos[0]
 
         for key, value in dados.model_dump(exclude_unset=True).items():
             setattr(processo, key, value)
@@ -42,10 +43,8 @@ class ProcessoService:
         return self.repository.atualizar(processo)
 
     def deletar_processo(self, processo_id: str) -> None:
-        processos = self.repository.buscar_por_filtros(processo_id)
-        if not processos:
+        processo = self.repository.buscar_por_id(processo_id)
+        if processo is None:
             raise ValueError("Processo não encontrado")
-
-        processo = processos[0]
 
         self.repository.deletar(processo)

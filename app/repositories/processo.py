@@ -10,6 +10,9 @@ class ProcessoRepository:
     def buscar_todos(self) -> list[Processo]:
         return self.db.query(Processo).all()
 
+    def buscar_por_id(self, processo_id: str) -> Processo | None:
+        return self.db.query(Processo).filter(Processo.id == processo_id).first()
+
     def buscar_por_filtros(
         self,
         id: str | None = None,
