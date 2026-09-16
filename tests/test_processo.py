@@ -23,6 +23,7 @@ def setup_module(module):
         data_realizado="2026-01-10",
         data_prazo="2026-12-31",
         cliente_id=1,
+        responsavel_id=1,
     )
     p2 = Processo(
         cnj="2222222-22.2026.5.02.0000",
@@ -35,6 +36,7 @@ def setup_module(module):
         data_realizado="2026-02-10",
         data_prazo="2026-11-30",
         cliente_id=2,
+        responsavel_id=2,
     )
 
     db.add(p1)
@@ -117,6 +119,14 @@ def test_filtrar_processos_por_cnj():
     data = response.json()
     assert len(data) == 1
     assert data[0]["cnj"] == "1111111-11.2026.8.26.0000"
+
+
+def test_filtrar_processos_por_responsavel():
+    response = client.get("/processos/?responsavel_id=1")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["responsavel_id"] == 1
 
 
 def test_criar_processo():

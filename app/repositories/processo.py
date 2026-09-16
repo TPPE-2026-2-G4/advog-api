@@ -23,6 +23,7 @@ class ProcessoRepository:
         tribunal: str | None = None,
         area: str | None = None,
         cliente_id: int | None = None,
+        responsavel_id: int | None = None,
     ) -> list[Processo]:
         query = self.db.query(Processo)
 
@@ -42,5 +43,7 @@ class ProcessoRepository:
             query = query.filter(Processo.area.ilike(f"%{area}%"))
         if cliente_id is not None:
             query = query.filter(Processo.cliente_id == cliente_id)
+        if responsavel_id is not None:
+            query = query.filter(Processo.responsavel_id == responsavel_id)
 
         return query.all()

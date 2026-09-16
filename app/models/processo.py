@@ -17,3 +17,4 @@ class Processo(Base):
     data_realizado = Column(String, nullable=True)
     data_prazo = Column(String, nullable=True)
     cliente_id = Column(Integer, nullable=True)
+    responsavel_id = Column(Integer, nullable=True)
