@@ -16,12 +16,12 @@ class ProcessoService:
 
     def search_processos(self, filters: ProcessoFilter) -> list[Processo]:
         return self.repository.find_all_by_filters(
-            id=filters.id,
-            tribunal=filters.tribunal,
+            processo_id=filters.processo_id,
+            cnj=filters.cnj,
             titulo=filters.titulo,
-            cliente=filters.cliente,
-            area=filters.area,
-            responsavel=filters.responsavel,
+            descricao=filters.descricao,
             status=filters.status,
-            prazo=filters.prazo,
+            tribunal=filters.tribunal,
+            area=filters.area,
+            cliente_id=filters.cliente_id,
         )

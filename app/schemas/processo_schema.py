@@ -2,15 +2,16 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ProcessoBase(BaseModel):
-    id: str  # Nº do Processo
+    cnj: str | None = None
     titulo: str
-    cliente: str
+    descricao: str | None = None
     status: str
     tribunal: str
     area: str
-    responsavel: str
-    prazo: str
-    diasRestantes: int | None = 15
+    data_inicio: str | None = None
+    data_realizado: str | None = None
+    data_prazo: str | None = None
+    cliente_id: int | None = None
 
 
 class ProcessoCreate(ProcessoBase):
@@ -18,4 +19,6 @@ class ProcessoCreate(ProcessoBase):
 
 
 class ProcessoResponse(ProcessoBase):
+    processo_id: int
+
     model_config = ConfigDict(from_attributes=True)
