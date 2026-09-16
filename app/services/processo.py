@@ -1,9 +1,8 @@
 from sqlalchemy.orm import Session
 
-from app.models.processo_model import Processo
-from app.repositories.processo_repository import ProcessoRepository
-from app.schemas.processo_filter import ProcessoFilter
-from app.schemas.processo_schema import ProcessoCreate
+from app.models.processo import Processo
+from app.repositories.processo import ProcessoRepository
+from app.schemas.processo import ProcessoCreate, ProcessoFilter
 
 
 class ProcessoService:
@@ -16,12 +15,13 @@ class ProcessoService:
 
     def search_processos(self, filters: ProcessoFilter) -> list[Processo]:
         return self.repository.find_all_by_filters(
-            id=filters.id,
-            tribunal=filters.tribunal,
+            processo_id=filters.processo_id,
+            cnj=filters.cnj,
             titulo=filters.titulo,
-            cliente=filters.cliente,
-            area=filters.area,
-            responsavel=filters.responsavel,
+            descricao=filters.descricao,
             status=filters.status,
-            prazo=filters.prazo,
+            tribunal=filters.tribunal,
+            area=filters.area,
+            cliente_id=filters.cliente_id,
+            responsavel_id=filters.responsavel_id,
         )

@@ -17,7 +17,7 @@ from starlette.types import ExceptionHandler  # noqa: E402
 
 from app.config.database import Base, engine  # noqa: E402
 from app.config.limiter import limiter  # noqa: E402
-from app.controllers import auth, cargo, funcionario, lancamento, processo_controller  # noqa: E402
+from app.controllers import auth, cargo, funcionario, lancamento, processo  # noqa: E402
 
 Base.metadata.create_all(bind=engine)
 
@@ -42,7 +42,7 @@ app.add_middleware(
 )
 
 app.include_router(cargo.router)
-app.include_router(processo_controller.router)
+app.include_router(processo.router)
 app.include_router(lancamento.router)
 app.include_router(funcionario.router)
 app.include_router(auth.router)
