@@ -10,7 +10,7 @@ class Processo(Base):
     cnj = Column(String(20), unique=True, index=True)
     titulo = Column(String(100))
     descricao = Column(String(255), nullable=True)
-    status = Column(String)  # 'Em Análise', 'Ativo', 'Concluído', 'Arquivado'
+    status = Column(String)
     tribunal = Column(String(100))
     area = Column(String(100))
     data_inicio = Column(String, nullable=True)

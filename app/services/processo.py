@@ -1,9 +1,8 @@
 from sqlalchemy.orm import Session
 
-from app.models.processo_model import Processo
-from app.repositories.processo_repository import ProcessoRepository
-from app.schemas.processo_filter import ProcessoFilter
-from app.schemas.processo_schema import ProcessoCreate
+from app.models.processo import Processo
+from app.repositories.processo import ProcessoRepository
+from app.schemas.processo import ProcessoCreate, ProcessoFilter
 
 
 class ProcessoService:

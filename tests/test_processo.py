@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.config.database import Base, SessionLocal, engine
-from app.models.processo_model import Processo
+from app.models.processo import Processo
 from main import app
 
 client = TestClient(app)

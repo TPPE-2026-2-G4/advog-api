@@ -2,9 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.schemas.processo_filter import ProcessoFilter
-from app.schemas.processo_schema import ProcessoCreate, ProcessoResponse
-from app.services.processo_service import ProcessoService
+from app.schemas.processo import ProcessoCreate, ProcessoFilter, ProcessoResponse
+from app.services.processo import ProcessoService
 
 router = APIRouter(prefix="/processos", tags=["Processos"])
 

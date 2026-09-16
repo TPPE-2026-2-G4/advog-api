@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.models.processo_model import Processo
+from app.models.processo import Processo
 
 
 class ProcessoRepository:
