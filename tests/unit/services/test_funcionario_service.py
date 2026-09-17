@@ -51,7 +51,7 @@ def test_criar_funcionario_com_email_unico(nome, email):
         status=StatusFuncionario.PENDENTE,
         uf_oab=None,
         numero_oab=None,
-        exibicaoInstitucional=False,
+        exibicao_institucional=False,
     )
 
     funcionario = service.criar_funcionario(FuncionarioCreate(nome=nome, email=email, cargo_id=1))
@@ -76,7 +76,7 @@ def test_buscar_todos_retorna_lista_de_funcionarios():
             status=StatusFuncionario.PENDENTE,
             uf_oab=None,
             numero_oab=None,
-            exibicaoInstitucional=False,
+            exibicao_institucional=False,
         ),
         Funcionario(
             nome="Outro Usuário",
@@ -86,7 +86,7 @@ def test_buscar_todos_retorna_lista_de_funcionarios():
             status=StatusFuncionario.PENDENTE,
             uf_oab=None,
             numero_oab=None,
-            exibicaoInstitucional=False,
+            exibicao_institucional=False,
         ),
     ]
 
@@ -122,7 +122,7 @@ def test_primeiro_acesso_funcionario_com_conta_pendente_gera_erro():
         status=StatusFuncionario.ATIVO,
         uf_oab=None,
         numero_oab=None,
-        exibicaoInstitucional=False,
+        exibicao_institucional=False,
     )
 
     service.repository.buscar_por_id.return_value = funcionario
@@ -142,7 +142,7 @@ def test_primeiro_acesso_funcionario_com_sucesso():
         status=StatusFuncionario.PENDENTE,
         uf_oab=None,
         numero_oab=None,
-        exibicaoInstitucional=False,
+        exibicao_institucional=False,
     )
 
     service.repository.buscar_por_id.return_value = funcionario
@@ -185,7 +185,7 @@ def test_mudar_cargo_com_cargo_inexistente_gera_erro():
         status=StatusFuncionario.ATIVO,
         uf_oab=None,
         numero_oab=None,
-        exibicaoInstitucional=False,
+        exibicao_institucional=False,
     )
     service.repository.buscar_por_id.return_value = funcionario
 
@@ -207,7 +207,7 @@ def test_mudar_cargo_com_sucesso():
         status=StatusFuncionario.ATIVO,
         uf_oab=None,
         numero_oab=None,
-        exibicaoInstitucional=False,
+        exibicao_institucional=False,
     )
     service.repository.buscar_por_id.return_value = funcionario
     service.repository.atualizar.return_value = funcionario
@@ -241,7 +241,7 @@ def test_editar_dados_atualiza_campos_permitidos():
         status=StatusFuncionario.ATIVO,
         uf_oab=None,
         numero_oab=None,
-        exibicaoInstitucional=False,
+        exibicao_institucional=False,
     )
     service.repository.buscar_por_id.return_value = funcionario
     service.repository.atualizar.return_value = funcionario
@@ -271,7 +271,7 @@ def test_editar_dados_sem_campos_nao_altera_dados_sensiveis():
         status=StatusFuncionario.ATIVO,
         uf_oab=None,
         numero_oab=None,
-        exibicaoInstitucional=False,
+        exibicao_institucional=False,
     )
     service.repository.buscar_por_id.return_value = funcionario
     service.repository.atualizar.return_value = funcionario
@@ -304,7 +304,7 @@ def test_mudar_acesso_funcionario_com_conta_pendente_gera_erro():
         status=StatusFuncionario.PENDENTE,
         uf_oab=None,
         numero_oab=None,
-        exibicaoInstitucional=False,
+        exibicao_institucional=False,
     )
 
     service.repository.buscar_por_id.return_value = funcionario
@@ -324,7 +324,7 @@ def test_mudar_acesso_funcionario_com_conta_ativa_para_inativa():
         status=StatusFuncionario.ATIVO,
         uf_oab=None,
         numero_oab=None,
-        exibicaoInstitucional=False,
+        exibicao_institucional=False,
     )
 
     service.repository.buscar_por_id.return_value = funcionario
@@ -348,7 +348,7 @@ def test_mudar_acesso_funcionario_com_conta_inativa_para_ativa():
         status=StatusFuncionario.INATIVO,
         uf_oab=None,
         numero_oab=None,
-        exibicaoInstitucional=False,
+        exibicao_institucional=False,
     )
 
     service.repository.buscar_por_id.return_value = funcionario
@@ -381,7 +381,7 @@ def test_apagar_funcionario_retorna_sucesso():
         status=StatusFuncionario.ATIVO,
         uf_oab=None,
         numero_oab=None,
-        exibicaoInstitucional=False,
+        exibicao_institucional=False,
     )
     service.repository.buscar_por_id.return_value = funcionario
 

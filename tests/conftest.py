@@ -77,3 +77,32 @@ def cargo_padrao(db_session: Session) -> Cargo:
     db_session.commit()
     db_session.refresh(cargo)
     return cargo
+
+
+@pytest.fixture()
+def cargo_admin(db_session: Session) -> Cargo:
+    cargo = Cargo(
+        nome_cargo="Administrador",
+        descricao="Cargo de administrador com permissoes completas",
+        permissao={"gerenciar_equipe": True},
+    )
+    db_session.add(cargo)
+    db_session.commit()
+    db_session.refresh(cargo)
+    return cargo
+
+
+@pytest.fixture()
+def token_admin(db_session, cargo_admin, token_acesso):
+    from app.models.funcionario import Funcionario, StatusFuncionario
+
+    admin = Funcionario(
+        nome="Admin Teste",
+        email="admin.fixture@test.com",
+        status=StatusFuncionario.ATIVO,
+        cargo_id=cargo_admin.cargo_id,
+    )
+    db_session.add(admin)
+    db_session.commit()
+    db_session.refresh(admin)
+    return token_acesso(admin.funcionario_id, admin.email)

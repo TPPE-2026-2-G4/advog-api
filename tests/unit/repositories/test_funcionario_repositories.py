@@ -42,7 +42,7 @@ def test_criar_funcionario(db_session, cargo_padrao, nome, email):
     assert criacao.uf_oab is None
     assert criacao.numero_oab is None
     assert criacao.status == StatusFuncionario.PENDENTE
-    assert criacao.exibicaoInstitucional is False
+    assert criacao.exibicao_institucional is False
 
 
 def test_obter_todos_funcionarios(db_session, cargo_padrao):

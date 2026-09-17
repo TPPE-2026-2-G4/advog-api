@@ -1,17 +1,8 @@
 import pytest
 
 from app.config.limiter import limiter
-from app.models.cargo import Cargo
-from app.models.funcionario import StatusFuncionario
-
-
-@pytest.fixture
-def cargo_padrao(db_session):
-    cargo = Cargo(nome_cargo="Advogado")
-    db_session.add(cargo)
-    db_session.commit()
-    db_session.refresh(cargo)
-    return cargo
+from app.models.funcionario import Funcionario, StatusFuncionario
+from app.utils.seguranca import hash_senha
 
 
 @pytest.fixture(autouse=True)
@@ -30,10 +21,13 @@ def reset_rate_limiter():
     ],
 )
 def test_login_com_sucesso_retorna_token_e_dados(
-    client, cargo_padrao, token_primeiro_acesso, nome, email, senha
+    client, cargo_padrao, token_primeiro_acesso, token_admin, nome, email, senha
 ):
+    headers = {"Authorization": f"Bearer {token_admin}"}
     criacao = client.post(
-        "/funcionarios", json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id}
+        "/funcionarios",
+        json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id},
+        headers=headers,
     )
     assert criacao.status_code == 201
     funcionario_id = criacao.json()["funcionario_id"]
@@ -62,7 +56,10 @@ def test_login_email_nao_cadastrado_retorna_401(client):
     assert response.json()["detail"] == "Email ou senha incorretos"
 
 
-def test_login_senha_incorreta_retorna_401(client, cargo_padrao, token_primeiro_acesso):
+def test_login_senha_incorreta_retorna_401(
+    client, cargo_padrao, token_primeiro_acesso, token_admin
+):
+    headers = {"Authorization": f"Bearer {token_admin}"}
     criacao = client.post(
         "/funcionarios",
         json={
@@ -70,6 +67,7 @@ def test_login_senha_incorreta_retorna_401(client, cargo_padrao, token_primeiro_
             "email": "advogado@test.com",
             "cargo_id": cargo_padrao.cargo_id,
         },
+        headers=headers,
     )
     funcionario_id = criacao.json()["funcionario_id"]
     client.patch(
@@ -84,8 +82,17 @@ def test_login_senha_incorreta_retorna_401(client, cargo_padrao, token_primeiro_
     assert response.json()["detail"] == "Email ou senha incorretos"
 
 
-def test_login_usuario_pendente_retorna_403(client):
-    client.post("/funcionarios", json={"nome": "Pendente Teste", "email": "pendente@test.com"})
+def test_login_usuario_pendente_retorna_403(client, cargo_padrao, token_admin):
+    headers = {"Authorization": f"Bearer {token_admin}"}
+    client.post(
+        "/funcionarios",
+        json={
+            "nome": "Pendente Teste",
+            "email": "pendente@test.com",
+            "cargo_id": cargo_padrao.cargo_id,
+        },
+        headers=headers,
+    )
 
     response = client.post(
         "/auth/login", json={"email": "pendente@test.com", "senha": "qualquer_senha"}
@@ -94,9 +101,6 @@ def test_login_usuario_pendente_retorna_403(client):
 
 
 def test_login_usuario_com_senha_mas_pendente_retorna_403(client, db_session, cargo_padrao):
-    from app.models.funcionario import Funcionario
-    from app.utils.seguranca import hash_senha
-
     func = Funcionario(
         nome="Pendente Com Senha",
         email="pendente.senha@test.com",
@@ -114,7 +118,10 @@ def test_login_usuario_com_senha_mas_pendente_retorna_403(client, db_session, ca
     assert "primeiro acesso" in response.json()["detail"]
 
 
-def test_login_usuario_inativo_retorna_403(client, cargo_padrao, token_primeiro_acesso):
+def test_login_usuario_inativo_retorna_403(
+    client, cargo_padrao, token_primeiro_acesso, token_admin
+):
+    headers = {"Authorization": f"Bearer {token_admin}"}
     criacao = client.post(
         "/funcionarios",
         json={
@@ -122,13 +129,14 @@ def test_login_usuario_inativo_retorna_403(client, cargo_padrao, token_primeiro_
             "email": "inativo@test.com",
             "cargo_id": cargo_padrao.cargo_id,
         },
+        headers=headers,
     )
     funcionario_id = criacao.json()["funcionario_id"]
     client.patch(
         "/funcionarios/primeiro-acesso",
         json={"senha": "senhaCorreta123", "token": token_primeiro_acesso(funcionario_id)},
     )
-    client.patch(f"/funcionarios/{funcionario_id}/mudar-acesso")
+    client.patch(f"/funcionarios/{funcionario_id}/mudar-acesso", headers=headers)
 
     response = client.post(
         "/auth/login", json={"email": "inativo@test.com", "senha": "senhaCorreta123"}
