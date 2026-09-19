@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.models.funcionario import Funcionario
+from app.models.funcionario import Funcionario, StatusFuncionario
 
 
 class FuncionarioRepository:
@@ -9,6 +9,16 @@ class FuncionarioRepository:
 
     def buscar_todos(self) -> list[Funcionario]:
         return self.db.query(Funcionario).all()
+
+    def buscar_visiveis_institucional(self) -> list[Funcionario]:
+        return (
+            self.db.query(Funcionario)
+            .filter(
+                Funcionario.status == StatusFuncionario.ATIVO,
+                Funcionario.exibicao_institucional.is_(True),
+            )
+            .all()
+        )
 
     def buscar_por_id(self, funcionario_id: int) -> Funcionario | None:
         return self.db.get(Funcionario, funcionario_id)

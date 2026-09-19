@@ -25,6 +25,11 @@ class FuncionarioMudarCargo(BaseModel):
     cargo_id: int
 
 
+class FuncionarioMudarExibicao(BaseModel):
+    exibicao_institucional: bool = Field(..., alias="exibicaoInstitucional")
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class FuncionarioUpdate(BaseModel):
     nome: str | None = None
     senha: str | None = None
@@ -35,7 +40,7 @@ class FuncionarioUpdate(BaseModel):
 class FuncionarioResponse(FuncionarioBase):
     cargo_id: int
     cargo: CargoResponse | None = None
-    exibicaoInstitucional: bool = False
+    exibicao_institucional: bool = Field(default=False, alias="exibicaoInstitucional")
     funcionario_id: int
     numero_oab: str | None = None
     status: StatusFuncionario

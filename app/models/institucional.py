@@ -22,3 +22,6 @@ class Institucional(Base):
 
     logotipo: Mapped[str | None] = mapped_column(String(255), nullable=True)
     banner_hero: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    imagem_sobre: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    texto_adicional_sobre: Mapped[str | None] = mapped_column(Text, nullable=True)

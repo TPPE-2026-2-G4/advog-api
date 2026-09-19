@@ -20,6 +20,8 @@ class InstitucionalBase(BaseModel):
     nome_escritorio: str = Field(..., min_length=2, max_length=150, alias="nomeEscritorio")
     descricao: str | None = Field(default=None, max_length=255)
     sobre_escritorio: str | None = Field(default=None, alias="sobreEscritorio")
+    imagem_sobre: str | None = Field(default=None, alias="imagemSobre")
+    texto_adicional_sobre: str | None = Field(default=None, alias="textoAdicionalSobre")
     email: EmailStr | None = None
     telefone: str | None = Field(default=None, max_length=20)
     endereco: str | None = None
@@ -49,6 +51,8 @@ class InstitucionalUpdate(BaseModel):
     )
     descricao: str | None = Field(default=None, max_length=255)
     sobre_escritorio: str | None = Field(default=None, alias="sobreEscritorio")
+    imagem_sobre: str | None = Field(default=None, alias="imagemSobre")
+    texto_adicional_sobre: str | None = Field(default=None, alias="textoAdicionalSobre")
     email: EmailStr | None = None
     telefone: str | None = Field(default=None, max_length=20)
     endereco: str | None = None
@@ -73,7 +77,7 @@ class InstitucionalResponse(InstitucionalBase):
 
     id: int = Field(validation_alias="institucional_id", serialization_alias="id")
 
-    @field_serializer("logotipo", "banner_hero")
+    @field_serializer("logotipo", "banner_hero", "imagem_sobre")
     def _serializar_url_midia(self, v: str | None) -> str | None:
         return obter_url_publica(v)
 

@@ -9,6 +9,7 @@ from app.models.funcionario import Funcionario
 from app.schemas.funcionario import (
     FuncionarioCreate,
     FuncionarioMudarCargo,
+    FuncionarioMudarExibicao,
     FuncionarioPrimeiroAcesso,
     FuncionarioResponse,
     FuncionarioUpdate,
@@ -68,6 +69,21 @@ def primeiro_acesso(dados: FuncionarioPrimeiroAcesso, db: Session = Depends(get_
 
 
 @router.patch(
+    "/{funcionario_id}/mudar-acesso",
+    response_model=FuncionarioResponse,
+    dependencies=[Depends(exigir_permissao("gerenciar_equipe"))],
+)
+def mudar_acesso(funcionario_id: int, db: Session = Depends(get_db)):
+    service = FuncionarioService(db)
+    try:
+        funcionario = service.mudar_acesso(funcionario_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return funcionario
+
+
+@router.patch(
     "/{funcionario_id}/mudar-cargo",
     response_model=FuncionarioResponse,
     dependencies=[Depends(exigir_permissao("gerenciar_equipe"))],
@@ -82,6 +98,23 @@ def mudar_cargo(funcionario_id: int, dados: FuncionarioMudarCargo, db: Session =
     return funcionario
 
 
+@router.patch(
+    "/{funcionario_id}/exibicao-institucional",
+    response_model=FuncionarioResponse,
+    dependencies=[Depends(exigir_permissao("gerenciar_equipe"))],
+)
+def mudar_exibicao_institucional(
+    funcionario_id: int,
+    dados: FuncionarioMudarExibicao,
+    db: Session = Depends(get_db),
+):
+    service = FuncionarioService(db)
+    try:
+        return service.mudar_exibicao_institucional(funcionario_id, dados.exibicao_institucional)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
 @router.patch("", response_model=FuncionarioResponse)
 def editar_dados(
     dados: FuncionarioUpdate,
@@ -91,21 +124,6 @@ def editar_dados(
     service = FuncionarioService(db)
     try:
         funcionario = service.editar_dados(funcionario_atual.funcionario_id, dados)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-    return funcionario
-
-
-@router.patch(
-    "/{funcionario_id}/mudar-acesso",
-    response_model=FuncionarioResponse,
-    dependencies=[Depends(exigir_permissao("gerenciar_equipe"))],
-)
-def mudar_acesso(funcionario_id: int, db: Session = Depends(get_db)):
-    service = FuncionarioService(db)
-    try:
-        funcionario = service.mudar_acesso(funcionario_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 

@@ -25,8 +25,8 @@ class InstitucionalService:
         return self.repository.atualizar_configuracoes(dados_filtrados)
 
     def upload_midia(self, file: UploadFile, tipo: str) -> tuple[str, str | None]:
-        if tipo not in ("logo", "banner"):
-            raise UploadInvalidoError("Tipo de mídia inválido. Use 'logo' ou 'banner'.")
+        if tipo not in ("logo", "banner", "sobre"):
+            raise UploadInvalidoError("Tipo de mídia inválido. Use 'logo', 'banner' ou 'sobre'.")
 
         conteudo = file.file.read()
         file.file.seek(0)
@@ -70,7 +70,37 @@ class InstitucionalService:
             finally:
                 file.file.seek(0)
 
-        pasta = "logotipos" if tipo == "logo" else "banners"
+        elif tipo == "sobre":
+            if tamanho_bytes > 5 * 1024 * 1024:
+                raise UploadInvalidoError("A imagem da seção 'Sobre' deve ter no máximo 5MB.")
+
+            kind = filetype.guess(conteudo)
+            if not kind or kind.extension not in ("jpg", "jpeg", "png"):
+                raise UploadInvalidoError(
+                    "A imagem da seção 'Sobre' deve  ser uma imagem JPG ou PNG válida."
+                )
+            extensao = kind.extension
+
+            try:
+                with Image.open(file.file) as img:
+                    largura, altura = img.size
+                    if largura < 800 or altura < 600:
+                        warning = f"A resolução da imagem ({largura}x{altura}px) está abaixo da recomendada (800x600px). A imagem pode ficar desfocada."
+            except Exception:
+                pass
+            finally:
+                file.file.seek(0)
+
+        if tipo == "logo":
+            pasta = "logotipos"
+            campo_banco = "logotipo"
+        elif tipo == "banner":
+            pasta = "banners"
+            campo_banco = "banner_hero"
+        else:
+            pasta = "sobre"
+            campo_banco = "imagem_sobre"
+
         content_type = file.content_type or f"image/{extensao}"
         if extensao == "svg":
             content_type = "image/svg+xml"
@@ -83,7 +113,6 @@ class InstitucionalService:
         )
 
         config = self.repository.buscar_configuracoes()
-        campo_banco = "logotipo" if tipo == "logo" else "banner_hero"
         chave_antiga = getattr(config, campo_banco)
 
         self.repository.atualizar_configuracoes({campo_banco: nova_chave})
