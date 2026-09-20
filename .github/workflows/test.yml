@@ -14,6 +14,12 @@ jobs:
       SMTP_USER: advog
       SMTP_PASSWORD: advog
       SMTP_FROM: nao-responda@escritorio.com.br
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ENDPOINT: http://localhost:9000
+      MINIO_PUBLIC_URL: http://localhost:9000
+      MINIO_BUCKET: institucional
+      MINIO_USE_SSL: "false"
     steps:
       - uses: actions/checkout@v4
 
