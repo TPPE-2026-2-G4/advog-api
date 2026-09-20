@@ -38,7 +38,7 @@ def criar_token_acesso(dados: dict, tempo_expiracao_minutos: int = JWT_EXPIRATIO
 
 
 def decodificar_token(token: str) -> dict:
-    return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM], leeway=5)
 
 
 def criar_token_primeiro_acesso(funcionario_id: int) -> str:

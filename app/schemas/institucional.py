@@ -2,7 +2,7 @@ import re
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer, field_validator
 
-from app.config.storage import obter_url_publica
+from app.utils.storage import obter_url_publica
 
 HEX_COLOR_PATTERN = re.compile(r"^#[0-9a-fA-F]{6}$")
 

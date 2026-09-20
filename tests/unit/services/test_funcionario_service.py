@@ -397,3 +397,35 @@ def test_construtor_cria_repository_com_a_sessao_informada(db_session):
 
     assert isinstance(service.repository, FuncionarioRepository)
     assert service.repository.db is db_session
+
+
+def test_buscar_visiveis_institucional_retorna_lista():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    service.repository.buscar_visiveis_institucional.return_value = [
+        Funcionario(funcionario_id=1, nome="Visivel", exibicao_institucional=True)
+    ]
+    resultado = service.buscar_visiveis_institucional()
+    assert len(resultado) == 1
+    assert resultado[0].nome == "Visivel"
+
+
+def test_mudar_exibicao_institucional_sucesso():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    funcionario = Funcionario(funcionario_id=1, nome="Teste", exibicao_institucional=False)
+    service.repository.buscar_por_id.return_value = funcionario
+    service.repository.atualizar.return_value = funcionario
+
+    resultado = service.mudar_exibicao_institucional(1, True)
+    assert resultado.exibicao_institucional is True
+    service.repository.atualizar.assert_called_once_with(funcionario)
+
+
+def test_mudar_exibicao_institucional_funcionario_nao_encontrado_lanca_erro():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    service.repository.buscar_por_id.return_value = None
+
+    with pytest.raises(ValueError, match="Funcionário não encontrado"):
+        service.mudar_exibicao_institucional(999, True)
