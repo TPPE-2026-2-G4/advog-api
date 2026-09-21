@@ -17,8 +17,8 @@ class ProcessoRepository:
         self,
         processo_id: int | None = None,
         cnj: str | None = None,
-        titulo: str | None = None,
-        descricao: str | None = None,
+        titulo_proc: str | None = None,
+        descricao_proc: str | None = None,
         status: str | None = None,
         tribunal: str | None = None,
         area: str | None = None,
@@ -31,10 +31,10 @@ class ProcessoRepository:
             query = query.filter(Processo.processo_id == processo_id)
         if cnj:
             query = query.filter(Processo.cnj.ilike(f"%{cnj}%"))
-        if titulo:
-            query = query.filter(Processo.titulo.ilike(f"%{titulo}%"))
-        if descricao:
-            query = query.filter(Processo.descricao.ilike(f"%{descricao}%"))
+        if titulo_proc:
+            query = query.filter(Processo.titulo_proc.ilike(f"%{titulo_proc}%"))
+        if descricao_proc:
+            query = query.filter(Processo.descricao_proc.ilike(f"%{descricao_proc}%"))
         if status and status.lower() != "todos":
             query = query.filter(Processo.status.ilike(f"%{status}%"))
         if tribunal:

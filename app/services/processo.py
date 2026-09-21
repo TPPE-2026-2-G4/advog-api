@@ -17,8 +17,8 @@ class ProcessoService:
         return self.repository.find_all_by_filters(
             processo_id=filters.processo_id,
             cnj=filters.cnj,
-            titulo=filters.titulo,
-            descricao=filters.descricao,
+            titulo_proc=filters.titulo_proc,
+            descricao_proc=filters.descricao_proc,
             status=filters.status,
             tribunal=filters.tribunal,
             area=filters.area,

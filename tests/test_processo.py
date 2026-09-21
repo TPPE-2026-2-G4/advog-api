@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi.testclient import TestClient
 
 from app.config.database import Base, SessionLocal, engine
@@ -14,27 +16,27 @@ def setup_module(module):
 
     p1 = Processo(
         cnj="1111111-11.2026.8.26.0000",
-        titulo="Caso Teste 1",
-        descricao="Descrição do caso 1",
+        titulo_proc="Caso Teste 1",
+        descricao_proc="Descrição do caso 1",
         status="Ativo",
         tribunal="TJSP",
         area="Civil",
-        data_inicio="2026-01-01",
-        data_realizado="2026-01-10",
-        data_prazo="2026-12-31",
+        data_inicio=datetime(2026, 1, 1),
+        data_realizado=datetime(2026, 1, 10),
+        data_prazo=datetime(2026, 12, 31),
         cliente_id=1,
         responsavel_id=1,
     )
     p2 = Processo(
         cnj="2222222-22.2026.5.02.0000",
-        titulo="Caso Teste 2",
-        descricao="Descrição do caso 2",
+        titulo_proc="Caso Teste 2",
+        descricao_proc="Descrição do caso 2",
         status="Pendente",
         tribunal="TRT2",
         area="Trabalhista",
-        data_inicio="2026-02-01",
-        data_realizado="2026-02-10",
-        data_prazo="2026-11-30",
+        data_inicio=datetime(2026, 2, 1),
+        data_realizado=datetime(2026, 2, 10),
+        data_prazo=datetime(2026, 11, 30),
         cliente_id=2,
         responsavel_id=2,
     )
@@ -98,11 +100,11 @@ def test_filtrar_processos_por_tribunal():
 
 
 def test_filtrar_processos_por_titulo():
-    response = client.get("/processos/?titulo=Caso Teste 1")
+    response = client.get("/processos/?titulo_proc=Caso Teste 1")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
-    assert data[0]["titulo"] == "Caso Teste 1"
+    assert data[0]["titulo_proc"] == "Caso Teste 1"
 
 
 def test_filtrar_processos_por_cliente():
@@ -132,15 +134,16 @@ def test_filtrar_processos_por_responsavel():
 def test_criar_processo():
     payload = {
         "cnj": "3333333-33.2026.4.03.0000",
-        "titulo": "Caso Teste 3",
-        "descricao": "Descrição do caso 3",
+        "titulo_proc": "Caso Teste 3",
+        "descricao_proc": "Descrição do caso 3",
         "status": "Em Análise",
         "tribunal": "TRF3",
         "area": "Tributária",
-        "data_inicio": "2026-03-01",
-        "data_realizado": "2026-03-10",
-        "data_prazo": "2026-10-31",
+        "data_inicio": "2026-03-01T00:00:00",
+        "data_realizado": "2026-03-10T00:00:00",
+        "data_prazo": "2026-10-31T00:00:00",
         "cliente_id": 3,
+        "responsavel_id": 1,
     }
     response = client.post("/processos/", json=payload)
     assert response.status_code == 201
