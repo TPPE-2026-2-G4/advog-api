@@ -1,374 +1,513 @@
+from unittest.mock import patch
+
 import pytest
 
 from app.models.cargo import Cargo
-from app.models.funcionario import StatusFuncionario
-
-
-@pytest.fixture
-def cargo_padrao(db_session):
-    cargo = Cargo(nome_cargo="Advogado", descricao="Cargo de teste")
-    db_session.add(cargo)
-    db_session.commit()
-    db_session.refresh(cargo)
-    return cargo
+from app.models.funcionario import Funcionario, StatusFuncionario
 
 
 @pytest.fixture
 def outro_cargo(db_session):
-    cargo = Cargo(nome_cargo="Sócio", descricao="Cargo de teste")
+    cargo = Cargo(nome_cargo="Sócio", descricao="Cargo de teste", permissao={})
     db_session.add(cargo)
     db_session.commit()
     db_session.refresh(cargo)
     return cargo
 
 
-@pytest.mark.parametrize(
-    "nome,email",
-    [
-        ("Ana Beatriz Souza", "ana.souza@test.com"),
-        ("Carlos Eduardo Lima", "carlos.lima@test.com"),
-        ("Patrícia Almeida", "patricia.almeida@test.com"),
-        ("José da Conceição Neto Sobrinho de Almeida Júnior", "jose.longo@test.com"),
-        ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
-    ],
-)
-def test_criar_funcionario_retorna_funcionario_criado(client, cargo_padrao, nome, email):
-    response = client.post(
-        "/funcionarios", json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id}
+class TestCriarFuncionarioController:
+    @pytest.mark.parametrize(
+        "nome,email",
+        [
+            ("Ana Beatriz Souza", "ana.souza@test.com"),
+            ("Carlos Eduardo Lima", "carlos.lima@test.com"),
+            ("Patrícia Almeida", "patricia.almeida@test.com"),
+            ("José da Conceição Neto Sobrinho de Almeida Júnior", "jose.longo@test.com"),
+            ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
+        ],
     )
-    assert response.status_code == 201
-    assert response.json()["nome"] == nome
-    assert response.json()["email"] == email.lower()
-    assert response.json()["cargo_id"] == cargo_padrao.cargo_id
+    def test_criar_funcionario_retorna_funcionario_criado(
+        self, client, cargo_padrao, nome, email, token_admin
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id},
+            headers=headers,
+        )
+        assert response.status_code == 201
+        assert response.json()["nome"] == nome
+        assert response.json()["email"] == email.lower()
+        assert response.json()["cargo_id"] == cargo_padrao.cargo_id
+
+    def test_criar_funcionario_com_cargo_inexistente_retorna_erro(self, client, token_admin):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Funcionario Existente",
+                "email": "funcionario.existente@test.com",
+                "cargo_id": 9999,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Cargo não encontrado"
+
+    def test_criar_funcionario_com_email_existente_retorna_erro(
+        self, client, cargo_padrao, token_admin
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Funcionario Existente",
+                "email": "funcionario.existente@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 201
+
+        response_erro = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Funcionario Existente 2",
+                "email": "funcionario.existente@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers,
+        )
+
+        assert response_erro.status_code == 400
+        assert response_erro.json()["detail"] == "Email já cadastrado"
 
 
-def test_criar_funcionario_com_cargo_inexistente_retorna_erro(client):
-    response = client.post(
-        "/funcionarios",
-        json={
-            "nome": "Funcionario Existente",
-            "email": "funcionario.existente@test.com",
-            "cargo_id": 9999,
-        },
+class TestBuscarFuncionariosController:
+    def test_buscar_todos_funcionarios_com_funcionarios_cadastrados_retorna_lista(
+        self, client, cargo_padrao, token_admin
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Funcionario 1",
+                "email": "funcionario.1@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 201
+        response = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Funcionario 2",
+                "email": "funcionario.2@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 201
+
+        response = client.get("/funcionarios", headers=headers)
+        assert response.status_code == 200
+        funcionarios = response.json()
+        emails = [f["email"] for f in funcionarios]
+        assert "funcionario.1@test.com" in emails
+        assert "funcionario.2@test.com" in emails
+        assert isinstance(funcionarios, list)
+
+    def test_buscar_todos_funcionarios_sem_funcionarios_cadastrados_retorna_lista_vazia(
+        self, client, token_admin
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.get("/funcionarios", headers=headers)
+        assert response.status_code == 200
+        funcionarios = [f for f in response.json() if f["email"] != "admin.fixture@test.com"]
+        assert funcionarios == []
+
+
+class TestPrimeiroAcessoController:
+    @pytest.mark.parametrize(
+        "nome,email",
+        [
+            ("Ana Beatriz Souza", "ana.souza@test.com"),
+            ("Carlos Eduardo Lima", "carlos.lima@test.com"),
+            ("Patrícia Almeida", "patricia.almeida@test.com"),
+            ("José da Conceição Neto Sobrinho de Almeida Júnior", "jose.longo@test.com"),
+            ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
+        ],
     )
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Cargo não encontrado"
+    def test_primeiro_acesso_retorna_funcionario_atualizado(
+        self, client, cargo_padrao, token_primeiro_acesso, nome, email, token_admin
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={
+                "nome": nome,
+                "email": email,
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 201
+        assert response.json()["nome"] == nome
+        assert response.json()["email"] == email.lower()
+        assert response.json()["status"] == StatusFuncionario.PENDENTE.value
+
+        funcionario_id = response.json()["funcionario_id"]
+        response = client.patch(
+            "/funcionarios/primeiro-acesso",
+            json={"senha": "senha123", "token": token_primeiro_acesso(funcionario_id)},
+        )
+        assert response.status_code == 200
+        assert response.json()["nome"] == nome
+        assert response.json()["email"] == email.lower()
+        assert response.json()["status"] == StatusFuncionario.ATIVO.value
+
+    def test_primeiro_acesso_funcionario_nao_encontrado_retorna_erro(
+        self, client, token_primeiro_acesso
+    ):
+        response = client.patch(
+            "/funcionarios/primeiro-acesso",
+            json={"senha": "senha123", "token": token_primeiro_acesso(999)},
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Funcionário não encontrado"
+
+    def test_primeiro_acesso_funcionario_ja_ativado_retorna_erro(
+        self, client, cargo_padrao, token_primeiro_acesso, token_admin, db_session
+    ):
+        admin = db_session.query(Funcionario).filter_by(email="admin.fixture@test.com").first()
+        if admin:
+            admin.status = StatusFuncionario.ATIVO
+            if admin.cargo:
+                admin.cargo.permissao = {"gerenciar_equipe": True}
+            db_session.commit()
+
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Funcionario Ativo",
+                "email": "funcionario.ativo@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 201
+
+        funcionario_id = response.json()["funcionario_id"]
+        token = token_primeiro_acesso(funcionario_id)
+        response = client.patch(
+            "/funcionarios/primeiro-acesso",
+            json={"senha": "senha123", "token": token},
+        )
+        assert response.status_code == 200
+
+        response = client.patch(
+            "/funcionarios/primeiro-acesso",
+            json={"senha": "senha456", "token": token},
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Funcionário já teve a conta ativada"
+
+    def test_primeiro_acesso_token_invalido_retorna_401(self, client):
+        response = client.patch(
+            "/funcionarios/primeiro-acesso",
+            json={"senha": "senha123", "token": "token_invalido_malformado"},
+        )
+        assert response.status_code == 401
+        assert "inválido" in response.json()["detail"].lower()
 
 
-def test_criar_funcionario_com_email_existente_retorna_erro(client, cargo_padrao):
-    response = client.post(
-        "/funcionarios",
-        json={
-            "nome": "Funcionario Existente",
-            "email": "funcionario.existente@test.com",
-            "cargo_id": cargo_padrao.cargo_id,
-        },
+class TestMudarAcessoController:
+    @pytest.mark.parametrize(
+        "nome,email",
+        [
+            ("Ana Beatriz Souza", "ana.souza@test.com"),
+            ("Carlos Eduardo Lima", "carlos.lima@test.com"),
+            ("Patrícia Almeida", "patricia.almeida@test.com"),
+            ("José da Conceição Neto Sobrinho de Almeida Júnior", "jose.longo@test.com"),
+            ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
+        ],
     )
-    assert response.status_code == 201
+    def test_mudar_acesso_funcionario_muda_atividade_e_manda_funcionario_atualizado(
+        self, client, cargo_padrao, token_primeiro_acesso, nome, email, token_admin
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id},
+            headers=headers,
+        )
+        assert response.status_code == 201
 
-    response_erro = client.post(
-        "/funcionarios",
-        json={
-            "nome": "Funcionario Existente 2",
-            "email": "funcionario.existente@test.com",
-            "cargo_id": cargo_padrao.cargo_id,
-        },
+        funcionario_id = response.json()["funcionario_id"]
+        response = client.patch(
+            "/funcionarios/primeiro-acesso",
+            json={"senha": "senha123", "token": token_primeiro_acesso(funcionario_id)},
+        )
+        assert response.status_code == 200
+
+        response = client.patch(f"/funcionarios/{funcionario_id}/mudar-acesso", headers=headers)
+        assert response.status_code == 200
+        assert response.json()["nome"] == nome
+        assert response.json()["email"] == email.lower()
+        assert response.json()["status"] == StatusFuncionario.INATIVO.value
+
+        response = client.patch(f"/funcionarios/{funcionario_id}/mudar-acesso", headers=headers)
+        assert response.status_code == 200
+        assert response.json()["nome"] == nome
+        assert response.json()["email"] == email.lower()
+        assert response.json()["status"] == StatusFuncionario.ATIVO.value
+
+    def test_mudar_acesso_funcionario_nao_encontrado_retorna_erro(self, client, token_admin):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.patch("/funcionarios/999/mudar-acesso", headers=headers)
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Funcionário não encontrado"
+
+    def test_mudar_acesso_funcionario_com_conta_pendente_retorna_erro(
+        self, client, cargo_padrao, token_admin
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Funcionario Pendente",
+                "email": "funcionario.pendente@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 201
+
+        funcionario_id = response.json()["funcionario_id"]
+        response = client.patch(f"/funcionarios/{funcionario_id}/mudar-acesso", headers=headers)
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Funcionário ainda não ativou a conta"
+
+    def test_mudar_acesso_funcionario_inexistente_retorna_400(self, client, token_admin):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.patch("/funcionarios/9999/mudar-acesso", headers=headers)
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Funcionário não encontrado"
+
+
+class TestMudarCargoController:
+    def test_mudar_cargo_retorna_funcionario_atualizado(
+        self, client, cargo_padrao, outro_cargo, token_admin
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Funcionario Teste",
+                "email": "funcionario.cargo@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 201
+        funcionario_id = response.json()["funcionario_id"]
+
+        response = client.patch(
+            f"/funcionarios/{funcionario_id}/mudar-cargo",
+            json={"cargo_id": outro_cargo.cargo_id},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["cargo_id"] == outro_cargo.cargo_id
+
+    def test_mudar_cargo_funcionario_nao_encontrado_retorna_erro(
+        self, client, cargo_padrao, token_admin
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.patch(
+            "/funcionarios/999/mudar-cargo",
+            json={"cargo_id": cargo_padrao.cargo_id},
+            headers=headers,
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Funcionário não encontrado"
+
+    def test_mudar_cargo_com_cargo_inexistente_retorna_erro(
+        self, client, cargo_padrao, token_admin
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Funcionario Teste",
+                "email": "funcionario.cargo2@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 201
+        funcionario_id = response.json()["funcionario_id"]
+
+        response = client.patch(
+            f"/funcionarios/{funcionario_id}/mudar-cargo",
+            json={"cargo_id": 9999},
+            headers=headers,
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Cargo não encontrado"
+
+
+class TestMudarExibicaoInstitucionalController:
+    def test_mudar_exibicao_institucional_sucesso(self, client, cargo_padrao, token_admin):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        res = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Func Exibicao",
+                "email": "exibicao@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers,
+        )
+        func_id = res.json()["funcionario_id"]
+
+        response = client.patch(
+            f"/funcionarios/{func_id}/exibicao-institucional",
+            json={"exibicaoInstitucional": True},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["exibicaoInstitucional"] is True
+
+    def test_mudar_exibicao_institucional_funcionario_inexistente_retorna_400(
+        self, client, token_admin
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.patch(
+            "/funcionarios/9999/exibicao-institucional",
+            json={"exibicaoInstitucional": True},
+            headers=headers,
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Funcionário não encontrado"
+
+
+class TestEditarDadosController:
+    def test_editar_dados_sem_token_retorna_erro(self, client):
+        response = client.patch("/funcionarios", json={"nome": "Novo Nome"})
+        assert response.status_code == 401
+
+    def test_editar_dados_com_token_invalido_retorna_erro(self, client):
+        response = client.patch(
+            "/funcionarios",
+            json={"nome": "Novo Nome"},
+            headers={"Authorization": "Bearer token-invalido"},
+        )
+        assert response.status_code == 401
+
+    def test_editar_dados_retorna_funcionario_atualizado(
+        self, client, cargo_padrao, token_acesso, token_admin
+    ):
+        headers_admin = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Funcionario Teste",
+                "email": "funcionario.editar@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers_admin,
+        )
+        assert response.status_code == 201
+        funcionario_id = response.json()["funcionario_id"]
+
+        token = token_acesso(funcionario_id, "funcionario.editar@test.com")
+        response = client.patch(
+            "/funcionarios",
+            json={"nome": "Nome Atualizado", "uf_oab": "SP", "numero_oab": "12345"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        assert response.json()["nome"] == "Nome Atualizado"
+        assert response.json()["uf_oab"] == "SP"
+        assert response.json()["numero_oab"] == "12345"
+        assert response.json()["email"] == "funcionario.editar@test.com"
+        assert response.json()["funcionario_id"] == funcionario_id
+
+    def test_editar_dados_funcionario_inexistente_retorna_erro(self, client, token_acesso):
+        token = token_acesso(999)
+        response = client.patch(
+            "/funcionarios",
+            json={"nome": "Novo Nome"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 401
+
+    def test_editar_dados_erro_service_retorna_400(
+        self, client, cargo_padrao, token_acesso, token_admin
+    ):
+        headers_admin = {"Authorization": f"Bearer {token_admin}"}
+        res = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Func Teste",
+                "email": "func.erro@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers_admin,
+        )
+        func_id = res.json()["funcionario_id"]
+        token = token_acesso(func_id, "func.erro@test.com")
+
+        with patch(
+            "app.controllers.funcionario.FuncionarioService.editar_dados",
+            side_effect=ValueError("Erro ao editar"),
+        ):
+            response = client.patch(
+                "/funcionarios",
+                json={"nome": "Novo Nome"},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert response.status_code == 400
+            assert response.json()["detail"] == "Erro ao editar"
+
+
+class TestApagarFuncionarioController:
+    @pytest.mark.parametrize(
+        "nome,email",
+        [
+            ("Ana Beatriz Souza", "ana.souza@test.com"),
+            ("Carlos Eduardo Lima", "carlos.lima@test.com"),
+            ("Patrícia Almeida", "patricia.almeida@test.com"),
+            ("José da Conceição Neto Sobrinho de Almeida Júnior", "jose.longo@test.com"),
+            ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
+        ],
     )
+    def test_apagar_funcionario_retorna_sucesso(
+        self, client, cargo_padrao, nome, email, token_admin
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id},
+            headers=headers,
+        )
+        assert response.status_code == 201
 
-    assert response_erro.status_code == 400
-    assert response_erro.json()["detail"] == "Email já cadastrado"
+        funcionario_id = response.json()["funcionario_id"]
+        response = client.delete(f"/funcionarios/{funcionario_id}", headers=headers)
+        assert response.status_code == 204
+        assert response.content == b""
 
+    def test_apagar_funcionario_nao_encontrado_retorna_erro(self, client, token_admin):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.delete("/funcionarios/999", headers=headers)
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Funcionário não encontrado"
 
-def test_buscar_todos_funcionarios_com_funcionarios_cadastrados_retorna_lista(client, cargo_padrao):
-    response = client.post(
-        "/funcionarios",
-        json={
-            "nome": "Funcionario 1",
-            "email": "funcionario.1@test.com",
-            "cargo_id": cargo_padrao.cargo_id,
-        },
-    )
-    assert response.status_code == 201
-    response = client.post(
-        "/funcionarios",
-        json={
-            "nome": "Funcionario 2",
-            "email": "funcionario.2@test.com",
-            "cargo_id": cargo_padrao.cargo_id,
-        },
-    )
-    assert response.status_code == 201
-
-    response = client.get("/funcionarios")
-    assert response.status_code == 200
-    assert len(response.json()) == 2
-    assert response.json()[0]["nome"] == "Funcionario 1"
-    assert response.json()[0]["email"] == "funcionario.1@test.com"
-    assert response.json()[1]["nome"] == "Funcionario 2"
-    assert response.json()[1]["email"] == "funcionario.2@test.com"
-    assert isinstance(response.json(), list)
-
-
-def test_buscar_todos_funcionarios_sem_funcionarios_cadastrados_retorna_lista_vazia(client):
-    response = client.get("/funcionarios")
-    assert response.status_code == 200
-    assert response.json() == []
-    assert isinstance(response.json(), list)
-
-
-@pytest.mark.parametrize(
-    "nome,email",
-    [
-        ("Ana Beatriz Souza", "ana.souza@test.com"),
-        ("Carlos Eduardo Lima", "carlos.lima@test.com"),
-        ("Patrícia Almeida", "patricia.almeida@test.com"),
-        ("José da Conceição Neto Sobrinho de Almeida Júnior", "jose.longo@test.com"),
-        ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
-    ],
-)
-def test_primeiro_acesso_retorna_funcionario_atualizado(
-    client, cargo_padrao, token_primeiro_acesso, nome, email
-):
-    response = client.post(
-        "/funcionarios",
-        json={
-            "nome": nome,
-            "email": email,
-            "cargo_id": cargo_padrao.cargo_id,
-        },
-    )
-    assert response.status_code == 201
-    assert response.json()["nome"] == nome
-    assert response.json()["email"] == email.lower()
-    assert response.json()["status"] == StatusFuncionario.PENDENTE.value
-
-    funcionario_id = response.json()["funcionario_id"]
-    response = client.patch(
-        "/funcionarios/primeiro-acesso",
-        json={"senha": "senha123", "token": token_primeiro_acesso(funcionario_id)},
-    )
-    assert response.status_code == 200
-    assert response.json()["nome"] == nome
-    assert response.json()["email"] == email.lower()
-    assert response.json()["status"] == StatusFuncionario.ATIVO.value
-
-
-def test_primeiro_acesso_funcionario_nao_encontrado_retorna_erro(client, token_primeiro_acesso):
-    response = client.patch(
-        "/funcionarios/primeiro-acesso",
-        json={"senha": "senha123", "token": token_primeiro_acesso(999)},
-    )
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Funcionário não encontrado"
-
-
-def test_primeiro_acesso_funcionario_ja_ativado_retorna_erro(
-    client, cargo_padrao, token_primeiro_acesso
-):
-    response = client.post(
-        "/funcionarios",
-        json={
-            "nome": "Funcionario Ativo",
-            "email": "funcionario.ativo@test.com",
-            "cargo_id": cargo_padrao.cargo_id,
-        },
-    )
-    assert response.status_code == 201
-
-    funcionario_id = response.json()["funcionario_id"]
-    token = token_primeiro_acesso(funcionario_id)
-    response = client.patch(
-        "/funcionarios/primeiro-acesso",
-        json={"senha": "senha123", "token": token},
-    )
-    assert response.status_code == 200
-
-    response = client.patch(
-        "/funcionarios/primeiro-acesso",
-        json={"senha": "senha456", "token": token},
-    )
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Funcionário já teve a conta ativada"
-
-
-@pytest.mark.parametrize(
-    "nome,email",
-    [
-        ("Ana Beatriz Souza", "ana.souza@test.com"),
-        ("Carlos Eduardo Lima", "carlos.lima@test.com"),
-        ("Patrícia Almeida", "patricia.almeida@test.com"),
-        ("José da Conceição Neto Sobrinho de Almeida Júnior", "jose.longo@test.com"),
-        ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
-    ],
-)
-def test_mudar_acesso_funcionario_muda_atividade_e_manda_funcionario_atualizado(
-    client, cargo_padrao, token_primeiro_acesso, nome, email
-):
-    response = client.post(
-        "/funcionarios", json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id}
-    )
-    assert response.status_code == 201
-
-    funcionario_id = response.json()["funcionario_id"]
-    response = client.patch(
-        "/funcionarios/primeiro-acesso",
-        json={"senha": "senha123", "token": token_primeiro_acesso(funcionario_id)},
-    )
-    assert response.status_code == 200
-
-    response = client.patch(f"/funcionarios/{funcionario_id}/mudar-acesso")
-    assert response.status_code == 200
-    assert response.json()["nome"] == nome
-    assert response.json()["email"] == email.lower()
-    assert response.json()["status"] == StatusFuncionario.INATIVO.value
-
-    response = client.patch(f"/funcionarios/{funcionario_id}/mudar-acesso")
-    assert response.status_code == 200
-    assert response.json()["nome"] == nome
-    assert response.json()["email"] == email.lower()
-    assert response.json()["status"] == StatusFuncionario.ATIVO.value
-
-
-def test_mudar_acesso_funcionario_nao_encontrado_retorna_erro(client):
-    response = client.patch("/funcionarios/999/mudar-acesso")
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Funcionário não encontrado"
-
-
-def test_mudar_acesso_funcionario_com_conta_pendente_retorna_erro(client, cargo_padrao):
-    response = client.post(
-        "/funcionarios",
-        json={
-            "nome": "Funcionario Pendente",
-            "email": "funcionario.pendente@test.com",
-            "cargo_id": cargo_padrao.cargo_id,
-        },
-    )
-    assert response.status_code == 201
-
-    funcionario_id = response.json()["funcionario_id"]
-    response = client.patch(f"/funcionarios/{funcionario_id}/mudar-acesso")
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Funcionário ainda não ativou a conta"
-
-
-@pytest.mark.parametrize(
-    "nome,email",
-    [
-        ("Ana Beatriz Souza", "ana.souza@test.com"),
-        ("Carlos Eduardo Lima", "carlos.lima@test.com"),
-        ("Patrícia Almeida", "patricia.almeida@test.com"),
-        ("José da Conceição Neto Sobrinho de Almeida Júnior", "jose.longo@test.com"),
-        ("Rafael Nascimento", "RAFAEL.NASCIMENTO@TEST.COM"),
-    ],
-)
-def test_apagar_funcionario_retorna_sucesso(client, cargo_padrao, nome, email):
-    response = client.post(
-        "/funcionarios", json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id}
-    )
-    assert response.status_code == 201
-
-    funcionario_id = response.json()["funcionario_id"]
-    response = client.delete(f"/funcionarios/{funcionario_id}")
-    assert response.status_code == 204
-    assert response.content == b""
-
-
-def test_apagar_funcionario_nao_encontrado_retorna_erro(client):
-    response = client.delete("/funcionarios/999")
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Funcionário não encontrado"
-
-
-def test_mudar_cargo_retorna_funcionario_atualizado(client, cargo_padrao, outro_cargo):
-    response = client.post(
-        "/funcionarios",
-        json={
-            "nome": "Funcionario Teste",
-            "email": "funcionario.cargo@test.com",
-            "cargo_id": cargo_padrao.cargo_id,
-        },
-    )
-    assert response.status_code == 201
-    funcionario_id = response.json()["funcionario_id"]
-
-    response = client.patch(
-        f"/funcionarios/{funcionario_id}/mudar-cargo", json={"cargo_id": outro_cargo.cargo_id}
-    )
-    assert response.status_code == 200
-    assert response.json()["cargo_id"] == outro_cargo.cargo_id
-
-
-def test_mudar_cargo_funcionario_nao_encontrado_retorna_erro(client, cargo_padrao):
-    response = client.patch(
-        "/funcionarios/999/mudar-cargo", json={"cargo_id": cargo_padrao.cargo_id}
-    )
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Funcionário não encontrado"
-
-
-def test_mudar_cargo_com_cargo_inexistente_retorna_erro(client, cargo_padrao):
-    response = client.post(
-        "/funcionarios",
-        json={
-            "nome": "Funcionario Teste",
-            "email": "funcionario.cargo2@test.com",
-            "cargo_id": cargo_padrao.cargo_id,
-        },
-    )
-    assert response.status_code == 201
-    funcionario_id = response.json()["funcionario_id"]
-
-    response = client.patch(f"/funcionarios/{funcionario_id}/mudar-cargo", json={"cargo_id": 9999})
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Cargo não encontrado"
-
-
-def test_editar_dados_sem_token_retorna_erro(client):
-    response = client.patch("/funcionarios", json={"nome": "Novo Nome"})
-    assert response.status_code == 401
-
-
-def test_editar_dados_com_token_invalido_retorna_erro(client):
-    response = client.patch(
-        "/funcionarios",
-        json={"nome": "Novo Nome"},
-        headers={"Authorization": "Bearer token-invalido"},
-    )
-    assert response.status_code == 401
-
-
-def test_editar_dados_retorna_funcionario_atualizado(client, cargo_padrao, token_acesso):
-    response = client.post(
-        "/funcionarios",
-        json={
-            "nome": "Funcionario Teste",
-            "email": "funcionario.editar@test.com",
-            "cargo_id": cargo_padrao.cargo_id,
-        },
-    )
-    assert response.status_code == 201
-    funcionario_id = response.json()["funcionario_id"]
-
-    token = token_acesso(funcionario_id, "funcionario.editar@test.com")
-    response = client.patch(
-        "/funcionarios",
-        json={"nome": "Nome Atualizado", "uf_oab": "SP", "numero_oab": "12345"},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert response.status_code == 200
-    assert response.json()["nome"] == "Nome Atualizado"
-    assert response.json()["uf_oab"] == "SP"
-    assert response.json()["numero_oab"] == "12345"
-    assert response.json()["email"] == "funcionario.editar@test.com"
-    assert response.json()["funcionario_id"] == funcionario_id
-
-
-def test_editar_dados_funcionario_inexistente_retorna_erro(client, token_acesso):
-    token = token_acesso(999)
-    response = client.patch(
-        "/funcionarios",
-        json={"nome": "Novo Nome"},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert response.status_code == 401
+    def test_apagar_funcionario_inexistente_retorna_400(self, client, token_admin):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.delete("/funcionarios/9999", headers=headers)
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Funcionário não encontrado"

@@ -15,6 +15,9 @@ class FuncionarioService:
     def buscar_todos(self) -> list[Funcionario]:
         return self.repository.buscar_todos()
 
+    def buscar_visiveis_institucional(self) -> list[Funcionario]:
+        return self.repository.buscar_visiveis_institucional()
+
     def criar_funcionario(self, dados: FuncionarioCreate) -> Funcionario:
         if self.repository.buscar_por_email(dados.email.lower()):
             raise ValueError("Email já cadastrado")
@@ -30,7 +33,7 @@ class FuncionarioService:
         funcionario = self.repository.buscar_por_id(funcionario_id)
         if not funcionario:
             raise ValueError("Funcionário não encontrado")
-        if funcionario and funcionario.status != StatusFuncionario.PENDENTE:
+        if funcionario.status != StatusFuncionario.PENDENTE:
             raise ValueError("Funcionário já teve a conta ativada")
 
         dados_enviados = dados.model_dump(exclude_unset=True)
@@ -58,6 +61,14 @@ class FuncionarioService:
             raise ValueError("Cargo não encontrado")
 
         funcionario.cargo_id = cargo_id
+        return self.repository.atualizar(funcionario)
+
+    def mudar_exibicao_institucional(self, funcionario_id: int, exibicao: bool) -> Funcionario:
+        funcionario = self.repository.buscar_por_id(funcionario_id)
+        if not funcionario:
+            raise ValueError("Funcionário não encontrado")
+
+        funcionario.exibicao_institucional = exibicao
         return self.repository.atualizar(funcionario)
 
     def editar_dados(self, funcionario_id: int, dados: FuncionarioUpdate) -> Funcionario:

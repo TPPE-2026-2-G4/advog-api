@@ -35,8 +35,9 @@ class Funcionario(Base):
     status: Mapped[StatusFuncionario] = mapped_column(
         Enum(StatusFuncionario), nullable=False, default=StatusFuncionario.PENDENTE
     )
-    exibicaoInstitucional: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-
+    exibicao_institucional: Mapped[bool] = mapped_column(
+        "exibicaoInstitucional", Boolean, nullable=False, default=False
+    )
     cargo_id: Mapped[int] = mapped_column(Integer, ForeignKey("cargos.cargo_id"), nullable=False)
     cargo: Mapped["Cargo"] = relationship("Cargo", back_populates="funcionarios")
 
