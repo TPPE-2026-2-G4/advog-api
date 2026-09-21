@@ -15,11 +15,37 @@ from slowapi import _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from starlette.types import ExceptionHandler  # noqa: E402
 
-from app.config.database import Base, engine  # noqa: E402
+from app.config.database import Base, SessionLocal, engine  # noqa: E402
 from app.config.limiter import limiter  # noqa: E402
-from app.controllers import auth, cargo, funcionario, lancamento, processo  # noqa: E402
+
+from app.controllers import (  # noqa: E402
+    auth,
+    cargo,
+    funcionario,
+    institucional,
+    lancamento,
+    processo_controller, processo
+)
+from app.models.institucional import Institucional  # noqa: E402
 
 Base.metadata.create_all(bind=engine)
+
+
+def _seed_institucional() -> None:
+    from sqlalchemy import insert
+
+    db = SessionLocal()
+    try:
+        institucional = db.get(Institucional, 1)
+        if institucional is None:
+            stmt = insert(Institucional).values(institucional_id=1)
+            db.execute(stmt)
+            db.commit()
+    finally:
+        db.close()
+
+
+_seed_institucional()
 
 app = FastAPI(
     title="Advocacia API", description="API para gestão de processos da advocacia", version="1.0.0"
@@ -41,11 +67,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(cargo.router)
-app.include_router(processo.router)
-app.include_router(lancamento.router)
-app.include_router(funcionario.router)
 app.include_router(auth.router)
+app.include_router(cargo.router)
+app.include_router(funcionario.router)
+app.include_router(institucional.router)
+app.include_router(lancamento.router)
+app.include_router(processo_controller.router)
+app.include_router(processo.router)
 
 
 @app.get("/")

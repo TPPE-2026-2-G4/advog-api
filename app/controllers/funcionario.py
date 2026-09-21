@@ -4,11 +4,12 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.dependencies import obter_funcionario_atual
+from app.dependencies.auth import exigir_permissao, obter_funcionario_atual
 from app.models.funcionario import Funcionario
 from app.schemas.funcionario import (
     FuncionarioCreate,
     FuncionarioMudarCargo,
+    FuncionarioMudarExibicao,
     FuncionarioPrimeiroAcesso,
     FuncionarioResponse,
     FuncionarioUpdate,
@@ -20,7 +21,12 @@ from app.utils.seguranca import validar_token_primeiro_acesso
 router = APIRouter(prefix="/funcionarios", tags=["Funcionários"])
 
 
-@router.post("", response_model=FuncionarioResponse, status_code=201)
+@router.post(
+    "",
+    response_model=FuncionarioResponse,
+    status_code=201,
+    dependencies=[Depends(exigir_permissao("gerenciar_equipe"))],
+)
 def criar_funcionario(
     dados: FuncionarioCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
 ):
@@ -62,7 +68,26 @@ def primeiro_acesso(dados: FuncionarioPrimeiroAcesso, db: Session = Depends(get_
     return funcionario
 
 
-@router.patch("/{funcionario_id}/mudar-cargo", response_model=FuncionarioResponse)
+@router.patch(
+    "/{funcionario_id}/mudar-acesso",
+    response_model=FuncionarioResponse,
+    dependencies=[Depends(exigir_permissao("gerenciar_equipe"))],
+)
+def mudar_acesso(funcionario_id: int, db: Session = Depends(get_db)):
+    service = FuncionarioService(db)
+    try:
+        funcionario = service.mudar_acesso(funcionario_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return funcionario
+
+
+@router.patch(
+    "/{funcionario_id}/mudar-cargo",
+    response_model=FuncionarioResponse,
+    dependencies=[Depends(exigir_permissao("gerenciar_equipe"))],
+)
 def mudar_cargo(funcionario_id: int, dados: FuncionarioMudarCargo, db: Session = Depends(get_db)):
     service = FuncionarioService(db)
     try:
@@ -71,6 +96,23 @@ def mudar_cargo(funcionario_id: int, dados: FuncionarioMudarCargo, db: Session =
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     return funcionario
+
+
+@router.patch(
+    "/{funcionario_id}/exibicao-institucional",
+    response_model=FuncionarioResponse,
+    dependencies=[Depends(exigir_permissao("gerenciar_equipe"))],
+)
+def mudar_exibicao_institucional(
+    funcionario_id: int,
+    dados: FuncionarioMudarExibicao,
+    db: Session = Depends(get_db),
+):
+    service = FuncionarioService(db)
+    try:
+        return service.mudar_exibicao_institucional(funcionario_id, dados.exibicao_institucional)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.patch("", response_model=FuncionarioResponse)
@@ -88,18 +130,11 @@ def editar_dados(
     return funcionario
 
 
-@router.patch("/{funcionario_id}/mudar-acesso", response_model=FuncionarioResponse)
-def mudar_acesso(funcionario_id: int, db: Session = Depends(get_db)):
-    service = FuncionarioService(db)
-    try:
-        funcionario = service.mudar_acesso(funcionario_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-
-    return funcionario
-
-
-@router.delete("/{funcionario_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{funcionario_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exigir_permissao("gerenciar_equipe"))],
+)
 def apagar_funcionario(funcionario_id: int, db: Session = Depends(get_db)):
     service = FuncionarioService(db)
     try:
