@@ -13,6 +13,7 @@ Base.metadata.create_all(bind=engine)
 def override_obter_funcionario_atual():
     return {"id": 1, "email": "test@test.com"}
 
+
 client = TestClient(app)
 
 
