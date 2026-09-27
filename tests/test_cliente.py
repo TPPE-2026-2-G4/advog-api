@@ -26,7 +26,6 @@ def setup_function():
 
     c1 = Cliente(
         nome="Cliente Teste 1",
-        cpf="111.111.111-11",
         telefone="(11) 91111-1111",
         email="cliente1@teste.com",
         area_interesse="Civil",
@@ -36,7 +35,6 @@ def setup_function():
     )
     c2 = Cliente(
         nome="Cliente Teste 2",
-        cpf="222.222.222-22",
         telefone="(22) 92222-2222",
         email="cliente2@teste.com",
         area_interesse="Trabalhista",
@@ -100,7 +98,6 @@ def test_filtrar_clientes_por_etapa():
 def test_criar_cliente():
     payload = {
         "nome": "Novo Cliente 3",
-        "cpf": "333.333.333-33",
         "telefone": "(33) 93333-3333",
         "email": "novo@teste.com",
         "area_interesse": "Tributário",

@@ -25,7 +25,6 @@ class ClienteRepository:
                 or_(
                     Cliente.nome.ilike(f"%{busca}%"),
                     Cliente.email.ilike(f"%{busca}%"),
-                    Cliente.cpf.ilike(f"%{busca}%"),
                 )
             )
 
