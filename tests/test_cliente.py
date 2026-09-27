@@ -13,13 +13,12 @@ Base.metadata.create_all(bind=engine)
 def override_obter_funcionario_atual():
     return {"id": 1, "email": "test@test.com"}
 
-
-app.dependency_overrides[obter_funcionario_atual] = override_obter_funcionario_atual
-
 client = TestClient(app)
 
 
 def setup_function():
+    app.dependency_overrides[obter_funcionario_atual] = override_obter_funcionario_atual
+    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     db.query(Cliente).delete()
     db.commit()
@@ -50,6 +49,7 @@ def setup_function():
 
 
 def teardown_function():
+    app.dependency_overrides.clear()
     db = SessionLocal()
     db.query(Cliente).delete()
     db.commit()
