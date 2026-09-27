@@ -1,0 +1,27 @@
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
+from app.models.cliente import Cliente
+from app.repositories.cliente import ClienteRepository
+from app.schemas.cliente import ClienteCreate, ClienteFilter
+
+
+class ClienteService:
+    def __init__(self, db: Session):
+        self.repository = ClienteRepository(db)
+
+    def search_clientes(self, filters: ClienteFilter) -> list[Cliente]:
+        return self.repository.find_all_by_filters(
+            busca=filters.busca,
+            responsavel_id=filters.responsavel_id,
+            etapa_id=filters.etapa_id,
+        )
+
+    def create_cliente(self, cliente_data: ClienteCreate) -> Cliente:
+        return self.repository.create(cliente_data)
+
+    def get_cliente_by_id(self, cliente_id: int) -> Cliente:
+        cliente = self.repository.get_by_id(cliente_id)
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente não encontrado")
+        return cliente

@@ -20,6 +20,7 @@ from app.config.limiter import limiter  # noqa: E402
 from app.controllers import (  # noqa: E402
     auth,
     cargo,
+    cliente,
     funcionario,
     institucional,
     lancamento,
@@ -72,6 +73,7 @@ app.include_router(funcionario.router)
 app.include_router(institucional.router)
 app.include_router(lancamento.router)
 app.include_router(processo_controller.router)
+app.include_router(cliente.router)
 
 
 @app.get("/")
