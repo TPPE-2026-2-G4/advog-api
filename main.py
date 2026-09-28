@@ -23,7 +23,7 @@ from app.controllers import (  # noqa: E402
     funcionario,
     institucional,
     lancamento,
-    processo_controller,
+    processo,
 )
 from app.models.institucional import Institucional  # noqa: E402
 
@@ -71,7 +71,7 @@ app.include_router(cargo.router)
 app.include_router(funcionario.router)
 app.include_router(institucional.router)
 app.include_router(lancamento.router)
-app.include_router(processo_controller.router)
+app.include_router(processo.router)
 
 
 @app.get("/")
