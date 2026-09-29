@@ -76,7 +76,6 @@ app.include_router(cliente.router)
 app.include_router(processo.router)
 
 
-
 @app.get("/")
 def root():
     return {"message": "Bem vindo a API de Gestão de Advocacia (FastAPI)"}
