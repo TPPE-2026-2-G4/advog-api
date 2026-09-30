@@ -4,9 +4,9 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
-from app.models.cargo import Cargo
-from app.models.funcionario import Funcionario, StatusFuncionario
-from app.models.institucional import Institucional
+from app.cargo.model import Cargo
+from app.funcionario.model import Funcionario, StatusFuncionario
+from app.institucional.model import Institucional
 from app.utils.seguranca import criar_token_acesso
 
 
@@ -170,8 +170,8 @@ class TestAtualizarInstitucionalController:
 
 class TestUploadMidiaInstitucionalController:
     @pytest.mark.parametrize("tipo,pasta", [("logo", "logotipos"), ("sobre", "sobre")])
-    @patch("app.services.institucional.salvar_arquivo")
-    @patch("app.services.institucional.obter_url_publica")
+    @patch("app.institucional.service.salvar_arquivo")
+    @patch("app.institucional.service.obter_url_publica")
     def test_upload_midia_sucesso(
         self,
         mock_url,

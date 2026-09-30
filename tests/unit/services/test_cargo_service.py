@@ -2,10 +2,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.models.cargo import Cargo
-from app.repositories.cargo import CargoRepository
-from app.schemas.cargo import CargoCreate, CargoUpdate, PermissaoBase
-from app.services.cargo import CargoService
+from app.cargo.model import Cargo
+from app.cargo.repository import CargoRepository
+from app.cargo.schema import CargoCreate, CargoUpdate, PermissaoBase
+from app.cargo.service import CargoService
 
 
 @pytest.fixture

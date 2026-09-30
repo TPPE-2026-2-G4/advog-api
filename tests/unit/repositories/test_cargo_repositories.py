@@ -1,5 +1,5 @@
-from app.models.cargo import Cargo
-from app.repositories.cargo import CargoRepository
+from app.cargo.model import Cargo
+from app.cargo.repository import CargoRepository
 
 
 def test_criar_e_buscar_cargo_por_id(db_session):

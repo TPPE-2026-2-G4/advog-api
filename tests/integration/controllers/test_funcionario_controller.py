@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from app.models.cargo import Cargo
-from app.models.funcionario import Funcionario, StatusFuncionario
+from app.cargo.model import Cargo
+from app.funcionario.model import Funcionario, StatusFuncionario
 
 
 @pytest.fixture
@@ -461,7 +461,7 @@ class TestEditarDadosController:
         token = token_acesso(func_id, "func.erro@test.com")
 
         with patch(
-            "app.controllers.funcionario.FuncionarioService.editar_dados",
+            "app.funcionario.controller.FuncionarioService.editar_dados",
             side_effect=ValueError("Erro ao editar"),
         ):
             response = client.patch(

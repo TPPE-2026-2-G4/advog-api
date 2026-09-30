@@ -15,18 +15,16 @@ from slowapi import _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from starlette.types import ExceptionHandler  # noqa: E402
 
+from app.auth.controller import router as auth_router  # noqa: E402
+from app.cargo.controller import router as cargo_router  # noqa: E402
+from app.cliente.controller import router as cliente_router  # noqa: E402
 from app.config.database import Base, SessionLocal, engine  # noqa: E402
 from app.config.limiter import limiter  # noqa: E402
-from app.controllers import (  # noqa: E402
-    auth,
-    cargo,
-    cliente,
-    funcionario,
-    institucional,
-    lancamento,
-    processo,
-)
-from app.models.institucional import Institucional  # noqa: E402
+from app.funcionario.controller import router as funcionario_router  # noqa: E402
+from app.institucional.controller import router as institucional_router  # noqa: E402
+from app.institucional.model import Institucional  # noqa: E402
+from app.lancamento.controller import router as lancamento_router  # noqa: E402
+from app.processo.controller import router as processo_router  # noqa: E402
 
 Base.metadata.create_all(bind=engine)
 
@@ -67,13 +65,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
-app.include_router(cargo.router)
-app.include_router(funcionario.router)
-app.include_router(institucional.router)
-app.include_router(lancamento.router)
-app.include_router(cliente.router)
-app.include_router(processo.router)
+app.include_router(auth_router)
+app.include_router(cargo_router)
+app.include_router(funcionario_router)
+app.include_router(institucional_router)
+app.include_router(lancamento_router)
+app.include_router(cliente_router)
+app.include_router(processo_router)
 
 
 @app.get("/")

@@ -5,9 +5,9 @@ import pytest
 from fastapi import UploadFile
 from PIL import Image
 
-from app.models.institucional import Institucional
-from app.repositories.institucional import InstitucionalRepository
-from app.services.institucional import InstitucionalService, UploadInvalidoError
+from app.institucional.model import Institucional
+from app.institucional.repository import InstitucionalRepository
+from app.institucional.service import InstitucionalService, UploadInvalidoError
 
 
 @pytest.fixture
@@ -115,9 +115,9 @@ class TestInstitucionalServiceUploadValidacoes:
 
 
 class TestInstitucionalServiceUploadProcessamento:
-    @patch("app.services.institucional.salvar_arquivo")
-    @patch("app.services.institucional.remover_arquivo")
-    @patch("app.services.institucional.obter_url_publica")
+    @patch("app.institucional.service.salvar_arquivo")
+    @patch("app.institucional.service.remover_arquivo")
+    @patch("app.institucional.service.obter_url_publica")
     def test_upload_logo_sucesso_com_remocao_antiga(
         self, mock_url, mock_remover, mock_salvar, service_mocked
     ):
@@ -146,11 +146,11 @@ class TestInstitucionalServiceUploadProcessamento:
 
         with (
             patch(
-                "app.services.institucional.salvar_arquivo",
+                "app.institucional.service.salvar_arquivo",
                 return_value="logotipos/ns.svg",
             ),
             patch(
-                "app.services.institucional.obter_url_publica",
+                "app.institucional.service.obter_url_publica",
                 return_value="http://localhost:9000/logotipos/ns.svg",
             ),
         ):
@@ -159,9 +159,9 @@ class TestInstitucionalServiceUploadProcessamento:
             assert url == "http://localhost:9000/logotipos/ns.svg"
             assert warning is None
 
-    @patch("app.services.institucional.salvar_arquivo")
-    @patch("app.services.institucional.remover_arquivo")
-    @patch("app.services.institucional.obter_url_publica")
+    @patch("app.institucional.service.salvar_arquivo")
+    @patch("app.institucional.service.remover_arquivo")
+    @patch("app.institucional.service.obter_url_publica")
     def test_upload_banner_com_warning_resolucao(
         self, mock_url, mock_remover, mock_salvar, service_mocked
     ):
@@ -178,8 +178,8 @@ class TestInstitucionalServiceUploadProcessamento:
         assert warning is not None
         assert "abaixo da recomendada" in warning
 
-    @patch("app.services.institucional.salvar_arquivo")
-    @patch("app.services.institucional.obter_url_publica")
+    @patch("app.institucional.service.salvar_arquivo")
+    @patch("app.institucional.service.obter_url_publica")
     def test_upload_banner_imagem_corrompida_trata_excecao_pillow(
         self, mock_url, mock_salvar, service_mocked
     ):
@@ -195,9 +195,9 @@ class TestInstitucionalServiceUploadProcessamento:
         assert url == "http://localhost:9000/banners/corrompido.png"
         assert warning is None
 
-    @patch("app.services.institucional.salvar_arquivo")
-    @patch("app.services.institucional.remover_arquivo")
-    @patch("app.services.institucional.obter_url_publica")
+    @patch("app.institucional.service.salvar_arquivo")
+    @patch("app.institucional.service.remover_arquivo")
+    @patch("app.institucional.service.obter_url_publica")
     def test_upload_sobre_com_warning_resolucao(
         self, mock_url, mock_remover, mock_salvar, service_mocked
     ):
@@ -214,9 +214,9 @@ class TestInstitucionalServiceUploadProcessamento:
         assert warning is not None
         assert "800x600px" in warning
 
-    @patch("app.services.institucional.salvar_arquivo")
-    @patch("app.services.institucional.remover_arquivo")
-    @patch("app.services.institucional.obter_url_publica")
+    @patch("app.institucional.service.salvar_arquivo")
+    @patch("app.institucional.service.remover_arquivo")
+    @patch("app.institucional.service.obter_url_publica")
     def test_upload_sobre_sucesso_com_remocao_antiga(
         self, mock_url, mock_remover, mock_salvar, service_mocked
     ):

@@ -1,7 +1,7 @@
 import pytest
 
 from app.config.limiter import limiter
-from app.models.funcionario import Funcionario, StatusFuncionario
+from app.funcionario.model import Funcionario, StatusFuncionario
 from app.utils.seguranca import hash_senha
 
 

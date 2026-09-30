@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 
 from app.config.database import Base, SessionLocal, engine
-from app.models.processo import Processo
+from app.processo.model import Processo
 from main import app
 
 client = TestClient(app)

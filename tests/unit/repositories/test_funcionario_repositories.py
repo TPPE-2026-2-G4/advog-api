@@ -1,8 +1,8 @@
 import pytest
 
-from app.models.cargo import Cargo
-from app.models.funcionario import Funcionario, StatusFuncionario
-from app.repositories.funcionario import FuncionarioRepository
+from app.cargo.model import Cargo
+from app.funcionario.model import Funcionario, StatusFuncionario
+from app.funcionario.repository import FuncionarioRepository
 
 
 @pytest.fixture

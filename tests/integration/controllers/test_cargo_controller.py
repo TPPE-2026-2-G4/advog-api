@@ -2,8 +2,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models.cargo import Cargo
-from app.models.funcionario import Funcionario, StatusFuncionario
+from app.cargo.model import Cargo
+from app.funcionario.model import Funcionario, StatusFuncionario
 
 
 @pytest.fixture

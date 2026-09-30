@@ -2,10 +2,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.models.funcionario import Funcionario, StatusFuncionario
-from app.repositories.funcionario import FuncionarioRepository
-from app.schemas.auth import LoginRequest
-from app.services.auth import AuthService, ContaNaoAtivaError, CredenciaisInvalidasError
+from app.auth.schema import LoginRequest
+from app.auth.service import AuthService, ContaNaoAtivaError, CredenciaisInvalidasError
+from app.funcionario.model import Funcionario, StatusFuncionario
+from app.funcionario.repository import FuncionarioRepository
 from app.utils.seguranca import hash_senha
 
 
