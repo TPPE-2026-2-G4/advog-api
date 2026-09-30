@@ -2,12 +2,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.models.cargo import Cargo
-from app.models.funcionario import Funcionario, StatusFuncionario
-from app.repositories.cargo import CargoRepository
-from app.repositories.funcionario import FuncionarioRepository
-from app.schemas.funcionario import FuncionarioCreate, FuncionarioPrimeiroAcesso, FuncionarioUpdate
-from app.services.funcionario import FuncionarioService
+from app.cargo.model import Cargo
+from app.cargo.repository import CargoRepository
+from app.funcionario.model import Funcionario, StatusFuncionario
+from app.funcionario.repository import FuncionarioRepository
+from app.funcionario.schema import FuncionarioCreate, FuncionarioPrimeiroAcesso, FuncionarioUpdate
+from app.funcionario.service import FuncionarioService
 
 
 def test_criar_funcionario_com_email_duplicado_gera_erro():

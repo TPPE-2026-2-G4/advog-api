@@ -6,11 +6,11 @@ from fastapi import UploadFile
 from PIL import Image
 from pydantic import ValidationError
 
-from app.models.institucional import Institucional
-from app.repositories.institucional import InstitucionalRepository
-from app.schemas.institucional import InstitucionalBase, InstitucionalResponse, InstitucionalUpdate
-from app.services.funcionario import FuncionarioService
-from app.services.institucional import InstitucionalService, UploadInvalidoError
+from app.funcionario.service import FuncionarioService
+from app.institucional.model import Institucional
+from app.institucional.repository import InstitucionalRepository
+from app.institucional.schema import InstitucionalBase, InstitucionalResponse, InstitucionalUpdate
+from app.institucional.service import InstitucionalService, UploadInvalidoError
 
 
 @pytest.fixture
@@ -80,9 +80,9 @@ def test_upload_svg_malicioso_com_atributo_evento_lanca_erro(service_mocked):
         service_mocked.upload_midia(file_mock, "logo")
 
 
-@patch("app.services.institucional.salvar_arquivo")
-@patch("app.services.institucional.remover_arquivo")
-@patch("app.services.institucional.obter_url_publica")
+@patch("app.institucional.service.salvar_arquivo")
+@patch("app.institucional.service.remover_arquivo")
+@patch("app.institucional.service.obter_url_publica")
 def test_upload_banner_com_warning_resolucao(mock_url, mock_remover, mock_salvar, service_mocked):
     mock_salvar.return_value = "banners/123.png"
     mock_url.return_value = "http://localhost:9000/institucional/banners/123.png"
@@ -101,9 +101,9 @@ def test_upload_banner_com_warning_resolucao(mock_url, mock_remover, mock_salvar
     assert "abaixo da recomendada" in warning
 
 
-@patch("app.services.institucional.salvar_arquivo")
-@patch("app.services.institucional.remover_arquivo")
-@patch("app.services.institucional.obter_url_publica")
+@patch("app.institucional.service.salvar_arquivo")
+@patch("app.institucional.service.remover_arquivo")
+@patch("app.institucional.service.obter_url_publica")
 def test_upload_logo_sucesso_com_remocao_antiga(
     mock_url, mock_remover, mock_salvar, service_mocked
 ):
@@ -134,9 +134,9 @@ def test_upload_sobre_excede_tamanho_lanca_erro(service_mocked):
         service_mocked.upload_midia(file_mock, "sobre")
 
 
-@patch("app.services.institucional.salvar_arquivo")
-@patch("app.services.institucional.remover_arquivo")
-@patch("app.services.institucional.obter_url_publica")
+@patch("app.institucional.service.salvar_arquivo")
+@patch("app.institucional.service.remover_arquivo")
+@patch("app.institucional.service.obter_url_publica")
 def test_upload_sobre_com_warning_resolucao(mock_url, mock_remover, mock_salvar, service_mocked):
     mock_salvar.return_value = "sobre/123.png"
     mock_url.return_value = "http://localhost:9000/institucional/sobre/123.png"
@@ -155,9 +155,9 @@ def test_upload_sobre_com_warning_resolucao(mock_url, mock_remover, mock_salvar,
     assert "800x600px" in warning
 
 
-@patch("app.services.institucional.salvar_arquivo")
-@patch("app.services.institucional.remover_arquivo")
-@patch("app.services.institucional.obter_url_publica")
+@patch("app.institucional.service.salvar_arquivo")
+@patch("app.institucional.service.remover_arquivo")
+@patch("app.institucional.service.obter_url_publica")
 def test_upload_sobre_sucesso_com_remocao_antiga(
     mock_url, mock_remover, mock_salvar, service_mocked
 ):
@@ -205,8 +205,8 @@ def test_upload_sobre_formato_invalido_lanca_erro(service_mocked):
         service_mocked.upload_midia(file_mock, "sobre")
 
 
-@patch("app.services.institucional.salvar_arquivo")
-@patch("app.services.institucional.obter_url_publica")
+@patch("app.institucional.service.salvar_arquivo")
+@patch("app.institucional.service.obter_url_publica")
 def test_upload_banner_imagem_corrompida_trata_excecao_pillow(
     mock_url, mock_salvar, service_mocked
 ):
@@ -300,9 +300,9 @@ def test_upload_svg_com_namespace_e_atributos_validos(service_mocked):
     service_mocked.repository.buscar_configuracoes.return_value = MagicMock(logotipo=None)
 
     with (
-        patch("app.services.institucional.salvar_arquivo", return_value="logotipos/ns.svg"),
+        patch("app.institucional.service.salvar_arquivo", return_value="logotipos/ns.svg"),
         patch(
-            "app.services.institucional.obter_url_publica",
+            "app.institucional.service.obter_url_publica",
             return_value="http://localhost:9000/logotipos/ns.svg",
         ),
     ):

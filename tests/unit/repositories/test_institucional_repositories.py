@@ -1,7 +1,7 @@
 import pytest
 
-from app.models.institucional import Institucional
-from app.repositories.institucional import InstitucionalNaoEncontradoError, InstitucionalRepository
+from app.institucional.model import Institucional
+from app.institucional.repository import InstitucionalNaoEncontradoError, InstitucionalRepository
 
 
 def test_buscar_configuracoes_sucesso(db_session):

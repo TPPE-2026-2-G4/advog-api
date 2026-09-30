@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.config.database import Base, SessionLocal, engine
-from app.models.lancamento import Lancamento
+from app.lancamento.model import Lancamento
 from main import app
 
 client = TestClient(app)
