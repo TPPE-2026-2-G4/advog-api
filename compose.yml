@@ -29,18 +29,6 @@ services:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
-  advog-pgadmin:
-    image: dpage/pgadmin4
-    container_name: advog-pgadmin
-    restart: unless-stopped
-    profiles: ["dev"]
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    ports:
-      - "8080:80"
-    depends_on:
-      - advog-db
   
   advog-mailpit:
     image: axllent/mailpit:latest
@@ -52,7 +40,7 @@ services:
       - "1025:1025"
 
   advog-minio:
-    image: quay.io/minio/minio
+    image: quay.io/minio/aistor/minio
     container_name: advog-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
