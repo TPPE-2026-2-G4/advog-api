@@ -28,8 +28,4 @@ def criar_processo(
 def filtrar_processos(
     filtros: ProcessoFilter = Depends(), service: ProcessoService = Depends(get_processo_service)
 ):
-    """
-    Lista e filtra processos com base nos parâmetros informados na query string.
-    Retorna a página solicitada junto com o total de registros encontrados.
-    """
     return service.search_processos(filtros)
