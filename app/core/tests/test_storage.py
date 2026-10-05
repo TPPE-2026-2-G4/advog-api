@@ -5,7 +5,7 @@ import pytest
 from botocore.exceptions import ClientError
 
 from app.config.storage import _obter_variavel_obrigatoria
-from app.utils.storage import (
+from app.core.storage import (
     garantir_bucket,
     obter_url_publica,
     remover_arquivo,
@@ -35,13 +35,13 @@ def test_obter_url_publica_com_chave_valida():
     assert "logotipos/logo.png" in url
 
 
-@patch("app.utils.storage.s3_client")
+@patch("app.core.storage.s3_client")
 def test_garantir_bucket_existente(mock_s3):
     garantir_bucket()
     mock_s3.head_bucket.assert_called_once()
 
 
-@patch("app.utils.storage.s3_client")
+@patch("app.core.storage.s3_client")
 def test_garantir_bucket_inexistente_cria_bucket(mock_s3):
     error_response = {"Error": {"Code": "404"}}
     mock_s3.head_bucket.side_effect = ClientError(error_response, "HeadBucket")
@@ -51,7 +51,7 @@ def test_garantir_bucket_inexistente_cria_bucket(mock_s3):
     mock_s3.create_bucket.assert_called_once()
 
 
-@patch("app.utils.storage.s3_client")
+@patch("app.core.storage.s3_client")
 def test_garantir_bucket_erro_diferente_lanca_excecao(mock_s3):
     error_response = {"Error": {"Code": "403"}}
     mock_s3.head_bucket.side_effect = ClientError(error_response, "HeadBucket")
@@ -60,7 +60,7 @@ def test_garantir_bucket_erro_diferente_lanca_excecao(mock_s3):
         garantir_bucket()
 
 
-@patch("app.utils.storage.s3_client")
+@patch("app.core.storage.s3_client")
 def test_salvar_arquivo_sucesso(mock_s3):
     conteudo = io.BytesIO(b"conteudo teste")
     chave = salvar_arquivo(conteudo, ".png", "image/png", pasta="testes")
@@ -70,7 +70,7 @@ def test_salvar_arquivo_sucesso(mock_s3):
     mock_s3.upload_fileobj.assert_called_once()
 
 
-@patch("app.utils.storage.s3_client")
+@patch("app.core.storage.s3_client")
 def test_salvar_arquivo_sem_pasta(mock_s3):
     conteudo = io.BytesIO(b"conteudo teste")
     chave = salvar_arquivo(conteudo, "png", "image/png", pasta="")
@@ -80,20 +80,20 @@ def test_salvar_arquivo_sem_pasta(mock_s3):
     mock_s3.upload_fileobj.assert_called_once()
 
 
-@patch("app.utils.storage.s3_client")
+@patch("app.core.storage.s3_client")
 def test_remover_arquivo_sucesso(mock_s3):
     remover_arquivo("logotipos/antigo.png")
     mock_s3.delete_object.assert_called_once()
 
 
 def test_remover_arquivo_chave_vazia_nao_chama_s3():
-    with patch("app.utils.storage.s3_client") as mock_s3:
+    with patch("app.core.storage.s3_client") as mock_s3:
         remover_arquivo("")
         remover_arquivo(None)  # type: ignore
         mock_s3.delete_object.assert_not_called()
 
 
-@patch("app.utils.storage.s3_client")
+@patch("app.core.storage.s3_client")
 def test_remover_arquivo_com_erro_client_error_silenciado(mock_s3):
     error_response = {"Error": {"Code": "NoSuchKey"}}
     mock_s3.delete_object.side_effect = ClientError(error_response, "DeleteObject")

@@ -4,7 +4,9 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.dependencies.auth import exigir_permissao, obter_funcionario_atual
+from app.core.dependencies import exigir_permissao, obter_funcionario_atual
+from app.core.email import enviar_email_boas_vindas
+from app.core.seguranca import validar_token_primeiro_acesso
 from app.funcionario.model import Funcionario
 from app.funcionario.schema import (
     FuncionarioCreate,
@@ -15,8 +17,6 @@ from app.funcionario.schema import (
     FuncionarioUpdate,
 )
 from app.funcionario.service import FuncionarioService
-from app.utils.email import enviar_email_boas_vindas
-from app.utils.seguranca import validar_token_primeiro_acesso
 
 router = APIRouter(prefix="/funcionarios", tags=["Funcionários"])
 

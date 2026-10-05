@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.dependencies.auth import exigir_permissao
+from app.core.dependencies import exigir_permissao
 from app.funcionario.schema import FuncionarioResponse
 from app.funcionario.service import FuncionarioService
 from app.institucional.schema import (

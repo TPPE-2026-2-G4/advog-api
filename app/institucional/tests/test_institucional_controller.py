@@ -5,9 +5,9 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.cargo.model import Cargo
+from app.core.seguranca import criar_token_acesso
 from app.funcionario.model import Funcionario, StatusFuncionario
 from app.institucional.model import Institucional
-from app.utils.seguranca import criar_token_acesso
 
 
 @pytest.fixture
