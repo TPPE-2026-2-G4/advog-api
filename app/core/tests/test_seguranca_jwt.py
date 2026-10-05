@@ -1,7 +1,7 @@
 import jwt
 import pytest
 
-from app.utils.seguranca import criar_token_acesso, decodificar_token
+from app.core.seguranca import criar_token_acesso, decodificar_token
 
 
 def test_criar_e_decodificar_token_com_sucesso():

@@ -1,8 +1,8 @@
 import pytest
 
 from app.config.limiter import limiter
+from app.core.seguranca import hash_senha
 from app.funcionario.model import Funcionario, StatusFuncionario
-from app.utils.seguranca import hash_senha
 
 
 @pytest.fixture(autouse=True)

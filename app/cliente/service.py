@@ -1,9 +1,12 @@
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.cliente.model import Cliente
 from app.cliente.repository import ClienteRepository
 from app.cliente.schema import ClienteCreate, ClienteFilter
+
+
+class ClienteNaoEncontradoError(Exception):
+    pass
 
 
 class ClienteService:
@@ -23,5 +26,5 @@ class ClienteService:
     def get_cliente_by_id(self, cliente_id: int) -> Cliente:
         cliente = self.repository.get_by_id(cliente_id)
         if not cliente:
-            raise HTTPException(status_code=404, detail="Cliente não encontrado")
+            raise ClienteNaoEncontradoError("Cliente não encontrado")
         return cliente

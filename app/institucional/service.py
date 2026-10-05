@@ -4,9 +4,9 @@ from fastapi import UploadFile
 from PIL import Image
 from sqlalchemy.orm import Session
 
+from app.core.storage import obter_url_publica, remover_arquivo, salvar_arquivo
 from app.institucional.model import Institucional
 from app.institucional.repository import InstitucionalRepository
-from app.utils.storage import obter_url_publica, remover_arquivo, salvar_arquivo
 
 
 class UploadInvalidoError(ValueError):

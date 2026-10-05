@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.cliente.model import Cliente
 from app.config.database import Base, SessionLocal, engine
-from app.dependencies.auth import obter_funcionario_atual
+from app.core.dependencies import obter_funcionario_atual
 from main import app
 
 Base.metadata.create_all(bind=engine)

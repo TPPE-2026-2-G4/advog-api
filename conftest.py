@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app.cargo.model import Cargo
 from app.config import database
 from app.config.database import Base, get_db
-from app.utils.seguranca import criar_token_acesso, criar_token_primeiro_acesso
+from app.core.seguranca import criar_token_acesso, criar_token_primeiro_acesso
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 

@@ -3,13 +3,13 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.utils.email import enviar_email_boas_vindas
-from app.utils.seguranca import validar_token_primeiro_acesso
+from app.core.email import enviar_email_boas_vindas
+from app.core.seguranca import validar_token_primeiro_acesso
 
 
 @pytest.mark.asyncio
 async def test_enviar_boas_vindas_chama_send_message():
-    with patch("app.utils.email.FastMail.send_message", new_callable=AsyncMock) as mock_send:
+    with patch("app.core.email.FastMail.send_message", new_callable=AsyncMock) as mock_send:
         await enviar_email_boas_vindas("pytest@teste.com", "PyTest User", 42)
 
         mock_send.assert_called_once()

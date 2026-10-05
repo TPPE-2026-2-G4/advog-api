@@ -3,7 +3,7 @@ from unittest.mock import patch
 import jwt
 import pytest
 
-from app.utils.seguranca import (
+from app.core.seguranca import (
     JWT_ALGORITHM,
     JWT_SECRET,
     criar_token_primeiro_acesso,
@@ -66,7 +66,7 @@ def test_validar_token_primeiro_acesso_tipo_diferente_lanca_erro():
 
 def test_validar_token_primeiro_acesso_erro_decodificacao_lanca_erro():
     with (
-        patch("app.utils.seguranca.decodificar_token", side_effect=jwt.PyJWTError),
+        patch("app.core.seguranca.decodificar_token", side_effect=jwt.PyJWTError),
         pytest.raises(ValueError, match="inválido"),
     ):
         validar_token_primeiro_acesso("token_jwt_qualquer")

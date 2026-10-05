@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
 
 from app.auth.schema import LoginRequest
+from app.core.seguranca import criar_token_acesso, verificar_senha
 from app.funcionario.model import Funcionario, StatusFuncionario
 from app.funcionario.repository import FuncionarioRepository
-from app.utils.seguranca import criar_token_acesso, verificar_senha
 
 
 class CredenciaisInvalidasError(ValueError):
