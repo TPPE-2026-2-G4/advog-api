@@ -2,7 +2,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.processo.schema import ProcessoCreate, ProcessoFilter, ProcessoResponse
+from app.processo.schema import (
+    ProcessoCreate,
+    ProcessoFilter,
+    ProcessoPaginadoResponse,
+    ProcessoResponse,
+)
 from app.processo.service import ProcessoService
 
 router = APIRouter(prefix="/processos", tags=["Processos"])
@@ -19,11 +24,12 @@ def criar_processo(
     return service.create_processo(processo)
 
 
-@router.get("/", response_model=list[ProcessoResponse])
+@router.get("/", response_model=ProcessoPaginadoResponse)
 def filtrar_processos(
     filtros: ProcessoFilter = Depends(), service: ProcessoService = Depends(get_processo_service)
 ):
     """
     Lista e filtra processos com base nos parâmetros informados na query string.
+    Retorna a página solicitada junto com o total de registros encontrados.
     """
     return service.search_processos(filtros)
