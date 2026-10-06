@@ -16,7 +16,7 @@ class ProcessoBase(BaseModel):
     data_inicio: datetime | None = None
     data_realizado: datetime | None = None
     data_prazo: datetime | None = None
-    cliente_id: int | None = None
+    cliente_id: int
     funcionario_id: int | None = None
 
 
