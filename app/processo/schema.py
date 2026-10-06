@@ -17,7 +17,7 @@ class ProcessoBase(BaseModel):
     data_realizado: datetime | None = None
     data_prazo: datetime | None = None
     cliente_id: int | None = None
-    responsavel_id: int | None = None
+    funcionario_id: int | None = None
 
 
 class ProcessoCreate(ProcessoBase):
@@ -35,7 +35,7 @@ class ProcessoUpdate(BaseModel):
     data_realizado: datetime | None = None
     data_prazo: datetime | None = None
     cliente_id: int | None = None
-    responsavel_id: int | None = None
+    funcionario_id: int | None = None
 
 
 class ProcessoResponse(ProcessoBase):
@@ -55,7 +55,7 @@ class ProcessoFilter:
         tribunal: str | None = Query(None, description="Filtrar por tribunal"),
         area: str | None = Query(None, description="Filtrar por área"),
         cliente_id: int | None = Query(None, description="Filtrar por ID do cliente"),
-        responsavel_id: int | None = Query(None, description="Filtrar por ID do responsável"),
+        funcionario_id: int | None = Query(None, description="Filtrar por ID do funcionário"),
     ):
         self.processo_id = processo_id
         self.cnj = cnj
@@ -65,4 +65,4 @@ class ProcessoFilter:
         self.tribunal = tribunal
         self.area = area
         self.cliente_id = cliente_id
-        self.responsavel_id = responsavel_id
+        self.funcionario_id = funcionario_id

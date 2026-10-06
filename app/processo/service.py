@@ -22,7 +22,7 @@ class ProcessoService:
             tribunal=filters.tribunal,
             area=filters.area,
             cliente_id=filters.cliente_id,
-            responsavel_id=filters.responsavel_id,
+            funcionario_id=filters.funcionario_id,
         )
 
     def criar_processo(self, dados: ProcessoCreate) -> Processo:

@@ -36,7 +36,9 @@ class Processo(Base):
     data_inicio: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     data_realizado: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     data_prazo: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    cliente_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("clientes.cliente_id"), nullable=True
+    cliente_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("clientes.cliente_id"), nullable=False
     )
-    responsavel_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    funcionario_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("funcionarios.funcionario_id"), nullable=True
+    )
