@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.cliente.schema import ClienteCreate, ClienteFilter, ClienteResponse
-from app.cliente.service import ClienteService
+from app.cliente.service import ClienteNaoEncontradoError, ClienteService
 from app.config.database import get_db
-from app.dependencies.auth import obter_funcionario_atual
+from app.core.dependencies import obter_funcionario_atual
 from app.funcionario.model import Funcionario
 
 router = APIRouter(prefix="/clientes", tags=["clientes"])
@@ -27,7 +27,10 @@ def obter_cliente(
     current_user: Funcionario = Depends(obter_funcionario_atual),
 ):
     service = ClienteService(db)
-    return service.get_cliente_by_id(cliente_id)
+    try:
+        return service.get_cliente_by_id(cliente_id)
+    except ClienteNaoEncontradoError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.post("/", response_model=ClienteResponse, status_code=201)

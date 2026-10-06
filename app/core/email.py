@@ -4,7 +4,7 @@ from typing import cast
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 from pydantic import EmailStr, NameEmail, SecretStr
 
-from app.utils.seguranca import criar_token_primeiro_acesso
+from app.core.seguranca import criar_token_primeiro_acesso
 
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv("SMTP_USER", ""),

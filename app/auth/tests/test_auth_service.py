@@ -4,9 +4,9 @@ import pytest
 
 from app.auth.schema import LoginRequest
 from app.auth.service import AuthService, ContaNaoAtivaError, CredenciaisInvalidasError
+from app.core.seguranca import hash_senha
 from app.funcionario.model import Funcionario, StatusFuncionario
 from app.funcionario.repository import FuncionarioRepository
-from app.utils.seguranca import hash_senha
 
 
 def test_init_auth_service():

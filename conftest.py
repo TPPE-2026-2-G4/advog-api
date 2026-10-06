@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app.cargo.model import Cargo
 from app.config import database
 from app.config.database import Base, get_db
-from app.utils.seguranca import criar_token_acesso, criar_token_primeiro_acesso
+from app.core.seguranca import criar_token_acesso, criar_token_primeiro_acesso
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
@@ -30,10 +30,7 @@ from main import app  # noqa: E402
 @pytest.fixture(autouse=True)
 def mock_enviar_email_boas_vindas(monkeypatch):
     mock = AsyncMock()
-    monkeypatch.setattr(
-        "app.funcionario.controller.enviar_email_boas_vindas",
-        mock,
-    )
+    monkeypatch.setattr("app.funcionario.controller.enviar_email_boas_vindas", mock)
     return mock
 
 

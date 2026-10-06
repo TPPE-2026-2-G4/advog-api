@@ -45,6 +45,7 @@ asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["app"]
+omit = ["app/*/tests/*"]
 
 [tool.coverage.report]
 fail_under = 95
