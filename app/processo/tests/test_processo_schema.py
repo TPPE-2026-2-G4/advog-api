@@ -74,7 +74,7 @@ def test_status_invalido():
 @pytest.mark.parametrize(
     ("campo", "tamanho"),
     [
-        ("cnj", 21),
+        ("cnj", 26),
         ("titulo", 101),
         ("descricao", 256),
         ("tribunal", 101),

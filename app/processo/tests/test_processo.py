@@ -2,17 +2,48 @@ from datetime import datetime
 
 from fastapi.testclient import TestClient
 
+from app.cargo.model import Cargo
 from app.config.database import Base, SessionLocal, engine
+from app.core.seguranca import criar_token_acesso
+from app.funcionario.model import Funcionario, StatusFuncionario
 from app.processo.model import Processo
 from main import app
 
 client = TestClient(app)
+auth_headers: dict[str, str] = {}
 
 
 def setup_module(module):
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     db.query(Processo).delete()
+
+    cargo = Cargo(
+        nome_cargo="Cargo de Teste de Processos",
+        descricao="Cargo autorizado para os testes de processos",
+        permissao={
+            "visualizar_processos": True,
+            "criar_processos": True,
+        },
+    )
+    db.add(cargo)
+    db.commit()
+    db.refresh(cargo)
+
+    funcionario = Funcionario(
+        nome="Funcionário de Teste de Processos",
+        email="teste.processo@test.com",
+        status=StatusFuncionario.ATIVO,
+        cargo_id=cargo.cargo_id,
+    )
+    db.add(funcionario)
+    db.commit()
+    db.refresh(funcionario)
+    module.auth_headers = {
+        "Authorization": (
+            f"Bearer {criar_token_acesso({'sub': str(funcionario.funcionario_id), 'email': funcionario.email})}"
+        )
+    }
 
     p1 = Processo(
         cnj="1111111-11.2026.8.26.0000",
@@ -66,7 +97,7 @@ def test_root():
 
 
 def test_filtrar_processos_sem_filtros():
-    response = client.get("/processos/")
+    response = client.get("/processos/", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -74,7 +105,7 @@ def test_filtrar_processos_sem_filtros():
 
 
 def test_filtrar_processos_por_status():
-    response = client.get("/processos/?status=ativo")
+    response = client.get("/processos/?status=Ativo", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -83,7 +114,10 @@ def test_filtrar_processos_por_status():
 
 
 def test_filtrar_processos_por_area_e_cliente():
-    response = client.get("/processos/?area=Trabalhista&cliente_id=2")
+    response = client.get(
+        "/processos/?area=Trabalhista&cliente_id=2",
+        headers=auth_headers,
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -92,7 +126,7 @@ def test_filtrar_processos_por_area_e_cliente():
 
 
 def test_filtrar_processos_inexistente():
-    response = client.get("/processos/?processo_id=9999")
+    response = client.get("/processos/?processo_id=9999", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -100,7 +134,7 @@ def test_filtrar_processos_inexistente():
 
 
 def test_filtrar_processos_por_tribunal():
-    response = client.get("/processos/?tribunal=TRT2")
+    response = client.get("/processos/?tribunal=TRT2", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -109,7 +143,7 @@ def test_filtrar_processos_por_tribunal():
 
 
 def test_filtrar_processos_por_titulo():
-    response = client.get("/processos/?titulo=Caso Teste 1")
+    response = client.get("/processos/?titulo=Caso Teste 1", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -118,7 +152,7 @@ def test_filtrar_processos_por_titulo():
 
 
 def test_filtrar_processos_por_cliente():
-    response = client.get("/processos/?cliente_id=2")
+    response = client.get("/processos/?cliente_id=2", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -127,7 +161,10 @@ def test_filtrar_processos_por_cliente():
 
 
 def test_filtrar_processos_por_cnj():
-    response = client.get("/processos/?cnj=1111111-11.2026.8.26.0000")
+    response = client.get(
+        "/processos/?cnj=1111111-11.2026.8.26.0000",
+        headers=auth_headers,
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -136,7 +173,7 @@ def test_filtrar_processos_por_cnj():
 
 
 def test_filtrar_processos_por_funcionario():
-    response = client.get("/processos/?funcionario_id=1")
+    response = client.get("/processos/?funcionario_id=1", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -159,7 +196,7 @@ def test_criar_processo():
         "funcionario_id": 1,
     }
 
-    response = client.post("/processos/", json=payload)
+    response = client.post("/processos/", json=payload, headers=auth_headers)
 
     assert response.status_code == 201
     data = response.json()
@@ -171,7 +208,10 @@ def test_criar_processo():
 
     processo_id = data["processo_id"]
 
-    response = client.get(f"/processos/?processo_id={processo_id}")
+    response = client.get(
+        f"/processos/?processo_id={processo_id}",
+        headers=auth_headers,
+    )
 
     assert response.status_code == 200
     assert len(response.json()) == 1
