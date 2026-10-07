@@ -20,7 +20,7 @@ class Processo(Base):
     processo_id: Mapped[int] = mapped_column(
         Integer, primary_key=True, index=True, autoincrement=True
     )
-    cnj: Mapped[str] = mapped_column(String(20), unique=True, index=True, nullable=False)
+    cnj: Mapped[str] = mapped_column(String(25), unique=True, index=True, nullable=False)
     titulo: Mapped[str] = mapped_column(String(100), nullable=False)
     descricao: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[StatusProcesso] = mapped_column(

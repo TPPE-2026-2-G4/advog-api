@@ -7,7 +7,7 @@ from app.processo.model import StatusProcesso
 
 
 class ProcessoBase(BaseModel):
-    cnj: str = Field(max_length=20)
+    cnj: str = Field(max_length=25)
     titulo: str = Field(max_length=100)
     descricao: str | None = Field(default=None, max_length=255)
     status: StatusProcesso = StatusProcesso.EM_ANALISE
@@ -25,7 +25,7 @@ class ProcessoCreate(ProcessoBase):
 
 
 class ProcessoUpdate(BaseModel):
-    cnj: str | None = Field(default=None, max_length=20)
+    cnj: str | None = Field(default=None, max_length=25)
     titulo: str | None = Field(default=None, max_length=100)
     descricao: str | None = Field(default=None, max_length=255)
     status: StatusProcesso | None = None
