@@ -74,6 +74,14 @@ def processo(dados_base, db_session):
     return processo
 
 
+def buscar_com_filtro(repository, **filtros):
+    return repository.buscar_paginado_por_filtros(
+        page=1,
+        page_size=10,
+        **filtros,
+    )
+
+
 def test_buscar_todos(db_session, processo):
     repository = ProcessoRepository(db_session)
 
@@ -135,10 +143,11 @@ def test_buscar_por_filtros_textuais(
 ):
     repository = ProcessoRepository(db_session)
 
-    resultado = repository.buscar_por_filtros(**{campo: valor})
+    itens, total = buscar_com_filtro(repository, **{campo: valor})
 
-    assert len(resultado) == 1
-    assert resultado[0].processo_id == processo.processo_id
+    assert total == 1
+    assert len(itens) == 1
+    assert itens[0].processo_id == processo.processo_id
 
 
 @pytest.mark.parametrize(
@@ -163,10 +172,14 @@ def test_buscar_por_filtros_ids(
         "funcionario_id": processo.funcionario_id,
     }
 
-    resultado = repository.buscar_por_filtros(**{campo: valores[valor]})
+    itens, total = buscar_com_filtro(
+        repository,
+        **{campo: valores[valor]},
+    )
 
-    assert len(resultado) == 1
-    assert resultado[0].processo_id == processo.processo_id
+    assert total == 1
+    assert len(itens) == 1
+    assert itens[0].processo_id == processo.processo_id
 
 
 @pytest.mark.parametrize(
@@ -194,20 +207,67 @@ def test_buscar_por_status(db_session, dados_base, status):
 
     repository = ProcessoRepository(db_session)
 
-    resultado = repository.buscar_por_filtros(status=status)
+    itens, total = buscar_com_filtro(
+        repository,
+        status=status,
+    )
 
-    assert len(resultado) == 1
-    assert resultado[0].status == status
+    assert total == 1
+    assert len(itens) == 1
+    assert itens[0].status == status
 
 
 def test_buscar_por_filtros_sem_resultado(db_session):
     repository = ProcessoRepository(db_session)
 
-    resultado = repository.buscar_por_filtros(
+    itens, total = buscar_com_filtro(
+        repository,
         titulo="Não Existe",
     )
 
-    assert resultado == []
+    assert itens == []
+    assert total == 0
+
+
+def test_buscar_por_filtros_paginado(db_session, dados_base):
+    repository = ProcessoRepository(db_session)
+
+    processos = []
+
+    for i in range(3):
+        processo = Processo(
+            cnj=f"{i + 1:020d}",
+            titulo=f"Processo {i + 1}",
+            status=StatusProcesso.ATIVO,
+            tribunal="TJSP",
+            area="Civil",
+            cliente_id=dados_base["cliente"].cliente_id,
+            funcionario_id=dados_base["funcionario"].funcionario_id,
+        )
+        db_session.add(processo)
+        processos.append(processo)
+
+    db_session.commit()
+
+    itens, total = repository.buscar_paginado_por_filtros(
+        page=1,
+        page_size=2,
+    )
+
+    assert total == 3
+    assert len(itens) == 2
+
+
+def test_buscar_por_filtros_pagina_alem_do_fim(db_session, processo):
+    repository = ProcessoRepository(db_session)
+
+    itens, total = repository.buscar_paginado_por_filtros(
+        page=100,
+        page_size=10,
+    )
+
+    assert total == 1
+    assert itens == []
 
 
 def test_criar(db_session, dados_base):

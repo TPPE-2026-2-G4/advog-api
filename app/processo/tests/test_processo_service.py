@@ -31,7 +31,6 @@ def test_buscar_todos():
     service = criar_service()
 
     processos = [MagicMock(spec=Processo)]
-
     service.repository.buscar_todos.return_value = processos
 
     resultado = service.buscar_todos()
@@ -53,16 +52,39 @@ def test_buscar_processos():
         area=None,
         cliente_id=1,
         funcionario_id=2,
+        busca=None,
+        prazo_inicio=None,
+        prazo_fim=None,
+        page=1,
+        page_size=10,
     )
 
-    processos = [MagicMock(spec=Processo)]
-    service.repository.buscar_por_filtros.return_value = processos
+    processo = Processo(
+        processo_id=1,
+        cnj="11111111111111111111",
+        titulo="Processo Teste",
+        descricao="Descrição",
+        status=StatusProcesso.ATIVO,
+        tribunal="TJSP",
+        area="Civil",
+        cliente_id=1,
+        funcionario_id=2,
+    )
+
+    service.repository.buscar_paginado_por_filtros.return_value = ([processo], 1)
 
     resultado = service.buscar_processos(filtros)
 
-    assert resultado == processos
+    assert resultado.total == 1
+    assert resultado.page == 1
+    assert resultado.page_size == 10
+    assert resultado.total_pages == 1
+    assert len(resultado.itens) == 1
+    assert resultado.itens[0].processo_id == processo.processo_id
 
-    service.repository.buscar_por_filtros.assert_called_once_with(
+    service.repository.buscar_paginado_por_filtros.assert_called_once_with(
+        page=1,
+        page_size=10,
         processo_id=None,
         cnj=None,
         titulo="Teste",
@@ -72,7 +94,93 @@ def test_buscar_processos():
         area=None,
         cliente_id=1,
         funcionario_id=2,
+        busca=None,
+        prazo_inicio=None,
+        prazo_fim=None,
     )
+
+
+def test_buscar_processos_com_paginacao():
+    service = criar_service()
+
+    filtros = ProcessoFilter(
+        processo_id=None,
+        cnj=None,
+        titulo=None,
+        descricao=None,
+        status=None,
+        tribunal=None,
+        area=None,
+        cliente_id=None,
+        funcionario_id=None,
+        busca=None,
+        prazo_inicio=None,
+        prazo_fim=None,
+        page=2,
+        page_size=5,
+    )
+
+    processos = [
+        Processo(
+            processo_id=6,
+            cnj="66666666666666666666",
+            titulo="Processo 6",
+            status=StatusProcesso.ATIVO,
+            tribunal="TJSP",
+            area="Civil",
+            cliente_id=1,
+        ),
+        Processo(
+            processo_id=7,
+            cnj="77777777777777777777",
+            titulo="Processo 7",
+            status=StatusProcesso.ATIVO,
+            tribunal="TJSP",
+            area="Civil",
+            cliente_id=1,
+        ),
+    ]
+
+    service.repository.buscar_paginado_por_filtros.return_value = (processos, 12)
+
+    resultado = service.buscar_processos(filtros)
+
+    assert resultado.total == 12
+    assert resultado.page == 2
+    assert resultado.page_size == 5
+    assert resultado.total_pages == 3
+    assert len(resultado.itens) == 2
+
+
+def test_buscar_processos_sem_resultado():
+    service = criar_service()
+
+    filtros = ProcessoFilter(
+        processo_id=None,
+        cnj=None,
+        titulo="Não Existe",
+        descricao=None,
+        status=None,
+        tribunal=None,
+        area=None,
+        cliente_id=None,
+        funcionario_id=None,
+        busca=None,
+        prazo_inicio=None,
+        prazo_fim=None,
+        page=1,
+        page_size=10,
+    )
+
+    service.repository.buscar_paginado_por_filtros.return_value = ([], 0)
+
+    resultado = service.buscar_processos(filtros)
+
+    assert resultado.itens == []
+    assert resultado.total == 0
+    assert resultado.page == 1
+    assert resultado.page_size == 10
+    assert resultado.total_pages == 1
 
 
 def test_criar_processo():
@@ -127,7 +235,6 @@ def test_atualizar_processo():
     resultado = service.atualizar_processo(1, dados)
 
     assert resultado == processo
-
     assert processo.titulo == "Novo título"
     assert processo.status == StatusProcesso.CONCLUIDO
     assert processo.funcionario_id == 10

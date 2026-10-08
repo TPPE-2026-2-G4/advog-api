@@ -159,13 +159,20 @@ def test_listar_processos(
 
     data = response.json()
 
-    assert len(data) == 1
-    assert data[0]["processo_id"] == processo.processo_id
-    assert data[0]["cnj"] == processo.cnj
-    assert data[0]["titulo"] == processo.titulo
-    assert data[0]["status"] == "Ativo"
-    assert data[0]["cliente_id"] == cliente_processo.cliente_id
-    assert data[0]["funcionario_id"] == funcionario_responsavel.funcionario_id
+    assert len(data["itens"]) == 1
+    assert data["total"] == 1
+    assert data["page"] == 1
+    assert data["page_size"] == 10
+    assert data["total_pages"] == 1
+
+    processo_data = data["itens"][0]
+
+    assert processo_data["processo_id"] == processo.processo_id
+    assert processo_data["cnj"] == processo.cnj
+    assert processo_data["titulo"] == processo.titulo
+    assert processo_data["status"] == "Ativo"
+    assert processo_data["cliente_id"] == cliente_processo.cliente_id
+    assert processo_data["funcionario_id"] == funcionario_responsavel.funcionario_id
 
 
 def test_listar_processos_sem_autenticacao(client):
@@ -210,8 +217,9 @@ def test_filtrar_processos(
 
     data = response.json()
 
-    assert len(data) == 1
-    assert data[0]["processo_id"] == processo.processo_id
+    assert len(data["itens"]) == 1
+    assert data["total"] == 1
+    assert data["itens"][0]["processo_id"] == processo.processo_id
 
 
 @pytest.mark.parametrize(
@@ -251,8 +259,9 @@ def test_filtrar_processos_por_id(
 
     data = response.json()
 
-    assert len(data) == 1
-    assert data[0]["processo_id"] == processo.processo_id
+    assert len(data["itens"]) == 1
+    assert data["total"] == 1
+    assert data["itens"][0]["processo_id"] == processo.processo_id
 
 
 def test_filtrar_por_funcionario(
@@ -277,7 +286,11 @@ def test_filtrar_por_funcionario(
     )
 
     assert response.status_code == 200
-    assert response.json()[0]["processo_id"] == processo.processo_id
+
+    data = response.json()
+
+    assert len(data["itens"]) == 1
+    assert data["itens"][0]["processo_id"] == processo.processo_id
 
 
 def test_filtrar_processos_sem_resultado(
@@ -293,7 +306,14 @@ def test_filtrar_processos_sem_resultado(
     )
 
     assert response.status_code == 200
-    assert response.json() == []
+
+    data = response.json()
+
+    assert data["itens"] == []
+    assert data["total"] == 0
+    assert data["page"] == 1
+    assert data["page_size"] == 10
+    assert data["total_pages"] == 1
 
 
 def test_criar_processo(

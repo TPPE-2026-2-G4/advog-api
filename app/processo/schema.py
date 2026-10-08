@@ -64,7 +64,9 @@ class ProcessoFilter:
         area: str | None = Query(None, description="Filtrar por área"),
         cliente_id: int | None = Query(None, description="Filtrar por ID do cliente"),
         funcionario_id: int | None = Query(None, description="Filtrar por ID do funcionário"),
-        busca: str | None = Query(None, description="Buscar por número CNJ, título ou nome do cliente"),
+        busca: str | None = Query(
+            None, description="Buscar por número CNJ, título ou nome do cliente"
+        ),
         prazo_inicio: date | None = Query(None, description="Prazo a partir de (inclusive)"),
         prazo_fim: date | None = Query(None, description="Prazo até (inclusive)"),
         page: int = Query(1, ge=1, description="Página a ser retornada"),
