@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import Query
 from pydantic import BaseModel, ConfigDict
@@ -28,6 +28,14 @@ class ProcessoResponse(ProcessoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ProcessoPaginadoResponse(BaseModel):
+    itens: list[ProcessoResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class ProcessoFilter:
     def __init__(
         self,
@@ -40,6 +48,11 @@ class ProcessoFilter:
         area: str | None = Query(None, description="Filtrar por área"),
         cliente_id: int | None = Query(None, description="Filtrar por ID do cliente"),
         responsavel_id: int | None = Query(None, description="Filtrar por ID do responsável"),
+        busca: str | None = Query(None, description="Buscar por número CNJ ou título do processo"),
+        prazo_inicio: date | None = Query(None, description="Prazo a partir de (inclusive)"),
+        prazo_fim: date | None = Query(None, description="Prazo até (inclusive)"),
+        page: int = Query(1, ge=1, description="Página a ser retornada"),
+        page_size: int = Query(10, ge=1, le=100, description="Quantidade de itens por página"),
     ):
         self.processo_id = processo_id
         self.cnj = cnj
@@ -50,3 +63,8 @@ class ProcessoFilter:
         self.area = area
         self.cliente_id = cliente_id
         self.responsavel_id = responsavel_id
+        self.busca = busca
+        self.prazo_inicio = prazo_inicio
+        self.prazo_fim = prazo_fim
+        self.page = page
+        self.page_size = page_size
