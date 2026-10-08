@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Column, DateTime, Integer, String, Text
 
 from app.config.database import Base
 
@@ -8,9 +8,10 @@ class Cliente(Base):
 
     cliente_id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(100), nullable=False)
-    telefone = Column(String(16), nullable=False)
+    telefone = Column(String(20), nullable=True)
     email = Column(String(100), unique=True, index=True, nullable=False)
     area_interesse = Column(String(50), nullable=True)
+    descricao = Column(Text, nullable=True)
     ultima_interacao = Column(DateTime, nullable=False)
     responsavel_id = Column(Integer, nullable=True)
     etapa_id = Column(Integer, nullable=False)

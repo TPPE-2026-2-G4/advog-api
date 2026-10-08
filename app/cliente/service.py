@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.cliente.model import Cliente
 from app.cliente.repository import ClienteRepository
-from app.cliente.schema import ClienteCreate, ClienteFilter
+from app.cliente.schema import ClienteCreate, ClienteFilter, ClienteUpdate
 
 
 class ClienteNaoEncontradoError(Exception):
@@ -28,3 +28,15 @@ class ClienteService:
         if not cliente:
             raise ClienteNaoEncontradoError("Cliente não encontrado")
         return cliente
+
+    def update_cliente(self, cliente_id: int, cliente_data: ClienteUpdate) -> Cliente:
+        cliente = self.repository.update(cliente_id, cliente_data.model_dump(exclude_unset=True))
+        if not cliente:
+            raise ClienteNaoEncontradoError("Cliente não encontrado")
+        return cliente
+
+    def delete_cliente(self, cliente_id: int) -> bool:
+        sucesso = self.repository.delete(cliente_id)
+        if not sucesso:
+            raise ClienteNaoEncontradoError("Cliente não encontrado")
+        return sucesso

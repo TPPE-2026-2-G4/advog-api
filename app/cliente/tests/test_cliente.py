@@ -102,6 +102,7 @@ def test_criar_cliente():
         "telefone": "(33) 93333-3333",
         "email": "novo@teste.com",
         "area_interesse": "Tributário",
+        "descricao": "Precisa de consultoria para revisão tributária",
         "ultima_interacao": "2026-03-01T00:00:00",
         "responsavel_id": 1,
         "etapa_id": 1,
@@ -110,6 +111,8 @@ def test_criar_cliente():
     assert response.status_code == 201
     data = response.json()
     assert data["nome"] == "Novo Cliente 3"
+    assert data["area_interesse"] == "Tributário"
+    assert data["descricao"] == "Precisa de consultoria para revisão tributária"
     assert data["cliente_id"] is not None
 
 
@@ -128,3 +131,37 @@ def test_obter_cliente_por_id():
 def test_obter_cliente_inexistente():
     response = client.get("/clientes/999999")
     assert response.status_code == 404
+
+
+def test_atualizar_cliente():
+    response = client.get("/clientes/")
+    cliente_id = response.json()[0]["cliente_id"]
+
+    payload = {
+        "nome": "Cliente Atualizado",
+        "telefone": "(11) 98888-8888",
+        "email": "atualizado@teste.com",
+        "area_interesse": "Empresarial",
+        "descricao": "Demanda alterada para societário",
+        "ultima_interacao": "2026-04-01T00:00:00",
+        "responsavel_id": 2,
+        "etapa_id": 3,
+    }
+    response = client.put(f"/clientes/{cliente_id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["nome"] == "Cliente Atualizado"
+    assert data["area_interesse"] == "Empresarial"
+    assert data["descricao"] == "Demanda alterada para societário"
+    assert data["etapa_id"] == 3
+
+
+def test_excluir_cliente():
+    response = client.get("/clientes/")
+    cliente_id = response.json()[0]["cliente_id"]
+
+    response = client.delete(f"/clientes/{cliente_id}")
+    assert response.status_code == 204
+
+    response_check = client.get(f"/clientes/{cliente_id}")
+    assert response_check.status_code == 404
