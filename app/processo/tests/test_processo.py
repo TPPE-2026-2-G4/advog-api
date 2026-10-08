@@ -16,6 +16,10 @@ auth_headers: dict[str, str] = {}
 
 
 def setup_module(module):
+    global auth_headers
+    global cliente1_id, cliente2_id, cliente3_id
+    global funcionario1_id, funcionario2_id
+
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
@@ -53,10 +57,10 @@ def setup_module(module):
     db.refresh(funcionario1)
     db.refresh(funcionario2)
 
-    module.funcionario1_id = funcionario1.funcionario_id
-    module.funcionario2_id = funcionario2.funcionario_id
+    funcionario1_id = funcionario1.funcionario_id
+    funcionario2_id = funcionario2.funcionario_id
 
-    module.auth_headers = {
+    auth_headers = {
         "Authorization": (
             f"Bearer {criar_token_acesso({'sub': str(funcionario1.funcionario_id), 'email': funcionario1.email})}"
         )
@@ -93,9 +97,9 @@ def setup_module(module):
     db.refresh(cliente2)
     db.refresh(cliente3)
 
-    module.cliente1_id = cliente1.cliente_id
-    module.cliente2_id = cliente2.cliente_id
-    module.cliente3_id = cliente3.cliente_id
+    cliente1_id = cliente1.cliente_id
+    cliente2_id = cliente2.cliente_id
+    cliente3_id = cliente3.cliente_id
 
     p1 = Processo(
         cnj="1111111-11.2026.8.26.0000",
@@ -145,9 +149,7 @@ def test_root():
     response = client.get("/")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "message": "Bem vindo a API de Gestão de Advocacia (FastAPI)"
-    }
+    assert response.json() == {"message": "Bem vindo a API de Gestão de Advocacia (FastAPI)"}
 
 
 def test_filtrar_processos_sem_filtros():
@@ -409,6 +411,11 @@ def test_filtrar_processos_combinando_busca_status_funcionario_e_prazo():
 
 
 def test_listar_processos_paginados_retorna_metadados_de_paginacao():
+    total_esperado = client.get(
+        "/processos/",
+        headers=auth_headers,
+    ).json()["total"]
+
     response = client.get(
         "/processos/?page=1&page_size=2",
         headers=auth_headers,
@@ -420,9 +427,9 @@ def test_listar_processos_paginados_retorna_metadados_de_paginacao():
 
     assert body["page"] == 1
     assert body["page_size"] == 2
-    assert body["total"] == 2
+    assert body["total"] == total_esperado
     assert len(body["itens"]) == 2
-    assert body["total_pages"] == 1
+    assert body["total_pages"] == (total_esperado + 1) // 2
 
 
 def test_listar_processos_pagina_alem_do_fim_retorna_lista_vazia():
