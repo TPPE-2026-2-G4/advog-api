@@ -1,8 +1,16 @@
+from math import ceil
+
 from sqlalchemy.orm import Session
 
 from app.processo.model import Processo
 from app.processo.repository import ProcessoRepository
-from app.processo.schema import ProcessoCreate, ProcessoFilter, ProcessoUpdate
+from app.processo.schema import (
+    ProcessoCreate,
+    ProcessoFilter,
+    ProcessoPaginadoResponse,
+    ProcessoResponse,
+    ProcessoUpdate,
+)
 
 
 class ProcessoService:
@@ -12,8 +20,10 @@ class ProcessoService:
     def buscar_todos(self) -> list[Processo]:
         return self.repository.buscar_todos()
 
-    def buscar_processos(self, filters: ProcessoFilter) -> list[Processo]:
-        return self.repository.buscar_por_filtros(
+    def buscar_processos(self, filters: ProcessoFilter) -> ProcessoPaginadoResponse:
+        itens, total = self.repository.buscar_paginado_por_filtros(
+            page=filters.page,
+            page_size=filters.page_size,
             processo_id=filters.processo_id,
             cnj=filters.cnj,
             titulo=filters.titulo,
@@ -23,6 +33,16 @@ class ProcessoService:
             area=filters.area,
             cliente_id=filters.cliente_id,
             funcionario_id=filters.funcionario_id,
+            busca=filters.busca,
+            prazo_inicio=filters.prazo_inicio,
+            prazo_fim=filters.prazo_fim,
+        )
+        return ProcessoPaginadoResponse(
+            itens=[ProcessoResponse.model_validate(processo) for processo in itens],
+            total=total,
+            page=filters.page,
+            page_size=filters.page_size,
+            total_pages=max(1, ceil(total / filters.page_size)),
         )
 
     def criar_processo(self, dados: ProcessoCreate) -> Processo:

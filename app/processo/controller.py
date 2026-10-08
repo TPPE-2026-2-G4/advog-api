@@ -3,7 +3,13 @@ from sqlalchemy.orm import Session
 
 from app.config.database import get_db
 from app.core.dependencies import exigir_permissao
-from app.processo.schema import ProcessoCreate, ProcessoFilter, ProcessoResponse, ProcessoUpdate
+from app.processo.schema import (
+    ProcessoCreate,
+    ProcessoFilter,
+    ProcessoPaginadoResponse,
+    ProcessoResponse,
+    ProcessoUpdate,
+)
 from app.processo.service import ProcessoService
 
 router = APIRouter(prefix="/processos", tags=["Processos"])
@@ -30,7 +36,7 @@ def criar_processo(
 
 @router.get(
     "/",
-    response_model=list[ProcessoResponse],
+    response_model=ProcessoPaginadoResponse,
     dependencies=[Depends(exigir_permissao("visualizar_processos"))],
 )
 def filtrar_processos(
