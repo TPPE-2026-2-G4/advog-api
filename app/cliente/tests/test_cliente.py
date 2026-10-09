@@ -237,4 +237,3 @@ def test_atualizar_cliente_inexistente():
 def test_excluir_cliente_inexistente():
     response = client.delete("/clientes/999999")
     assert response.status_code == 404
-
