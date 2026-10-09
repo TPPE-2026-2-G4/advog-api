@@ -38,7 +38,28 @@ def remover_arquivo(chave: str) -> None:
         s3_client.delete_object(Bucket=MINIO_BUCKET, Key=chave)
 
 
-def obter_url_publica(chave: str | None) -> str | None:
+def obter_url_publica(chave: str | None, expiracao_segundos: int = 3600) -> str | None:
     if not chave:
         return None
-    return f"{MINIO_PUBLIC_URL.rstrip('/')}/{MINIO_BUCKET}/{chave.lstrip('/')}"
+    
+    try:
+        url = s3_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": MINIO_BUCKET, "Key": chave.lstrip("/")},
+            ExpiresIn=expiracao_segundos,
+        )
+
+        if MINIO_PUBLIC_URL:
+            from urllib.parse import urlparse
+
+            parsed_url = urlparse(url)
+            parsed_public = urlparse(MINIO_PUBLIC_URL)
+
+            url = parsed_url._replace(
+                scheme=parsed_public.scheme, 
+                netloc=parsed_public.netloc
+            ).geturl()
+
+        return url
+    except Exception:
+        return None
