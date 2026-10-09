@@ -10,6 +10,7 @@ class ClienteBase(BaseModel):
     email: EmailStr
     area_interesse: str | None = None
     descricao: str | None = None
+    documento: str | None = None
     ultima_interacao: datetime
     responsavel_id: int | None = None
     etapa_id: int

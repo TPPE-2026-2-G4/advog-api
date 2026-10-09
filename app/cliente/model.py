@@ -12,6 +12,7 @@ class Cliente(Base):
     email = Column(String(100), unique=True, index=True, nullable=False)
     area_interesse = Column(String(50), nullable=True)
     descricao = Column(Text, nullable=True)
+    documento = Column(String(20), nullable=True)
     ultima_interacao = Column(DateTime, nullable=False)
     responsavel_id = Column(Integer, nullable=True)
     etapa_id = Column(Integer, nullable=False)
