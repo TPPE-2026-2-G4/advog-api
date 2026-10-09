@@ -1,16 +1,16 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
 from app.core.seguranca import extrair_funcionario_id_do_token
 from app.funcionario.model import Funcionario
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def obter_funcionario_atual(
-    token: str = Depends(oauth2_scheme),
+    credenciais: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> Funcionario:
     credenciais_invalidas = HTTPException(
@@ -19,8 +19,11 @@ def obter_funcionario_atual(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    if credenciais is None:
+        raise credenciais_invalidas
+
     try:
-        funcionario_id = extrair_funcionario_id_do_token(token)
+        funcionario_id = extrair_funcionario_id_do_token(credenciais.credentials)
     except ValueError as e:
         raise credenciais_invalidas from e
 
