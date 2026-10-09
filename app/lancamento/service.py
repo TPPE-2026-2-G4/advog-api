@@ -1,13 +1,9 @@
+from datetime import date, datetime
 from math import ceil
 
 from sqlalchemy.orm import Session
 
-from app.lancamento.model import (
-    Lancamento,
-    SituacaoLancamento,
-    StatusLancamento,
-    TipoLancamento,
-)
+from app.lancamento.model import Lancamento, StatusLancamento, TipoLancamento
 from app.lancamento.repository import LancamentoRepository
 from app.lancamento.schema import (
     LancamentoCreate,
@@ -15,22 +11,9 @@ from app.lancamento.schema import (
     LancamentoPaginadoResponse,
     LancamentoResponse,
     LancamentoResumo,
-    LancamentoStatusUpdate,
     LancamentoUpdate,
-    ResumoSituacao,
+    ResumoStatus,
 )
-
-
-def _validar_status_para_tipo(tipo: TipoLancamento, status: StatusLancamento) -> None:
-    permitidos = [StatusLancamento.PENDENTE, StatusLancamento.ATRASADO]
-    permitidos.append(
-        StatusLancamento.PAGO if tipo == TipoLancamento.SAIDA else StatusLancamento.RECEBIDO
-    )
-    if status not in permitidos:
-        raise ValueError(
-            f"Status '{status}' inválido para lançamento do tipo '{tipo}'. "
-            f"Valores permitidos: {', '.join(permitidos)}"
-        )
 
 
 class LancamentoService:
@@ -47,7 +30,22 @@ class LancamentoService:
         if cliente_id is not None and not self.repository.cliente_existe(cliente_id):
             raise ValueError("Cliente não encontrado")
 
+    def _sincronizar_atrasos(self) -> None:
+        self.repository.marcar_atrasados(date.today())
+
+    @staticmethod
+    def _filtros(filtros: LancamentoFilter) -> dict:
+        return {
+            "inicio": filtros.inicio,
+            "fim": filtros.fim,
+            "status": filtros.status,
+            "tipo": filtros.tipo,
+            "categoria_id": filtros.categoria_id,
+            "cliente_id": filtros.cliente_id,
+        }
+
     def buscar_por_id(self, lancamento_id: int) -> Lancamento:
+        self._sincronizar_atrasos()
         lancamento = self.repository.buscar_por_id(lancamento_id)
         if not lancamento:
             raise ValueError("Lançamento não encontrado")
@@ -55,28 +53,17 @@ class LancamentoService:
 
     def listar_lancamentos(self, filtros: LancamentoFilter) -> list[Lancamento]:
         self._validar_periodo(filtros)
-        lancamentos = self.repository.buscar_por_filtros(
-            inicio=filtros.inicio,
-            fim=filtros.fim,
-            tipo=filtros.tipo,
-            categoria_id=filtros.categoria_id,
-            cliente_id=filtros.cliente_id,
-        )
-        if filtros.situacao is not None:
-            lancamentos = [item for item in lancamentos if item.situacao == filtros.situacao]
-        return lancamentos
+        self._sincronizar_atrasos()
+        return self.repository.buscar_por_filtros(**self._filtros(filtros))
 
     def listar_lancamentos_paginado(
         self, filtros: LancamentoFilter, page: int, page_size: int
     ) -> LancamentoPaginadoResponse:
-        lancamentos = self.listar_lancamentos(filtros)
-        total = len(lancamentos)
-        inicio = (page - 1) * page_size
+        self._validar_periodo(filtros)
+        self._sincronizar_atrasos()
+        itens, total = self.repository.buscar_paginado(page, page_size, **self._filtros(filtros))
         return LancamentoPaginadoResponse(
-            itens=[
-                LancamentoResponse.model_validate(item)
-                for item in lancamentos[inicio : inicio + page_size]
-            ],
+            itens=[LancamentoResponse.model_validate(item) for item in itens],
             total=total,
             page=page,
             page_size=page_size,
@@ -84,34 +71,39 @@ class LancamentoService:
         )
 
     def resumir_lancamentos(self, filtros: LancamentoFilter) -> LancamentoResumo:
-        filtros.situacao = None
-        resumos = {situacao: ResumoSituacao() for situacao in SituacaoLancamento}
-        for item in self.listar_lancamentos(filtros):
-            resumo = resumos[item.situacao]
-            resumo.quantidade += 1
-            if item.tipo == TipoLancamento.ENTRADA:
-                resumo.total_entradas += item.valor
+        self._validar_periodo(filtros)
+        self._sincronizar_atrasos()
+        filtros_sql = self._filtros(filtros) | {"status": None}
+        resumos = {status: ResumoStatus() for status in StatusLancamento}
+        for status, tipo, quantidade, soma in self.repository.totais_por_status_e_tipo(
+            **filtros_sql
+        ):
+            resumo = resumos[status]
+            resumo.quantidade += quantidade
+            if tipo == TipoLancamento.ENTRADA:
+                resumo.total_entradas += soma
             else:
-                resumo.total_saidas += item.valor
+                resumo.total_saidas += soma
         return LancamentoResumo(
             inicio=filtros.inicio,
             fim=filtros.fim,
-            previsto=resumos[SituacaoLancamento.PREVISTO],
-            realizado=resumos[SituacaoLancamento.REALIZADO],
-            atrasado=resumos[SituacaoLancamento.ATRASADO],
+            pendente=resumos[StatusLancamento.PENDENTE],
+            realizado=resumos[StatusLancamento.REALIZADO],
+            atrasado=resumos[StatusLancamento.ATRASADO],
         )
 
     def criar_lancamento(self, dados: LancamentoCreate) -> Lancamento:
-        _validar_status_para_tipo(dados.tipo, dados.status)
         self._validar_referencias(dados.categoria_id, dados.cliente_id)
-        return self.repository.criar(Lancamento(**dados.model_dump()))
+        lancamento = Lancamento(
+            **dados.model_dump(),
+            status=Lancamento.status_para_vencimento(dados.data_vencimento),
+        )
+        return self.repository.criar(lancamento)
 
     def atualizar_lancamento(self, lancamento_id: int, dados: LancamentoUpdate) -> Lancamento:
         lancamento = self.buscar_por_id(lancamento_id)
         campos = dados.model_dump(exclude_unset=True)
 
-        if campos.get("tipo") is not None:
-            _validar_status_para_tipo(campos["tipo"], lancamento.status)
         for obrigatorio in ("titulo", "tipo", "data_vencimento", "valor"):
             if obrigatorio in campos and campos[obrigatorio] is None:
                 raise ValueError(f"O campo '{obrigatorio}' não pode ser nulo")
@@ -119,12 +111,19 @@ class LancamentoService:
 
         for campo, valor in campos.items():
             setattr(lancamento, campo, valor)
+
+        if "data_vencimento" in campos and lancamento.status != StatusLancamento.REALIZADO:
+            lancamento.status = Lancamento.status_para_vencimento(lancamento.data_vencimento)
         return self.repository.atualizar(lancamento)
 
-    def atualizar_status(self, lancamento_id: int, dados: LancamentoStatusUpdate) -> Lancamento:
+    def alternar_status(self, lancamento_id: int) -> Lancamento:
         lancamento = self.buscar_por_id(lancamento_id)
-        _validar_status_para_tipo(lancamento.tipo, dados.status)
-        lancamento.status = dados.status
+        if lancamento.status == StatusLancamento.REALIZADO:
+            lancamento.status = Lancamento.status_para_vencimento(lancamento.data_vencimento)
+            lancamento.data_pagamento = None
+        else:
+            lancamento.status = StatusLancamento.REALIZADO
+            lancamento.data_pagamento = datetime.now()
         return self.repository.atualizar(lancamento)
 
     def deletar_lancamento(self, lancamento_id: int) -> None:

@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,20 +10,13 @@ from app.config.database import Base
 
 class StatusLancamento(enum.StrEnum):
     PENDENTE = "Pendente"
-    PAGO = "Pago"
-    RECEBIDO = "Recebido"
+    REALIZADO = "Realizado"
     ATRASADO = "Atrasado"
 
 
 class TipoLancamento(enum.StrEnum):
     ENTRADA = "e"
     SAIDA = "s"
-
-
-class SituacaoLancamento(enum.StrEnum):
-    PREVISTO = "Previsto"
-    REALIZADO = "Realizado"
-    ATRASADO = "Atrasado"
 
 
 class Lancamento(Base):
@@ -52,10 +45,9 @@ class Lancamento(Base):
         "CategoriaLancamento", back_populates="lancamentos"
     )
 
-    @property
-    def situacao(self) -> SituacaoLancamento:
-        if self.status in (StatusLancamento.PAGO, StatusLancamento.RECEBIDO):
-            return SituacaoLancamento.REALIZADO
-        if self.status == StatusLancamento.ATRASADO or self.data_vencimento < datetime.now():
-            return SituacaoLancamento.ATRASADO
-        return SituacaoLancamento.PREVISTO
+    @staticmethod
+    def status_para_vencimento(data_vencimento: datetime, hoje: date | None = None):
+        hoje = hoje or date.today()
+        if data_vencimento.date() < hoje:
+            return StatusLancamento.ATRASADO
+        return StatusLancamento.PENDENTE

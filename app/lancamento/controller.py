@@ -9,7 +9,6 @@ from app.lancamento.schema import (
     LancamentoPaginadoResponse,
     LancamentoResponse,
     LancamentoResumo,
-    LancamentoStatusUpdate,
     LancamentoUpdate,
 )
 from app.lancamento.service import LancamentoService
@@ -81,12 +80,10 @@ def atualizar_lancamento(
         raise _erro_http(e) from e
 
 
-@router.patch("/{lancamento_id}/status", response_model=LancamentoResponse)
-def atualizar_status_lancamento(
-    lancamento_id: int, dados: LancamentoStatusUpdate, db: Session = Depends(get_db)
-):
+@router.patch("/{lancamento_id}/alternar-status", response_model=LancamentoResponse)
+def alternar_status_lancamento(lancamento_id: int, db: Session = Depends(get_db)):
     try:
-        return LancamentoService(db).atualizar_status(lancamento_id, dados)
+        return LancamentoService(db).alternar_status(lancamento_id)
     except ValueError as e:
         raise _erro_http(e) from e
 
