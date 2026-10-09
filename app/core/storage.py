@@ -41,7 +41,7 @@ def remover_arquivo(chave: str) -> None:
 def obter_url_publica(chave: str | None, expiracao_segundos: int = 3600) -> str | None:
     if not chave:
         return None
-    
+
     try:
         url = s3_client.generate_presigned_url(
             "get_object",
@@ -56,8 +56,7 @@ def obter_url_publica(chave: str | None, expiracao_segundos: int = 3600) -> str 
             parsed_public = urlparse(MINIO_PUBLIC_URL)
 
             url = parsed_url._replace(
-                scheme=parsed_public.scheme, 
-                netloc=parsed_public.netloc
+                scheme=parsed_public.scheme, netloc=parsed_public.netloc
             ).geturl()
 
         return url
