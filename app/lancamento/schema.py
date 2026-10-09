@@ -44,6 +44,14 @@ class LancamentoResponse(LancamentoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class LancamentoPaginadoResponse(BaseModel):
+    itens: list[LancamentoResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class LancamentoFilter:
     def __init__(
         self,

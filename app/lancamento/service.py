@@ -1,3 +1,5 @@
+from math import ceil
+
 from sqlalchemy.orm import Session
 
 from app.lancamento.model import (
@@ -10,6 +12,8 @@ from app.lancamento.repository import LancamentoRepository
 from app.lancamento.schema import (
     LancamentoCreate,
     LancamentoFilter,
+    LancamentoPaginadoResponse,
+    LancamentoResponse,
     LancamentoResumo,
     LancamentoStatusUpdate,
     LancamentoUpdate,
@@ -61,6 +65,23 @@ class LancamentoService:
         if filtros.situacao is not None:
             lancamentos = [item for item in lancamentos if item.situacao == filtros.situacao]
         return lancamentos
+
+    def listar_lancamentos_paginado(
+        self, filtros: LancamentoFilter, page: int, page_size: int
+    ) -> LancamentoPaginadoResponse:
+        lancamentos = self.listar_lancamentos(filtros)
+        total = len(lancamentos)
+        inicio = (page - 1) * page_size
+        return LancamentoPaginadoResponse(
+            itens=[
+                LancamentoResponse.model_validate(item)
+                for item in lancamentos[inicio : inicio + page_size]
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=max(1, ceil(total / page_size)),
+        )
 
     def resumir_lancamentos(self, filtros: LancamentoFilter) -> LancamentoResumo:
         filtros.situacao = None

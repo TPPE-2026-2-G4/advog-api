@@ -122,10 +122,38 @@ def test_resumo(client):
     assert data["atrasado"]["total_entradas"] == 200.0
 
 
+def test_listar_paginado(client):
+    _popular(client)
+    r = client.get("/lancamentos/paginado", params={"page": 1, "page_size": 2})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] == 3 and data["total_pages"] == 2
+    assert [i["titulo"] for i in data["itens"]] == ["feito", "atrasado"]
+
+    data = client.get("/lancamentos/paginado", params={"page": 2, "page_size": 2}).json()
+    assert [i["titulo"] for i in data["itens"]] == ["previsto"]
+
+
+def test_listar_paginado_com_filtros(client):
+    _popular(client)
+    data = client.get("/lancamentos/paginado", params={"situacao": "Atrasado"}).json()
+    assert data["total"] == 1 and data["itens"][0]["titulo"] == "atrasado"
+    vazio = client.get("/lancamentos/paginado", params={"tipo": "s", "situacao": "Previsto"}).json()
+    assert vazio == {"itens": [], "total": 0, "page": 1, "page_size": 10, "total_pages": 1}
+
+
+def test_listar_paginado_validacoes(client):
+    assert client.get("/lancamentos/paginado", params={"page": 0}).status_code == 422
+    assert client.get("/lancamentos/paginado", params={"page_size": 101}).status_code == 422
+    r = client.get("/lancamentos/paginado", params={"inicio": "2026-10-10", "fim": "2026-10-01"})
+    assert r.status_code == 400
+
+
 def test_rotas_exigem_autenticacao(client):
     client.headers.pop("Authorization")
     assert client.get("/lancamentos/").status_code == 401
     assert client.get("/lancamentos/resumo").status_code == 401
+    assert client.get("/lancamentos/paginado").status_code == 401
     assert client.post("/lancamentos/", json=_payload()).status_code == 401
     assert client.put("/lancamentos/1", json={}).status_code == 401
     assert client.patch("/lancamentos/1/status", json={"status": "Pago"}).status_code == 401
