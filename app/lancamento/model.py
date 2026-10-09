@@ -54,7 +54,6 @@ class Lancamento(Base):
 
     @property
     def situacao(self) -> SituacaoLancamento:
-        """Previsto (pendente no prazo), realizado (pago/recebido) ou atrasado."""
         if self.status in (StatusLancamento.PAGO, StatusLancamento.RECEBIDO):
             return SituacaoLancamento.REALIZADO
         if self.status == StatusLancamento.ATRASADO or self.data_vencimento < datetime.now():
