@@ -61,10 +61,7 @@ def seed() -> None:
                 garantir_bucket()
                 with open(caminho_imagem, "rb") as f:
                     chave_imagem_sobre = salvar_arquivo(
-                        conteudo=f,
-                        extensao="jpg",
-                        content_type="image/jpeg",
-                        pasta="sobre"
+                        conteudo=f, extensao="jpg", content_type="image/jpeg", pasta="sobre"
                     )
 
             institucional = Institucional(
