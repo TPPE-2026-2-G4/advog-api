@@ -41,6 +41,7 @@ local:
 	docker compose down advog-api
 	docker compose --profile dev up -d --build advog-db advog-mailpit
 	cp -n .env.local.example .env.local
+	@sleep 3
 	uv run fastapi dev
 
 test:
