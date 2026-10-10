@@ -6,15 +6,21 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 class ClienteBase(BaseModel):
     nome: str
-    telefone: str
+    telefone: str | None = None
     email: EmailStr
     area_interesse: str | None = None
+    descricao: str | None = None
+    documento: str | None = None
     ultima_interacao: datetime
     responsavel_id: int | None = None
     etapa_id: int
 
 
 class ClienteCreate(ClienteBase):
+    pass
+
+
+class ClienteUpdate(ClienteBase):
     pass
 
 
