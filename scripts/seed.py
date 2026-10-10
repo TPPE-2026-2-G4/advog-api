@@ -1,15 +1,16 @@
+# ruff: noqa: E402
 import os
 
 from dotenv import load_dotenv
+
+load_dotenv()
+load_dotenv(".env.local", override=True)
 
 from app.cargo.model import Cargo
 from app.cargo.schema import PermissaoBase
 from app.config.database import Base, SessionLocal, engine
 from app.core.seguranca import hash_senha
 from app.funcionario.model import Funcionario, StatusFuncionario
-
-load_dotenv()
-load_dotenv(".env.local", override=True)
 
 
 def seed() -> None:
