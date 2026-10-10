@@ -29,7 +29,7 @@ class SolicitacaoCreate(BaseModel):
 
 
 class SolicitacaoResponse(BaseModel):
-    id: int = Field(validation_alias="cliente_id", serialization_alias="id")
+    cliente_id: int = Field(validation_alias="cliente_id")
     nome: str
     email: str
     telefone: str
