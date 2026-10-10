@@ -3,12 +3,12 @@ from sqlalchemy.orm import Session
 
 from app.config.database import get_db
 from app.core.dependencies import exigir_permissao
-from app.funcionario.schema import FuncionarioResponse
 from app.funcionario.service import FuncionarioService
 from app.institucional.schema import (
     InstitucionalResponse,
     InstitucionalUpdate,
     InstitucionalUploadResponse,
+    MembroEquipePublicaResponse,
 )
 from app.institucional.service import InstitucionalService, UploadInvalidoError
 
@@ -26,7 +26,7 @@ def obter_configuracoes(
     return service.obter_configuracoes()
 
 
-@router.get("/equipe", response_model=list[FuncionarioResponse])
+@router.get("/equipe", response_model=list[MembroEquipePublicaResponse])
 def obter_equipe_publica(db: Session = Depends(get_db)):
     service = FuncionarioService(db)
     return service.buscar_visiveis_institucional()
