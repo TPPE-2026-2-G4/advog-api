@@ -1,9 +1,11 @@
 from datetime import datetime
 
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from app.config.database import Base, SessionLocal, engine
 from app.processo.model import Processo
+from app.processo.repository import ProcessoRepository
 from main import app
 
 client = TestClient(app)
@@ -156,3 +158,24 @@ def test_criar_processo():
     response = client.get(f"/processos/?processo_id={processo_id}")
     assert response.status_code == 200
     assert len(response.json()) == 1
+
+
+def test_buscar_processos_com_filtro_status_todos(db_session: Session):
+    repositorio = ProcessoRepository(db_session)
+    processos = repositorio.find_all_by_filters(status="todos")
+
+    assert isinstance(processos, list)
+
+
+def test_buscar_processos_com_filtro_status_especifico(db_session: Session):
+    repositorio = ProcessoRepository(db_session)
+    processos = repositorio.find_all_by_filters(status="ativo")
+
+    assert isinstance(processos, list)
+
+
+def test_buscar_processos_com_filtro_descricao(db_session: Session):
+    repositorio = ProcessoRepository(db_session)
+    processos = repositorio.find_all_by_filters(descricao_proc="Descrição do caso 1")
+
+    assert isinstance(processos, list)
