@@ -4,8 +4,8 @@ from app.solicitacao.repository import SolicitacaoRepository
 from app.solicitacao.schema import SolicitacaoCreate
 
 
-def test_criar_solicitacao_sucesso(db: Session):
-    repo = SolicitacaoRepository(db)
+def test_criar_solicitacao_sucesso(db_session: Session):
+    repo = SolicitacaoRepository(db_session)
     payload = SolicitacaoCreate(
         nome="Carlos Oliveira",
         email="carlos.oliveira@email.com",
@@ -15,7 +15,7 @@ def test_criar_solicitacao_sucesso(db: Session):
 
     cliente = repo.criar_solicitacao_cliente(payload)
 
-    assert cliente.id is not None
+    assert cliente.cliente_id is not None
     assert cliente.nome == "Carlos Oliveira"
     assert cliente.email == "carlos.oliveira@email.com"
     assert cliente.telefone == "61999998888"
@@ -25,12 +25,12 @@ def test_criar_solicitacao_sucesso(db: Session):
     assert cliente.ultima_interacao is not None
 
 
-def test_permitir_multiplas_solicitacoes_mesmo_email(db: Session):
-    repo = SolicitacaoRepository(db)
+def test_permitir_multiplas_solicitacoes_mesmo_email(db_session: Session):
+    repo = SolicitacaoRepository(db_session)
     payload_1 = SolicitacaoCreate(
         nome="Mariana Costa",
         email="mariana@email.com",
-        telefone="61988887777",
+        telefone="61888887777",
         descricao="Primeira solicitação de consultoria.",
     )
     payload_2 = SolicitacaoCreate(
@@ -43,5 +43,5 @@ def test_permitir_multiplas_solicitacoes_mesmo_email(db: Session):
     cliente_1 = repo.criar_solicitacao_cliente(payload_1)
     cliente_2 = repo.criar_solicitacao_cliente(payload_2)
 
-    assert cliente_1.id != cliente_2.id
+    assert cliente_1.cliente_id != cliente_2.cliente_id
     assert cliente_1.email == cliente_2.email

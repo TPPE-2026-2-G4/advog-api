@@ -19,5 +19,6 @@ class SolicitacaoService:
 
         nova_solicitacao = self.solicitacao_repo.criar_solicitacao_cliente(solicitacao)
 
-        logger.info(f"Solicitação criada com sucesso. ID: {nova_solicitacao.id}")
+        logger.info(f"Solicitação criada com sucesso. ID: {nova_solicitacao.cliente_id}")
+
         return nova_solicitacao
