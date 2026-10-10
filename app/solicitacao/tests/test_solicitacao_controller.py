@@ -17,7 +17,7 @@ def test_registrar_solicitacao_endpoint_sucesso(client: TestClient):
     assert dados_resposta["nome"] == "Fernanda Lima"
     assert dados_resposta["email"] == "fernanda@email.com"
     assert dados_resposta["telefone"] == "61988885555"
-    assert "id" in dados_resposta
+    assert "cliente_id" in dados_resposta
 
 
 @pytest.mark.parametrize(
