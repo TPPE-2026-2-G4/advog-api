@@ -117,7 +117,7 @@ class TestObterInstitucionalController:
         dados = response.json()
         assert len(dados) == 1
         assert dados[0]["nome"] == "Dr. Alexandre"
-        assert dados[0]["exibicaoInstitucional"] is True
+        assert "exibicaoInstitucional" not in dados[0]
 
 
 class TestAtualizarInstitucionalController:

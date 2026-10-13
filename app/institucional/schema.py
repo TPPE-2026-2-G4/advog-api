@@ -1,17 +1,24 @@
 import re
+from typing import Any, cast
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_serializer,
+    field_validator,
+)
 
 from app.core.storage import obter_url_publica
 
 HEX_COLOR_PATTERN = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
-def _vazio_para_none(v: str | None) -> str | None:
-
-    if isinstance(v, str) and v.strip() == "":
+def _vazio_para_none(texto: str | None) -> str | None:
+    if isinstance(texto, str) and texto.strip() == "":
         return None
-    return v
+    return texto
 
 
 class InstitucionalBase(BaseModel):
@@ -21,7 +28,6 @@ class InstitucionalBase(BaseModel):
     descricao: str | None = Field(default=None, max_length=255)
     sobre_escritorio: str | None = Field(default=None, alias="sobreEscritorio")
     imagem_sobre: str | None = Field(default=None, alias="imagemSobre")
-    texto_adicional_sobre: str | None = Field(default=None, alias="textoAdicionalSobre")
     email: EmailStr | None = None
     telefone: str | None = Field(default=None, max_length=20)
     endereco: str | None = None
@@ -32,15 +38,15 @@ class InstitucionalBase(BaseModel):
 
     @field_validator("email", mode="before")
     @classmethod
-    def _limpar_email(cls, v: str | None) -> str | None:
-        return _vazio_para_none(v)
+    def _limpar_email(cls, email_bruto: str | None) -> str | None:
+        return _vazio_para_none(email_bruto)
 
     @field_validator("cor_primaria", "cor_secundaria")
     @classmethod
-    def _validar_hex(cls, v: str | None) -> str | None:
-        if v is not None and not HEX_COLOR_PATTERN.match(v):
+    def _validar_hex(cls, cor_hex: str | None) -> str | None:
+        if cor_hex is not None and not HEX_COLOR_PATTERN.match(cor_hex):
             raise ValueError("Cor deve estar no formato hexadecimal #RRGGBB (ex: #1E3A8A)")
-        return v
+        return cor_hex
 
 
 class InstitucionalUpdate(BaseModel):
@@ -52,7 +58,6 @@ class InstitucionalUpdate(BaseModel):
     descricao: str | None = Field(default=None, max_length=255)
     sobre_escritorio: str | None = Field(default=None, alias="sobreEscritorio")
     imagem_sobre: str | None = Field(default=None, alias="imagemSobre")
-    texto_adicional_sobre: str | None = Field(default=None, alias="textoAdicionalSobre")
     email: EmailStr | None = None
     telefone: str | None = Field(default=None, max_length=20)
     endereco: str | None = None
@@ -61,15 +66,15 @@ class InstitucionalUpdate(BaseModel):
 
     @field_validator("email", mode="before")
     @classmethod
-    def _limpar_email(cls, v: str | None) -> str | None:
-        return _vazio_para_none(v)
+    def _limpar_email(cls, email_bruto: str | None) -> str | None:
+        return _vazio_para_none(email_bruto)
 
     @field_validator("cor_primaria", "cor_secundaria")
     @classmethod
-    def _validar_hex(cls, v: str | None) -> str | None:
-        if v is not None and not HEX_COLOR_PATTERN.match(v):
+    def _validar_hex(cls, cor_hex: str | None) -> str | None:
+        if cor_hex is not None and not HEX_COLOR_PATTERN.match(cor_hex):
             raise ValueError("Cor deve estar no formato hexadecimal #RRGGBB (ex: #1E3A8A)")
-        return v
+        return cor_hex
 
 
 class InstitucionalResponse(InstitucionalBase):
@@ -78,10 +83,26 @@ class InstitucionalResponse(InstitucionalBase):
     id: int = Field(validation_alias="institucional_id", serialization_alias="id")
 
     @field_serializer("logotipo", "banner_hero", "imagem_sobre")
-    def _serializar_url_midia(self, v: str | None) -> str | None:
-        return obter_url_publica(v)
+    def _serializar_url_midia(self, caminho_midia: str | None) -> str | None:
+        return obter_url_publica(caminho_midia)
 
 
 class InstitucionalUploadResponse(BaseModel):
     url: str
     warning: str | None = None
+
+
+class MembroEquipePublicaResponse(BaseModel):
+    nome: str
+    cargo: str | None = None
+    uf_oab: str | None = None
+    numero_oab: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("cargo", mode="before")
+    @classmethod
+    def _extrair_nome_cargo(cls, cargo_ou_objeto: Any) -> str | None:
+        if hasattr(cargo_ou_objeto, "nome_cargo"):
+            return cargo_ou_objeto.nome_cargo
+        return cast(str | None, cargo_ou_objeto)

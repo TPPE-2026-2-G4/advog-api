@@ -9,7 +9,12 @@ from pydantic import ValidationError
 from app.funcionario.service import FuncionarioService
 from app.institucional.model import Institucional
 from app.institucional.repository import InstitucionalRepository
-from app.institucional.schema import InstitucionalBase, InstitucionalResponse, InstitucionalUpdate
+from app.institucional.schema import (
+    InstitucionalBase,
+    InstitucionalResponse,
+    InstitucionalUpdate,
+    MembroEquipePublicaResponse,
+)
 from app.institucional.service import InstitucionalService, UploadInvalidoError
 
 
@@ -309,3 +314,13 @@ def test_upload_svg_com_namespace_e_atributos_validos(service_mocked):
         url, warning = service_mocked.upload_midia(file_mock, "logo")
         assert url == "http://localhost:9000/logotipos/ns.svg"
         assert warning is None
+
+
+def test_schema_institucional_validador_entrada_nao_string():
+    with pytest.raises(ValidationError):
+        InstitucionalUpdate(email=12345)  # type: ignore
+
+
+def test_membro_equipe_publica_schema_cargo_string_direta():
+    membro = MembroEquipePublicaResponse(nome="Dr. Pedro", cargo="Advogado Sênior")
+    assert membro.cargo == "Advogado Sênior"

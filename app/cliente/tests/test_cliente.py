@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 
 from app.cliente.model import Cliente
+from app.cliente.repository import ClienteRepository
 from app.config.database import Base, SessionLocal, engine
 from app.core.dependencies import obter_funcionario_atual
 from main import app
@@ -133,6 +134,53 @@ def test_obter_cliente_por_id():
 def test_obter_cliente_inexistente():
     response = client.get("/clientes/999999")
     assert response.status_code == 404
+
+
+def test_atualizar_cliente_sucesso():
+    db = SessionLocal()
+    repositorio = ClienteRepository(db)
+    cliente = db.query(Cliente).first()
+    assert cliente is not None
+
+    dados_atualizacao = {"nome": "Cliente Teste Alterado", "telefone": "(11) 98888-8888"}
+    cliente_atualizado = repositorio.update(cliente.cliente_id, dados_atualizacao)
+
+    assert cliente_atualizado is not None
+    assert cliente_atualizado.nome == "Cliente Teste Alterado"
+    assert cliente_atualizado.telefone == "(11) 98888-8888"
+    db.close()
+
+
+def test_atualizar_cliente_inexistente_retorna_none():
+    db = SessionLocal()
+    repositorio = ClienteRepository(db)
+    resultado = repositorio.update(99999, {"nome": "Inexistente"})
+
+    assert resultado is None
+    db.close()
+
+
+def test_deletar_cliente_sucesso():
+    db = SessionLocal()
+    repositorio = ClienteRepository(db)
+    cliente = db.query(Cliente).first()
+    assert cliente is not None
+
+    sucesso = repositorio.delete(cliente.cliente_id)
+    cliente_buscado = repositorio.get_by_id(cliente.cliente_id)
+
+    assert sucesso is True
+    assert cliente_buscado is None
+    db.close()
+
+
+def test_deletar_cliente_inexistente_retorna_false():
+    db = SessionLocal()
+    repositorio = ClienteRepository(db)
+    sucesso = repositorio.delete(99999)
+
+    assert sucesso is False
+    db.close()
 
 
 def test_atualizar_cliente():

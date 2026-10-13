@@ -26,6 +26,7 @@ from app.institucional.controller import router as institucional_router  # noqa:
 from app.institucional.model import Institucional  # noqa: E402
 from app.lancamento.controller import router as lancamento_router  # noqa: E402
 from app.processo.controller import router as processo_router  # noqa: E402
+from app.solicitacao.controller import router as solicitacao_router  # noqa: E402
 
 Base.metadata.create_all(bind=engine)
 
@@ -74,6 +75,7 @@ app.include_router(lancamento_router)
 app.include_router(categoria_lancamento_router)
 app.include_router(cliente_router)
 app.include_router(processo_router)
+app.include_router(solicitacao_router)
 
 
 @app.get("/")
