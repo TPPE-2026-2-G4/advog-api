@@ -2,11 +2,14 @@ import os
 
 from dotenv import load_dotenv
 
+from app.atividade.seed import inicializar_etapas_kanban
 from app.cargo.model import Cargo
 from app.cargo.schema import PermissaoBase
+from app.cliente.model import Cliente  # noqa: F401
 from app.config.database import Base, SessionLocal, engine
 from app.core.seguranca import hash_senha
 from app.funcionario.model import Funcionario, StatusFuncionario
+from app.processo.model import Processo  # noqa: F401
 
 load_dotenv()
 load_dotenv(".env.local", override=True)
@@ -50,6 +53,7 @@ def seed() -> None:
         else:
             print(f"Usuário administrador já existe: {email}")
 
+        inicializar_etapas_kanban(db)
         db.commit()
 
     finally:
