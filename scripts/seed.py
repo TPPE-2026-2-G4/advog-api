@@ -81,7 +81,6 @@ def seed() -> None:
                 email="contato@carreiro.adv.br",
                 telefone="(99) 99999-9999",
                 endereco="SCLN 203, Bloco B — Brasília, DF",
-                texto_adicional_sobre="Texto adicional que deverá tirar do banco",
                 imagem_sobre=chave_imagem_sobre,
             )
             db.add(institucional)
