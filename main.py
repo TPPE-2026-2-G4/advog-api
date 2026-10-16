@@ -17,6 +17,7 @@ from starlette.types import ExceptionHandler  # noqa: E402
 
 from app.auth.controller import router as auth_router  # noqa: E402
 from app.cargo.controller import router as cargo_router  # noqa: E402
+from app.categoria_lancamento.controller import router as categoria_lancamento_router  # noqa: E402
 from app.cliente.controller import router as cliente_router  # noqa: E402
 from app.config.database import Base, SessionLocal, engine  # noqa: E402
 from app.config.limiter import limiter  # noqa: E402
@@ -25,6 +26,7 @@ from app.institucional.controller import router as institucional_router  # noqa:
 from app.institucional.model import Institucional  # noqa: E402
 from app.lancamento.controller import router as lancamento_router  # noqa: E402
 from app.processo.controller import router as processo_router  # noqa: E402
+from app.solicitacao.controller import router as solicitacao_router  # noqa: E402
 
 Base.metadata.create_all(bind=engine)
 
@@ -70,8 +72,10 @@ app.include_router(cargo_router)
 app.include_router(funcionario_router)
 app.include_router(institucional_router)
 app.include_router(lancamento_router)
+app.include_router(categoria_lancamento_router)
 app.include_router(cliente_router)
 app.include_router(processo_router)
+app.include_router(solicitacao_router)
 
 
 @app.get("/")
