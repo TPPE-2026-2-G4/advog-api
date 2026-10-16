@@ -179,10 +179,17 @@ def test_filtrar_por_periodo(client):
     assert [i["titulo"] for i in r.json()] == ["atrasado"]
 
 
-def test_periodo_invalido(client):
-    r = client.get("/lancamentos/", params={"inicio": "2026-10-10", "fim": "2026-10-01"})
-    assert r.status_code == 400
-    r = client.get("/lancamentos/resumo", params={"inicio": "2026-10-10", "fim": "2026-10-01"})
+@pytest.mark.parametrize(
+    ("rota", "params"),
+    [
+        ("/lancamentos/", {"inicio": "2026-10-10", "fim": "2026-10-01"}),
+        ("/lancamentos/resumo", {"inicio": "2026-10-10", "fim": "2026-10-01"}),
+        ("/lancamentos/grafico", {"inicio": "2026-10-10", "fim": "2026-10-01"}),
+        ("/lancamentos/grafico", {"valor_min": 500.0, "valor_max": 100.0}),
+    ],
+)
+def test_filtros_intervalo_invalido_retornam_400(client, rota, params):
+    r = client.get(rota, params=params)
     assert r.status_code == 400
 
 
@@ -192,6 +199,128 @@ def test_resumo(client):
     assert data["pendente"] == {"quantidade": 1, "total_entradas": 100.0, "total_saidas": 0.0}
     assert data["realizado"] == {"quantidade": 1, "total_entradas": 0.0, "total_saidas": 50.0}
     assert data["atrasado"] == {"quantidade": 1, "total_entradas": 200.0, "total_saidas": 0.0}
+
+
+def test_grafico_agrupado_por_dia_e_tipo(client):
+    dia_1 = _dias(-3)
+    dia_2 = _dias(-1)
+    _criar(client, titulo="entrada 1", tipo="e", valor=500.0, data_vencimento=dia_1)
+    _criar(client, titulo="saida 1", tipo="s", valor=150.0, data_vencimento=dia_1)
+    _criar(client, titulo="entrada 2", tipo="e", valor=300.0, data_vencimento=dia_2)
+
+    r = client.get("/lancamentos/grafico")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total_entradas"] == 800.0
+    assert data["total_saidas"] == 150.0
+    assert data["saldo"] == 650.0
+    assert data["itens"] == [
+        {
+            "data": dia_1[:10],
+            "quantidade": 2,
+            "total_entradas": 500.0,
+            "total_saidas": 150.0,
+            "saldo": 350.0,
+        },
+        {
+            "data": dia_2[:10],
+            "quantidade": 1,
+            "total_entradas": 300.0,
+            "total_saidas": 0.0,
+            "saldo": 300.0,
+        },
+    ]
+
+
+@pytest.mark.parametrize(
+    ("dias", "offset_fim", "entradas_esperadas", "saidas_esperadas", "saldo_esperado", "qtd_dias"),
+    [
+        (5, 0, 200.0, 0.0, 200.0, 1),
+        (15, 0, 200.0, 50.0, 150.0, 2),
+        (3, -2, 200.0, 0.0, 200.0, 1),
+        (1, 0, 0.0, 0.0, 0.0, 0),
+    ],
+)
+def test_grafico_filtrar_por_dias_parametrizado(
+    client, dias, offset_fim, entradas_esperadas, saidas_esperadas, saldo_esperado, qtd_dias
+):
+    _popular(client)
+    hoje = datetime.now().date()
+    fim_esperado = hoje + timedelta(days=offset_fim)
+    inicio_esperado = fim_esperado - timedelta(days=dias - 1)
+
+    params = {"dias": dias}
+    if offset_fim != 0:
+        params["fim"] = fim_esperado.isoformat()
+
+    r = client.get("/lancamentos/grafico", params=params)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["inicio"] == inicio_esperado.isoformat()
+    assert data["fim"] == fim_esperado.isoformat()
+    assert data["total_entradas"] == entradas_esperadas
+    assert data["total_saidas"] == saidas_esperadas
+    assert data["saldo"] == saldo_esperado
+    assert len(data["itens"]) == qtd_dias
+
+
+@pytest.mark.parametrize(
+    (
+        "valor_min",
+        "valor_max",
+        "entradas_esperadas",
+        "saidas_esperadas",
+        "saldo_esperado",
+        "qtd_dias",
+    ),
+    [
+        (80.0, 150.0, 100.0, 0.0, 100.0, 1),
+        (0.0, 60.0, 0.0, 50.0, -50.0, 1),
+        (50.0, 200.0, 300.0, 50.0, 250.0, 3),
+        (500.0, 1000.0, 0.0, 0.0, 0.0, 0),
+    ],
+)
+def test_grafico_filtrar_por_valores_parametrizado(
+    client, valor_min, valor_max, entradas_esperadas, saidas_esperadas, saldo_esperado, qtd_dias
+):
+    _popular(client)
+    r = client.get(
+        "/lancamentos/grafico",
+        params={"valor_min": valor_min, "valor_max": valor_max},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["valor_min"] == valor_min
+    assert data["valor_max"] == valor_max
+    assert data["total_entradas"] == entradas_esperadas
+    assert data["total_saidas"] == saidas_esperadas
+    assert data["saldo"] == saldo_esperado
+    assert len(data["itens"]) == qtd_dias
+
+
+def test_grafico_filtrar_por_categoria_e_cliente(client, categoria):
+    _popular(client)
+    _criar(client, titulo="cat", valor=120.0, categoria_id=categoria["categoria_id"])
+    r = client.get(
+        "/lancamentos/grafico",
+        params={"categoria_id": categoria["categoria_id"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["total_entradas"] == 120.0
+    assert client.get("/lancamentos/grafico", params={"cliente_id": 999}).json()["itens"] == []
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"dias": 0},
+        {"dias": -3},
+        {"valor_min": -1.0},
+        {"valor_max": -0.01},
+    ],
+)
+def test_grafico_parametros_invalidos_retornam_422(client, params):
+    assert client.get("/lancamentos/grafico", params=params).status_code == 422
 
 
 def test_listar_paginado(client):
@@ -225,6 +354,7 @@ def test_rotas_exigem_autenticacao(client):
     client.headers.pop("Authorization")
     assert client.get("/lancamentos/").status_code == 401
     assert client.get("/lancamentos/resumo").status_code == 401
+    assert client.get("/lancamentos/grafico").status_code == 401
     assert client.get("/lancamentos/paginado").status_code == 401
     assert client.post("/lancamentos/", json=_payload()).status_code == 401
     assert client.put("/lancamentos/1", json={}).status_code == 401

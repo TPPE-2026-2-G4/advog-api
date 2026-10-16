@@ -6,6 +6,7 @@ from app.core.dependencies import obter_funcionario_atual
 from app.lancamento.schema import (
     LancamentoCreate,
     LancamentoFilter,
+    LancamentoGrafico,
     LancamentoPaginadoResponse,
     LancamentoResponse,
     LancamentoResumo,
@@ -58,6 +59,14 @@ def listar_lancamentos_paginado(
 def resumir_lancamentos(filtros: LancamentoFilter = Depends(), db: Session = Depends(get_db)):
     try:
         return LancamentoService(db).resumir_lancamentos(filtros)
+    except ValueError as e:
+        raise _erro_http(e) from e
+
+
+@router.get("/grafico", response_model=LancamentoGrafico)
+def obter_grafico_lancamentos(filtros: LancamentoFilter = Depends(), db: Session = Depends(get_db)):
+    try:
+        return LancamentoService(db).gerar_grafico(filtros)
     except ValueError as e:
         raise _erro_http(e) from e
 

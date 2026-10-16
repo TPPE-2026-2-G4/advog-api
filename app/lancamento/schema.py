@@ -51,6 +51,15 @@ class LancamentoFilter:
         self,
         inicio: date | None = Query(None, description="Vencimento a partir de (inclusive)"),
         fim: date | None = Query(None, description="Vencimento até (inclusive)"),
+        dias: int | None = Query(
+            None, ge=1, description="Quantidade de dias recentes a considerar"
+        ),
+        valor_min: float | None = Query(
+            None, ge=0, description="Valor mínimo do lançamento (inclusive)"
+        ),
+        valor_max: float | None = Query(
+            None, ge=0, description="Valor máximo do lançamento (inclusive)"
+        ),
         status: StatusLancamento | None = Query(
             None, description="Pendente, Realizado ou Atrasado"
         ),
@@ -60,6 +69,9 @@ class LancamentoFilter:
     ):
         self.inicio = inicio
         self.fim = fim
+        self.dias = dias
+        self.valor_min = valor_min
+        self.valor_max = valor_max
         self.status = status
         self.tipo = tipo
         self.categoria_id = categoria_id
@@ -78,3 +90,22 @@ class LancamentoResumo(BaseModel):
     pendente: ResumoStatus
     realizado: ResumoStatus
     atrasado: ResumoStatus
+
+
+class PontoGrafico(BaseModel):
+    data: date
+    quantidade: int = 0
+    total_entradas: float = 0.0
+    total_saidas: float = 0.0
+    saldo: float = 0.0
+
+
+class LancamentoGrafico(BaseModel):
+    inicio: date | None
+    fim: date | None
+    valor_min: float | None = None
+    valor_max: float | None = None
+    total_entradas: float = 0.0
+    total_saidas: float = 0.0
+    saldo: float = 0.0
+    itens: list[PontoGrafico]
