@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 load_dotenv()
 load_dotenv(".env.local", override=True)
 
-<<<<<<< HEAD
 from app.cargo.model import Cargo  # noqa: E402
 from app.cargo.schema import PermissaoBase  # noqa: E402
 from app.config.database import Base, SessionLocal, engine  # noqa: E402
@@ -15,13 +14,6 @@ from app.core.seguranca import hash_senha  # noqa: E402
 from app.core.storage import garantir_bucket, salvar_arquivo  # noqa: E402
 from app.funcionario.model import Funcionario, StatusFuncionario  # noqa: E402
 from app.institucional.model import Institucional  # noqa: E402
-=======
-from app.cargo.model import Cargo
-from app.cargo.schema import PermissaoBase
-from app.config.database import Base, SessionLocal, engine
-from app.core.seguranca import hash_senha
-from app.funcionario.model import Funcionario, StatusFuncionario
->>>>>>> main
 
 
 def seed() -> None:
