@@ -1,6 +1,6 @@
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.cliente.model import Cliente
@@ -94,3 +94,33 @@ class ProcessoRepository:
     def deletar(self, processo: Processo) -> None:
         self.db.delete(processo)
         self.db.commit()
+
+    def buscar_processos_criticos(
+        self,
+        dias_sem_movimentacao: int = 30,
+        funcionario_id: int | None = None,
+    ) -> list[Processo]:
+        data_limite = datetime.now(UTC) - timedelta(days=dias_sem_movimentacao)
+        query = self.db.query(Processo)
+
+        query = query.filter(
+            Processo.status.notin_([StatusProcesso.CONCLUIDO, StatusProcesso.ARQUIVADO])
+        )
+
+        query = query.filter(
+            or_(
+                Processo.data_realizado < data_limite,
+                and_(
+                    Processo.data_realizado.is_(None),
+                    or_(
+                        Processo.data_inicio < data_limite,
+                        Processo.data_inicio.is_(None),
+                    ),
+                ),
+            )
+        )
+
+        if funcionario_id is not None:
+            query = query.filter(Processo.funcionario_id == funcionario_id)
+
+        return query.all()
