@@ -76,3 +76,14 @@ class ProcessoService:
         if processo is None:
             raise ValueError("Processo não encontrado")
         self.repository.deletar(processo)
+
+    def buscar_processos_criticos(
+        self,
+        dias_sem_movimentacao: int = 30,
+        funcionario_id: int | None = None,
+    ) -> list[ProcessoResponse]:
+        processos = self.repository.buscar_processos_criticos(
+            dias_sem_movimentacao=dias_sem_movimentacao,
+            funcionario_id=funcionario_id,
+        )
+        return [ProcessoResponse.model_validate(p) for p in processos]
