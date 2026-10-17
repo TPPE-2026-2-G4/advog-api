@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.orm import Session
@@ -309,3 +309,92 @@ def test_deletar(db_session, processo):
     resultado = repository.buscar_por_id(processo_id)
 
     assert resultado is None
+
+
+@pytest.mark.parametrize(
+    "status,data_realizado,data_inicio,func_vinculo,dias_filtro,func_filtro,espera_critico",
+    [
+        (StatusProcesso.ATIVO, None, datetime.now(UTC) - timedelta(days=40), True, 30, None, True),
+        (
+            StatusProcesso.ATIVO,
+            datetime.now(UTC) - timedelta(days=5),
+            datetime.now(UTC) - timedelta(days=40),
+            True,
+            30,
+            None,
+            False,
+        ),
+        (
+            StatusProcesso.ATIVO,
+            datetime.now(UTC) - timedelta(days=45),
+            datetime.now(UTC) - timedelta(days=100),
+            True,
+            30,
+            None,
+            True,
+        ),
+        (
+            StatusProcesso.CONCLUIDO,
+            None,
+            datetime.now(UTC) - timedelta(days=50),
+            True,
+            30,
+            None,
+            False,
+        ),
+        (
+            StatusProcesso.ARQUIVADO,
+            None,
+            datetime.now(UTC) - timedelta(days=50),
+            True,
+            30,
+            None,
+            False,
+        ),
+        (StatusProcesso.ATIVO, None, datetime.now(UTC) - timedelta(days=40), False, 30, 999, False),
+        (StatusProcesso.ATIVO, None, datetime.now(UTC) - timedelta(days=40), True, 30, True, True),
+        (StatusProcesso.ATIVO, None, datetime.now(UTC) - timedelta(days=15), True, 10, None, True),
+        (StatusProcesso.ATIVO, None, None, True, 30, None, True),
+    ],
+)
+def test_buscar_processos_criticos_parametrizado(
+    db_session,
+    dados_base,
+    status,
+    data_realizado,
+    data_inicio,
+    func_vinculo,
+    dias_filtro,
+    func_filtro,
+    espera_critico,
+):
+    repository = ProcessoRepository(db_session)
+    funcionario = dados_base["funcionario"]
+    cliente = dados_base["cliente"]
+
+    funcionario_id = funcionario.funcionario_id if func_vinculo else None
+
+    proc = Processo(
+        cnj="99999999999999999999",
+        titulo="Processo Teste Crítico",
+        status=status,
+        tribunal="TJDFT",
+        area="Trabalhista",
+        cliente_id=cliente.cliente_id,
+        funcionario_id=funcionario_id,
+        data_realizado=data_realizado,
+        data_inicio=data_inicio,
+    )
+    repository.criar(proc)
+
+    filtro_func = funcionario.funcionario_id if func_filtro is True else func_filtro
+
+    criticos = repository.buscar_processos_criticos(
+        dias_sem_movimentacao=dias_filtro,
+        funcionario_id=filtro_func,
+    )
+
+    if espera_critico:
+        assert any(p.processo_id == proc.processo_id for p in criticos)
+    else:
+        assert not any(p.processo_id == proc.processo_id for p in criticos)
