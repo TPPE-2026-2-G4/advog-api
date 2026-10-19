@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.orm import Session
@@ -606,3 +606,80 @@ def test_deletar_processo_inexistente(
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Processo não encontrado"
+
+
+@pytest.mark.parametrize(
+    "dias_param,func_filtro,espera_critico",
+    [
+        (None, None, True),
+        (10, None, True),
+        (500, None, False),
+        (30, True, True),
+        (30, 99999, False),
+    ],
+)
+def test_listar_processos_criticos_parametrizado(
+    client,
+    db_session,
+    usuario_processos,
+    cliente_processo,
+    funcionario_responsavel,
+    dias_param,
+    func_filtro,
+    espera_critico,
+):
+    _, token = usuario_processos
+
+    proc = Processo(
+        cnj="88888888888888888888",
+        titulo="Processo Crítico Controller",
+        descricao="Desc",
+        status=StatusProcesso.ATIVO,
+        tribunal="TJSP",
+        area="Civil",
+        data_inicio=datetime.now(UTC) - timedelta(days=40),
+        data_realizado=None,
+        cliente_id=cliente_processo.cliente_id,
+        funcionario_id=funcionario_responsavel.funcionario_id,
+    )
+    db_session.add(proc)
+    db_session.commit()
+    db_session.refresh(proc)
+
+    url = "/processos/criticos/"
+    params = []
+    if dias_param is not None:
+        params.append(f"dias_sem_movimentacao={dias_param}")
+    if func_filtro is True:
+        params.append(f"funcionario_id={funcionario_responsavel.funcionario_id}")
+    elif func_filtro is not None:
+        params.append(f"funcionario_id={func_filtro}")
+
+    if params:
+        url += "?" + "&".join(params)
+
+    response = client.get(url, headers=auth_header(token))
+
+    assert response.status_code == 200
+    dados = response.json()
+    cnjs = [p["cnj"] for p in dados]
+
+    if espera_critico:
+        assert "88888888888888888888" in cnjs
+    else:
+        assert "88888888888888888888" not in cnjs
+
+
+def test_listar_processos_criticos_sem_permissao(
+    client,
+    db_session,
+    cliente_processo,
+    token_acesso,
+):
+    cargo_sem_permissao = criar_cargo(db_session, {"visualizar_processos": False})
+    usuario = criar_funcionario(db_session, cargo_sem_permissao, "sem.perm@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    response = client.get("/processos/criticos/", headers=auth_header(token))
+
+    assert response.status_code == 403

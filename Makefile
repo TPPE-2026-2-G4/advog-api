@@ -40,7 +40,7 @@ local:
 	@echo "\n\n⚙️ Rodando aplicação localmente... \n"
 	docker compose down advog-api
 	cp -n .env.local.example .env.local
-	docker compose --profile dev up -d --build advog-db advog-mailpit advog-minio
+	docker compose --profile dev up -d --build --wait advog-db advog-mailpit advog-minio
 	uv run python -m scripts.seed
 	uv run fastapi dev
 

@@ -1,8 +1,9 @@
+from datetime import UTC, datetime, timedelta
 from math import ceil
 
 from sqlalchemy.orm import Session
 
-from app.processo.model import Processo
+from app.processo.model import Processo, StatusProcesso
 from app.processo.repository import ProcessoRepository
 from app.processo.schema import (
     ProcessoCreate,
@@ -11,6 +12,8 @@ from app.processo.schema import (
     ProcessoResponse,
     ProcessoUpdate,
 )
+
+STATUS_FINALIZADOS = [StatusProcesso.CONCLUIDO, StatusProcesso.ARQUIVADO]
 
 
 class ProcessoService:
@@ -76,3 +79,16 @@ class ProcessoService:
         if processo is None:
             raise ValueError("Processo não encontrado")
         self.repository.deletar(processo)
+
+    def buscar_processos_criticos(
+        self,
+        dias_sem_movimentacao: int = 30,
+        funcionario_id: int | None = None,
+    ) -> list[ProcessoResponse]:
+        data_limite = datetime.now(UTC) - timedelta(days=dias_sem_movimentacao)
+        processos = self.repository.buscar_por_filtros(
+            status_excluidos=STATUS_FINALIZADOS,
+            ultima_atividade_ate=data_limite,
+            funcionario_id=funcionario_id,
+        )
+        return [ProcessoResponse.model_validate(p) for p in processos]
