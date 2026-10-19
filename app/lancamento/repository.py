@@ -31,6 +31,8 @@ class LancamentoRepository:
         tipo: TipoLancamento | None,
         categoria_id: int | None,
         cliente_id: int | None,
+        valor_min: float | None = None,
+        valor_max: float | None = None,
     ) -> Query:
         query = self.db.query(Lancamento)
         if inicio is not None:
@@ -46,6 +48,10 @@ class LancamentoRepository:
             query = query.filter(Lancamento.categoria_id == categoria_id)
         if cliente_id is not None:
             query = query.filter(Lancamento.cliente_id == cliente_id)
+        if valor_min is not None:
+            query = query.filter(Lancamento.valor >= valor_min)
+        if valor_max is not None:
+            query = query.filter(Lancamento.valor <= valor_max)
         return query
 
     def buscar_por_filtros(self, **filtros) -> list[Lancamento]:
@@ -70,6 +76,15 @@ class LancamentoRepository:
             Lancamento.status, Lancamento.tipo, func.count(), func.sum(Lancamento.valor)
         )
         return query.group_by(Lancamento.status, Lancamento.tipo).all()
+
+    def totais_por_dia_e_tipo(
+        self, **filtros
+    ) -> list[Row[tuple[date | str, TipoLancamento, int, float]]]:
+        dia = func.date(Lancamento.data_vencimento)
+        query = self._filtrar(**filtros).with_entities(
+            dia, Lancamento.tipo, func.count(), func.sum(Lancamento.valor)
+        )
+        return query.group_by(dia, Lancamento.tipo).order_by(dia).all()
 
     def buscar_por_id(self, lancamento_id: int) -> Lancamento | None:
         return self.db.get(Lancamento, lancamento_id)
