@@ -357,7 +357,7 @@ def test_deletar(db_session, processo):
         (StatusProcesso.ATIVO, None, None, True, 30, None, True),
     ],
 )
-def test_buscar_processos_criticos_parametrizado(
+def test_buscar_por_filtros_atividade_e_status_excluidos(
     db_session,
     dados_base,
     status,
@@ -389,8 +389,9 @@ def test_buscar_processos_criticos_parametrizado(
 
     filtro_func = funcionario.funcionario_id if func_filtro is True else func_filtro
 
-    criticos = repository.buscar_processos_criticos(
-        dias_sem_movimentacao=dias_filtro,
+    criticos = repository.buscar_por_filtros(
+        status_excluidos=[StatusProcesso.CONCLUIDO, StatusProcesso.ARQUIVADO],
+        ultima_atividade_ate=datetime.now(UTC) - timedelta(days=dias_filtro),
         funcionario_id=filtro_func,
     )
 
