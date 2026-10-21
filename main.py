@@ -15,6 +15,7 @@ from slowapi import _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from starlette.types import ExceptionHandler  # noqa: E402
 
+from app.atuacao.controller import router as atuacao_router  # noqa: E402
 from app.auth.controller import router as auth_router  # noqa: E402
 from app.cargo.controller import router as cargo_router  # noqa: E402
 from app.categoria_lancamento.controller import router as categoria_lancamento_router  # noqa: E402
@@ -68,6 +69,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(atuacao_router)
 app.include_router(cargo_router)
 app.include_router(funcionario_router)
 app.include_router(institucional_router)
