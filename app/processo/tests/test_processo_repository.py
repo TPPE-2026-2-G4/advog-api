@@ -100,6 +100,30 @@ def test_buscar_por_id_encontra_processo(db_session, processo):
     assert resultado.processo_id == processo.processo_id
 
 
+def test_buscar_por_filtros_busca_textual_e_datas_prazo(db_session, processo):
+    repository = ProcessoRepository(db_session)
+
+    # Testa busca textual que aciona o outerjoin com Cliente
+    itens_busca, total_busca = repository.buscar_paginado_por_filtros(
+        page=1,
+        page_size=10,
+        busca=processo.titulo,
+    )
+    assert total_busca == 1
+    assert len(itens_busca) == 1
+
+    # Testa filtro por prazo_inicio e prazo_fim
+    prazo_data = processo.data_prazo.date()
+    itens_prazo, total_prazo = repository.buscar_paginado_por_filtros(
+        page=1,
+        page_size=10,
+        prazo_inicio=prazo_data,
+        prazo_fim=prazo_data,
+    )
+    assert total_prazo == 1
+    assert len(itens_prazo) == 1
+
+
 def test_buscar_por_id_nao_encontra_processo(db_session):
     repository = ProcessoRepository(db_session)
 
