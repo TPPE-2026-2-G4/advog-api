@@ -44,6 +44,11 @@ class ProcessoResponse(ProcessoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SincronizacaoResponse(BaseModel):
+    atualizados: int
+    mensagem: str
+
+
 class ProcessoPaginadoResponse(BaseModel):
     itens: list[ProcessoResponse]
     total: int
