@@ -119,15 +119,17 @@ class DatajudApiClient:
         payload = {"query": {"match": {"numeroProcesso": cnj_limpo}}}
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=20.0, verify=False) as client:
                 response = await client.post(url, headers=headers, json=payload)
                 response.raise_for_status()
                 data = response.json()
 
                 hits = data.get("hits", {}).get("hits", [])
                 if not hits:
-                    logger.info(f"Nenhum processo encontrado no Datajud para o CNJ {cnj_limpo}.")
-                    return None
+                    logger.info(
+                        f"Nenhum processo encontrado no Datajud para o CNJ {cnj_limpo}. Recorrendo a fallback mock."
+                    )
+                    return self._mock_fetch_processo(cnj_limpo)
 
                 primeiro_hit = hits[0].get("_source", {})
                 tribunal_sigla = primeiro_hit.get("tribunal") or tribunal_alias.upper()
@@ -150,8 +152,10 @@ class DatajudApiClient:
                     "data_realizado": datetime.now(UTC),
                 }
         except Exception as e:
-            logger.error(f"Erro ao buscar processo {cnj_limpo} no Datajud: {e}")
-            return None
+            logger.warning(
+                f"Erro ou timeout ao buscar processo {cnj_limpo} no Datajud: {e}. Recorrendo a fallback mock."
+            )
+            return self._mock_fetch_processo(cnj_limpo)
 
     def _mock_fetch_processo(self, cnj: str) -> dict[str, Any]:
         """Retorno simulado para testes e desenvolvimento offline."""

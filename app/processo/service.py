@@ -114,7 +114,19 @@ class ProcessoService:
                 data = await api_client.fetch_processo(processo.cnj)
                 if data:
                     if "status" in data and data["status"]:
-                        processo.status = data["status"]
+                        raw_status = data["status"]
+                        # Normaliza status para os valores suportados pelo Enum StatusProcesso
+                        status_map = {
+                            "Em Andamento": StatusProcesso.ATIVO,
+                            "Ativo": StatusProcesso.ATIVO,
+                            "Em Recurso": StatusProcesso.ATIVO,
+                            "Concluso para Decisão": StatusProcesso.EM_ANALISE,
+                            "Em Análise": StatusProcesso.EM_ANALISE,
+                            "Concluído": StatusProcesso.CONCLUIDO,
+                            "Julgado": StatusProcesso.CONCLUIDO,
+                            "Arquivado": StatusProcesso.ARQUIVADO,
+                        }
+                        processo.status = status_map.get(raw_status, StatusProcesso.ATIVO)
                     if "data_realizado" in data and data["data_realizado"]:
                         processo.data_realizado = data["data_realizado"]
                     if "tribunal" in data and data["tribunal"]:

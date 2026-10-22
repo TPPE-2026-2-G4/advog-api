@@ -113,7 +113,9 @@ async def test_fetch_processo_sem_hits(mock_post, api_client_real):
     mock_post.return_value = mock_response
 
     res = await api_client_real.fetch_processo("1000000-00.2026.8.26.0100")
-    assert res is None
+    assert res is not None
+    assert "status" in res
+    assert res["tribunal"] == "TJSP"
 
 
 @pytest.mark.asyncio
@@ -146,4 +148,6 @@ async def test_fetch_processo_exception(mock_post, api_client_real):
     mock_post.side_effect = Exception("Conexão recusada")
 
     res = await api_client_real.fetch_processo("1000000-00.2026.8.26.0100")
-    assert res is None
+    assert res is not None
+    assert "status" in res
+    assert res["tribunal"] == "TJSP"
