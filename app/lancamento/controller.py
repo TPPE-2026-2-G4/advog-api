@@ -1,57 +1,105 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.lancamento.repository import LancamentoRepository
+from app.core.dependencies import obter_funcionario_atual
 from app.lancamento.schema import (
     LancamentoCreate,
+    LancamentoFilter,
+    LancamentoGrafico,
+    LancamentoPaginadoResponse,
     LancamentoResponse,
-    LancamentoStatusUpdate,
+    LancamentoResumo,
     LancamentoUpdate,
 )
 from app.lancamento.service import LancamentoService
 
-router = APIRouter(prefix="/lancamentos", tags=["Finanças"])
+router = APIRouter(
+    prefix="/lancamentos",
+    tags=["Lançamentos"],
+    dependencies=[Depends(obter_funcionario_atual)],
+)
+
+_NAO_ENCONTRADO = (
+    "Lançamento não encontrado",
+    "Categoria não encontrada",
+    "Cliente não encontrado",
+)
 
 
-def get_lancamento_service(db: Session = Depends(get_db)) -> LancamentoService:
-    repository = LancamentoRepository(db)
-    return LancamentoService(repository)
+def _erro_http(e: ValueError) -> HTTPException:
+    status_code = (
+        status.HTTP_404_NOT_FOUND if str(e) in _NAO_ENCONTRADO else status.HTTP_400_BAD_REQUEST
+    )
+    return HTTPException(status_code=status_code, detail=str(e))
 
 
 @router.get("/", response_model=list[LancamentoResponse])
-def listar_lancamentos(service: LancamentoService = Depends(get_lancamento_service)):
-    return service.list_lancamentos()
+def listar_lancamentos(filtros: LancamentoFilter = Depends(), db: Session = Depends(get_db)):
+    try:
+        return LancamentoService(db).listar_lancamentos(filtros)
+    except ValueError as e:
+        raise _erro_http(e) from e
 
 
-@router.post("/", response_model=LancamentoResponse, status_code=201)
-def criar_lancamento(
-    lancamento: LancamentoCreate, service: LancamentoService = Depends(get_lancamento_service)
+@router.get("/paginado", response_model=LancamentoPaginadoResponse)
+def listar_lancamentos_paginado(
+    filtros: LancamentoFilter = Depends(),
+    page: int = Query(1, ge=1, description="Página a ser retornada"),
+    page_size: int = Query(10, ge=1, le=100, description="Quantidade de itens por página"),
+    db: Session = Depends(get_db),
 ):
-    return service.create_lancamento(lancamento)
+    try:
+        return LancamentoService(db).listar_lancamentos_paginado(filtros, page, page_size)
+    except ValueError as e:
+        raise _erro_http(e) from e
+
+
+@router.get("/resumo", response_model=LancamentoResumo)
+def resumir_lancamentos(filtros: LancamentoFilter = Depends(), db: Session = Depends(get_db)):
+    try:
+        return LancamentoService(db).resumir_lancamentos(filtros)
+    except ValueError as e:
+        raise _erro_http(e) from e
+
+
+@router.get("/grafico", response_model=LancamentoGrafico)
+def obter_grafico_lancamentos(filtros: LancamentoFilter = Depends(), db: Session = Depends(get_db)):
+    try:
+        return LancamentoService(db).gerar_grafico(filtros)
+    except ValueError as e:
+        raise _erro_http(e) from e
+
+
+@router.post("/", response_model=LancamentoResponse, status_code=status.HTTP_201_CREATED)
+def criar_lancamento(dados: LancamentoCreate, db: Session = Depends(get_db)):
+    try:
+        return LancamentoService(db).criar_lancamento(dados)
+    except ValueError as e:
+        raise _erro_http(e) from e
 
 
 @router.put("/{lancamento_id}", response_model=LancamentoResponse)
 def atualizar_lancamento(
-    lancamento_id: int,
-    lancamento: LancamentoUpdate,
-    service: LancamentoService = Depends(get_lancamento_service),
+    lancamento_id: int, dados: LancamentoUpdate, db: Session = Depends(get_db)
 ):
-    return service.update_lancamento(lancamento_id, lancamento)
+    try:
+        return LancamentoService(db).atualizar_lancamento(lancamento_id, dados)
+    except ValueError as e:
+        raise _erro_http(e) from e
 
 
-@router.patch("/{lancamento_id}/status", response_model=LancamentoResponse)
-def atualizar_status_lancamento(
-    lancamento_id: int,
-    status_update: LancamentoStatusUpdate,
-    service: LancamentoService = Depends(get_lancamento_service),
-):
-    return service.update_status(lancamento_id, status_update)
+@router.patch("/{lancamento_id}/alternar-status", response_model=LancamentoResponse)
+def alternar_status_lancamento(lancamento_id: int, db: Session = Depends(get_db)):
+    try:
+        return LancamentoService(db).alternar_status(lancamento_id)
+    except ValueError as e:
+        raise _erro_http(e) from e
 
 
-@router.delete("/{lancamento_id}", status_code=204)
-def remover_lancamento(
-    lancamento_id: int, service: LancamentoService = Depends(get_lancamento_service)
-):
-    service.delete_lancamento(lancamento_id)
-    return None
+@router.delete("/{lancamento_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remover_lancamento(lancamento_id: int, db: Session = Depends(get_db)):
+    try:
+        LancamentoService(db).deletar_lancamento(lancamento_id)
+    except ValueError as e:
+        raise _erro_http(e) from e

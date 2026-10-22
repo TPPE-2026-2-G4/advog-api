@@ -17,7 +17,6 @@ setup:
 	docker compose --profile dev up -d --build
 	@echo "\n✅ Ambiente de desenvolvimento configurado com sucesso!"
 	@echo "🔗 Portas disponíveis:"
-	@echo " - pgAdmin: http://localhost:8080"
 	@echo " - FastAPI: http://localhost:8000"
 	@echo " - Swagger: http://localhost:8000/docs"
 	@echo " - MailPit Console: http://localhost:8025"
@@ -30,7 +29,6 @@ up:
 	docker compose --profile dev up -d --build
 	@echo "\n✅ Containers do Docker executados com sucesso! \n"
 	@echo "🔗 Portas disponíveis:"
-	@echo " - pgAdmin: http://localhost:8080"
 	@echo " - FastAPI: http://localhost:8000"
 	@echo " - Swagger: http://localhost:8000/docs"
 	@echo " - MailPit Console: http://localhost:8025"
@@ -41,8 +39,9 @@ up:
 local:
 	@echo "\n\n⚙️ Rodando aplicação localmente... \n"
 	docker compose down advog-api
-	docker compose --profile dev up -d --build advog-db advog-mailpit
 	cp -n .env.local.example .env.local
+	docker compose --profile dev up -d --build --wait advog-db advog-mailpit advog-minio
+	uv run python -m scripts.seed
 	uv run fastapi dev
 
 test:

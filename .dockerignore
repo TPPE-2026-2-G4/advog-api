@@ -8,6 +8,7 @@ htmlcov/
 .env
 .env.*
 !.env.local.example
-tests/
+**/tests/
+conftest.py
 Dockerfile
 compose.yml

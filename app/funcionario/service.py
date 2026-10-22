@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
 
 from app.cargo.repository import CargoRepository
+from app.core.seguranca import hash_senha
 from app.funcionario.model import Funcionario, StatusFuncionario
 from app.funcionario.repository import FuncionarioRepository
 from app.funcionario.schema import FuncionarioCreate, FuncionarioPrimeiroAcesso, FuncionarioUpdate
-from app.utils.seguranca import hash_senha
 
 
 class FuncionarioService:
