@@ -18,13 +18,6 @@ def get_dashboard_service(db: Session = Depends(get_db)) -> DashboardService:
     "/atividades/resumo",
     response_model=ResumoAtividadesResponse,
     summary="Resumir o estado das atividades",
-    description=(
-        "Requer autenticação. Retorna atividades do usuário ou de todo o escritório "
-        "quando seu cargo possui gerenciar_equipe. Backlog é pendente, Finalizado é "
-        "concluída e as demais etapas são em execução. Atrasadas também contam no seu "
-        "estado atual: são as não finalizadas com prazo anterior ao dia atual em "
-        "America/Sao_Paulo. Timestamps são interpretados no horário civil desse fuso."
-    ),
     responses={401: {"description": "Credenciais ausentes ou inválidas"}},
 )
 def resumir_atividades(

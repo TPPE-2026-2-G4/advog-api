@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from sqlalchemy import insert
 from sqlalchemy.exc import IntegrityError
@@ -13,7 +15,13 @@ def test_vinculo_entre_atividade_e_funcionario_nao_pode_ser_duplicado(
     etapa = EtapaKanban(nome="Backlog", ordem=1)
     db_session.add(etapa)
     db_session.flush()
-    atividade = Atividade(titulo="Atividade compartilhada", etapa_id=etapa.etapa_id)
+    atividade = Atividade(
+        titulo="Atividade compartilhada",
+        descricao="Descrição da atividade",
+        data_inicio=datetime(2026, 10, 1),
+        data_prazo=datetime(2026, 10, 30),
+        etapa_id=etapa.etapa_id,
+    )
     db_session.add(atividade)
     db_session.flush()
     vinculo = {

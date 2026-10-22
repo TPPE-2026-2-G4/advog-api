@@ -11,5 +11,5 @@ class AtividadeFuncionario(Base):
         ForeignKey("funcionarios.funcionario_id"), primary_key=True
     )
     atividade_id: Mapped[int] = mapped_column(
-        ForeignKey("atividades.atividade_id"), primary_key=True
+        ForeignKey("atividade.atividade_id"), primary_key=True
     )

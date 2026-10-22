@@ -23,7 +23,6 @@ INICIO_DO_DIA = datetime(2026, 10, 15)
 @pytest.mark.parametrize(
     ("prazo", "vencida"),
     [
-        (None, False),
         (datetime(2026, 10, 14, 23, 59, 59), True),
         (INICIO_DO_DIA, False),
         (datetime(2026, 10, 15, 1), False),
@@ -38,6 +37,7 @@ def test_resumir_por_etapa_e_prazo(db_session, nome_etapa, contadores, prazo, ve
     db_session.add(
         Atividade(
             titulo="Atividade de teste",
+            descricao="Descrição de teste",
             etapa_id=etapa.etapa_id,
             data_prazo=prazo,
             data_inicio=datetime(2026, 10, 1),
@@ -57,7 +57,13 @@ def test_resumir_por_etapa_e_prazo(db_session, nome_etapa, contadores, prazo, ve
 
 
 def test_resumo_executa_uma_consulta_sem_alterar_registros(db_session, etapas):
-    atividade = Atividade(titulo="Sem prazo", etapa_id=etapas["Backlog"].etapa_id)
+    atividade = Atividade(
+        titulo="Sem atraso",
+        descricao="Descrição de teste",
+        data_inicio=datetime(2026, 10, 1),
+        data_prazo=INICIO_DO_DIA,
+        etapa_id=etapas["Backlog"].etapa_id,
+    )
     db_session.add(atividade)
     db_session.commit()
     comandos = []

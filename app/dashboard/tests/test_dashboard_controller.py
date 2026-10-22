@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from app.atividade.model import Atividade
@@ -16,7 +18,13 @@ def atividades(db_session, etapas, funcionarios):
         ("Backlog", []),
     ]
     for nome_etapa, indices in distribuicao:
-        atividade = Atividade(titulo="Atividade de teste", etapa_id=etapas[nome_etapa].etapa_id)
+        atividade = Atividade(
+            titulo="Atividade de teste",
+            descricao="Descrição de teste",
+            data_inicio=datetime(2026, 10, 1),
+            data_prazo=datetime(2099, 12, 31),
+            etapa_id=etapas[nome_etapa].etapa_id,
+        )
         db_session.add(atividade)
         db_session.flush()
         db_session.add_all(
