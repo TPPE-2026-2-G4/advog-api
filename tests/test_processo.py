@@ -156,3 +156,12 @@ def test_criar_processo():
     response = client.get(f"/processos/?processo_id={processo_id}")
     assert response.status_code == 200
     assert len(response.json()) == 1
+
+
+def test_sincronizar_processos_endpoint():
+    response = client.post("/processos/sincronizar")
+    assert response.status_code == 200
+    data = response.json()
+    assert "atualizados" in data
+    assert "mensagem" in data
+

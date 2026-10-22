@@ -6,7 +6,7 @@ from app.config.database import SessionLocal
 from app.processo.model import Processo
 from app.processo.repository import ProcessoRepository
 from app.processo.schema import ProcessoCreate, ProcessoFilter
-from app.utils.jusbrasil_api import JusbrasilApiClient
+from app.utils.datajud_api import DatajudApiClient
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +33,10 @@ class ProcessoService:
         )
 
     @classmethod
-    async def sincronizar_processos_com_api(cls):
-
+    async def sincronizar_processos_com_api(cls) -> int:
         db = SessionLocal()
         try:
-            api_client = JusbrasilApiClient()
+            api_client = DatajudApiClient()
 
             processos = db.query(Processo).filter(Processo.cnj != None).all()  # noqa: E711
 
@@ -60,10 +59,12 @@ class ProcessoService:
             if updates_count > 0:
                 db.commit()
                 logger.info(
-                    f"[JOB SYNC] {updates_count} processos atualizados com sucesso via Jusbrasil API."
+                    f"[JOB SYNC] {updates_count} processos atualizados com sucesso via Datajud API."
                 )
+            return updates_count
         except Exception as e:
             db.rollback()
             logger.error(f"[JOB SYNC] Falha ao sincronizar processos: {e}")
+            return 0
         finally:
             db.close()

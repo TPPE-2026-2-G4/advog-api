@@ -20,7 +20,7 @@ def db_session():
 
 
 @pytest.mark.asyncio
-@patch("app.processo.service.JusbrasilApiClient.fetch_processo")
+@patch("app.processo.service.DatajudApiClient.fetch_processo")
 async def test_sincronizar_processos_com_api(mock_fetch, db_session):
     p1 = Processo(cnj="123456789", titulo_proc="Proc 1", status="Em Andamento")
     p2 = Processo(cnj=None, titulo_proc="Proc sem CNJ", status="Em Andamento")
@@ -50,7 +50,7 @@ async def test_sincronizar_processos_com_api(mock_fetch, db_session):
 
 
 @pytest.mark.asyncio
-@patch("app.processo.service.JusbrasilApiClient.fetch_processo")
+@patch("app.processo.service.DatajudApiClient.fetch_processo")
 async def test_sincronizar_processos_com_api_empty_cnj(mock_fetch, db_session):
     p1 = Processo(cnj="", titulo_proc="Proc vazio", status="Em Andamento")
     db_session.add(p1)
@@ -61,7 +61,7 @@ async def test_sincronizar_processos_com_api_empty_cnj(mock_fetch, db_session):
 
 
 @pytest.mark.asyncio
-@patch("app.processo.service.JusbrasilApiClient.fetch_processo")
+@patch("app.processo.service.DatajudApiClient.fetch_processo")
 async def test_sincronizar_processos_com_api_exception(mock_fetch, db_session):
     p1 = Processo(cnj="123", titulo_proc="Proc", status="Em Andamento")
     db_session.add(p1)

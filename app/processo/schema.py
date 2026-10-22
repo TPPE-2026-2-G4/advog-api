@@ -28,6 +28,11 @@ class ProcessoResponse(ProcessoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SincronizacaoResponse(BaseModel):
+    atualizados: int
+    mensagem: str
+
+
 class ProcessoFilter:
     def __init__(
         self,

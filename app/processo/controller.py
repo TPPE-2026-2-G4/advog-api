@@ -2,7 +2,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.processo.schema import ProcessoCreate, ProcessoFilter, ProcessoResponse
+from app.processo.schema import (
+    ProcessoCreate,
+    ProcessoFilter,
+    ProcessoResponse,
+    SincronizacaoResponse,
+)
 from app.processo.service import ProcessoService
 
 router = APIRouter(prefix="/processos", tags=["Processos"])
@@ -10,6 +15,16 @@ router = APIRouter(prefix="/processos", tags=["Processos"])
 
 def get_processo_service(db: Session = Depends(get_db)) -> ProcessoService:
     return ProcessoService(db)
+
+
+@router.post("/sincronizar", response_model=SincronizacaoResponse)
+async def sincronizar_processos():
+    """Aciona a sincronização de processos com a API Pública do Datajud."""
+    total = await ProcessoService.sincronizar_processos_com_api()
+    return SincronizacaoResponse(
+        atualizados=total,
+        mensagem=f"{total} processos sincronizados com sucesso via Datajud.",
+    )
 
 
 @router.post("/", response_model=ProcessoResponse, status_code=201)
