@@ -45,6 +45,22 @@ def filtrar_processos(
     return service.buscar_processos(filtros)
 
 
+@router.get(
+    "/criticos/",
+    response_model=list[ProcessoResponse],
+    dependencies=[Depends(exigir_permissao("visualizar_processos"))],
+)
+def listar_processos_criticos(
+    dias_sem_movimentacao: int = 30,
+    funcionario_id: int | None = None,
+    service: ProcessoService = Depends(get_processo_service),
+):
+    return service.buscar_processos_criticos(
+        dias_sem_movimentacao=dias_sem_movimentacao,
+        funcionario_id=funcionario_id,
+    )
+
+
 @router.patch(
     "/{processo_id}",
     response_model=ProcessoResponse,
