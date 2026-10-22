@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI):
 
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
-        ProcessoService.sincronizar_processos_com_api, "interval", hours=1, id="sync_datajud"
+        ProcessoService.sincronizar_processos_com_api, "interval", hours=12, id="sync_datajud"
     )
     scheduler.start()
     logger.info("Scheduler iniciado para jobs em background.")
