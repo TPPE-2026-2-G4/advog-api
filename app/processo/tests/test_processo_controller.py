@@ -683,3 +683,41 @@ def test_listar_processos_criticos_sem_permissao(
     response = client.get("/processos/criticos/", headers=auth_header(token))
 
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_sincronizar_processos_controller_sucesso(
+    client,
+    db_session,
+    token_acesso,
+):
+    from unittest.mock import patch
+    cargo = criar_cargo(db_session, {"editar_processos": True})
+    usuario = criar_funcionario(db_session, cargo, "sync.admin@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    with patch("app.processo.service.ProcessoService.sincronizar_processos_com_api", return_value=3):
+        response = client.post("/processos/sincronizar", headers=auth_header(token))
+
+    assert response.status_code == 200
+    dados = response.json()
+    assert dados["atualizados"] == 3
+    assert "3 processos sincronizados" in dados["mensagem"]
+
+
+@pytest.mark.asyncio
+async def test_sincronizar_processos_controller_erro(
+    client,
+    db_session,
+    token_acesso,
+):
+    from unittest.mock import patch
+    cargo = criar_cargo(db_session, {"editar_processos": True})
+    usuario = criar_funcionario(db_session, cargo, "sync.erro@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    with patch("app.processo.service.ProcessoService.sincronizar_processos_com_api", side_effect=Exception("Falha de conexão")):
+        response = client.post("/processos/sincronizar", headers=auth_header(token))
+
+    assert response.status_code == 500
+    assert "Falha ao sincronizar processos com a API do Datajud" in response.json()["detail"]

@@ -26,11 +26,17 @@ def get_processo_service(db: Session = Depends(get_db)) -> ProcessoService:
     dependencies=[Depends(exigir_permissao("editar_processos"))],
 )
 async def sincronizar_processos():
-    total = await ProcessoService.sincronizar_processos_com_api()
-    return SincronizacaoResponse(
-        atualizados=total,
-        mensagem=f"{total} processos sincronizados com sucesso via Datajud.",
-    )
+    try:
+        total = await ProcessoService.sincronizar_processos_com_api()
+        return SincronizacaoResponse(
+            atualizados=total,
+            mensagem=f"{total} processos sincronizados com sucesso via Datajud.",
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Falha ao sincronizar processos com a API do Datajud: {error}",
+        ) from error
 
 
 @router.post(

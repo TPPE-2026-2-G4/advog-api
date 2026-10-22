@@ -119,7 +119,8 @@ async def test_sincronizar_processos_com_api_exception(mock_fetch, db_session):
 
     mock_fetch.side_effect = Exception("Erro forçado")
 
-    await ProcessoService.sincronizar_processos_com_api()
+    with pytest.raises(Exception, match="Erro forçado"):
+        await ProcessoService.sincronizar_processos_com_api()
 
     db.refresh(p1)
     assert p1.status == StatusProcesso.ATIVO

@@ -142,6 +142,6 @@ class ProcessoService:
         except Exception as e:
             db.rollback()
             logger.error(f"[JOB SYNC] Falha ao sincronizar processos: {e}")
-            return 0
+            raise
         finally:
             db.close()

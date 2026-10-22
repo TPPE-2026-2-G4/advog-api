@@ -40,7 +40,7 @@ TRIBUNAIS_MAP: dict[tuple[str, str], str] = {
     ("8", "24"): "tjsc",
     ("8", "25"): "tjse",
     ("8", "26"): "tjsp",
-    ("8", "27"): "tftoc",
+    ("8", "27"): "tjto",
     # Justiça Federal (J=4)
     ("4", "01"): "trf1",
     ("4", "02"): "trf2",
@@ -107,9 +107,9 @@ class DatajudApiClient:
         tribunal_alias = self.extrair_alias_tribunal(cnj_limpo)
         if not tribunal_alias:
             logger.warning(
-                f"Tribunal não identificado a partir do CNJ {cnj_limpo}. Recorrendo a mock/fallback."
+                f"Tribunal não identificado a partir do CNJ {cnj_limpo}."
             )
-            return self._mock_fetch_processo(cnj_limpo)
+            return None
 
         url = f"{self.base_url}/api_publica_{tribunal_alias}/_search"
         headers = {
@@ -127,14 +127,14 @@ class DatajudApiClient:
                 hits = data.get("hits", {}).get("hits", [])
                 if not hits:
                     logger.info(
-                        f"Nenhum processo encontrado no Datajud para o CNJ {cnj_limpo}. Recorrendo a fallback mock."
+                        f"Nenhum processo encontrado no Datajud para o CNJ {cnj_limpo}."
                     )
-                    return self._mock_fetch_processo(cnj_limpo)
+                    return None
 
                 primeiro_hit = hits[0].get("_source", {})
                 tribunal_sigla = primeiro_hit.get("tribunal") or tribunal_alias.upper()
 
-                # Busca status a partir do último movimento registrado
+                # Busca status e data a partir do último movimento registrado
                 movimentos = (
                     primeiro_hit.get("dadosBasicos", {}).get("movimento")
                     or primeiro_hit.get("movimentos")
@@ -142,20 +142,29 @@ class DatajudApiClient:
                 )
 
                 status_atual = "Em Andamento"
+                data_movimento = None
                 if movimentos:
                     ultimo_mov = movimentos[-1]
                     status_atual = ultimo_mov.get("nome") or status_atual
+                    data_hora_str = ultimo_mov.get("dataHora")
+                    if data_hora_str:
+                        try:
+                            # Formato ISO (ex: 2024-06-27T10:30:05.000Z)
+                            clean_dt_str = data_hora_str.replace("Z", "+00:00")
+                            data_movimento = datetime.fromisoformat(clean_dt_str)
+                        except (ValueError, TypeError):
+                            logger.warning(f"Formato de dataHora inválido no movimento: {data_hora_str}")
 
                 return {
                     "status": status_atual,
                     "tribunal": tribunal_sigla,
-                    "data_realizado": datetime.now(UTC),
+                    "data_realizado": data_movimento,
                 }
         except Exception as e:
             logger.warning(
-                f"Erro ou timeout ao buscar processo {cnj_limpo} no Datajud: {e}. Recorrendo a fallback mock."
+                f"Erro ou timeout ao buscar processo {cnj_limpo} no Datajud: {e}."
             )
-            return self._mock_fetch_processo(cnj_limpo)
+            return None
 
     def _mock_fetch_processo(self, cnj: str) -> dict[str, Any]:
         """Retorno simulado para testes e desenvolvimento offline."""

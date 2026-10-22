@@ -30,6 +30,8 @@ def test_sanitizar_cnj():
 def test_extrair_alias_tribunal():
     # TJSP: 8.26
     assert DatajudApiClient.extrair_alias_tribunal("10000000020268260100") == "tjsp"
+    # TJTO: 8.27
+    assert DatajudApiClient.extrair_alias_tribunal("10000000020268270100") == "tjto"
     # TRF1: 4.01
     assert DatajudApiClient.extrair_alias_tribunal("00008323520184013202") == "trf1"
     # TRT2: 5.02
@@ -56,11 +58,9 @@ async def test_fetch_processo_mock(api_client_mock):
 
 
 @pytest.mark.asyncio
-async def test_fetch_processo_fallback_mock_quando_tribunal_desconhecido(api_client_real):
+async def test_fetch_processo_retorna_none_quando_tribunal_desconhecido(api_client_real):
     res = await api_client_real.fetch_processo("10000000020269990100")
-    assert res is not None
-    assert "status" in res
-    assert "tribunal" in res
+    assert res is None
 
 
 @pytest.mark.asyncio
@@ -113,9 +113,7 @@ async def test_fetch_processo_sem_hits(mock_post, api_client_real):
     mock_post.return_value = mock_response
 
     res = await api_client_real.fetch_processo("1000000-00.2026.8.26.0100")
-    assert res is not None
-    assert "status" in res
-    assert res["tribunal"] == "TJSP"
+    assert res is None
 
 
 @pytest.mark.asyncio
@@ -140,6 +138,39 @@ async def test_fetch_processo_sem_movimentos_usa_status_padrao(mock_post, api_cl
     res = await api_client_real.fetch_processo("1000000-00.2026.8.26.0100")
     assert res is not None
     assert res["status"] == "Em Andamento"
+    assert res["data_realizado"] is None
+
+
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.post")
+async def test_fetch_processo_data_invalida(mock_post, api_client_real):
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {
+        "hits": {
+            "hits": [
+                {
+                    "_source": {
+                        "tribunal": "TJSP",
+                        "dadosBasicos": {
+                            "movimento": [
+                                {
+                                    "nome": "Movimento",
+                                    "dataHora": "data_invalida",
+                                }
+                            ]
+                        },
+                    }
+                }
+            ]
+        }
+    }
+    mock_post.return_value = mock_response
+
+    res = await api_client_real.fetch_processo("1000000-00.2026.8.26.0100")
+    assert res is not None
+    assert res["status"] == "Movimento"
+    assert res["data_realizado"] is None
 
 
 @pytest.mark.asyncio
@@ -148,6 +179,4 @@ async def test_fetch_processo_exception(mock_post, api_client_real):
     mock_post.side_effect = Exception("Conexão recusada")
 
     res = await api_client_real.fetch_processo("1000000-00.2026.8.26.0100")
-    assert res is not None
-    assert "status" in res
-    assert res["tribunal"] == "TJSP"
+    assert res is None
