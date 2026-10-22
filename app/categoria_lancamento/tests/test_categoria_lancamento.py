@@ -34,7 +34,6 @@ def test_atualizar_categoria_com_nome_duplicado(client):
     r2 = client.post("/categorias-lancamento", json={"nome_categoria": "Cat2"})
     assert r2.status_code == 201
 
-    # Tenta renomear Cat1 para Cat2 (deve falhar por duplicidade)
     resp = client.put(f"/categorias-lancamento/{cid1}", json={"nome_categoria": "Cat2"})
     assert resp.status_code == 400
     assert resp.json()["detail"] == "Categoria já cadastrada"

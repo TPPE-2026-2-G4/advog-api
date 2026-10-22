@@ -21,25 +21,37 @@ def api_client_real():
     return DatajudApiClient()
 
 
-def test_sanitizar_cnj():
-    assert DatajudApiClient.sanitizar_cnj("1000000-00.2026.8.26.0100") == "10000000020268260100"
-    assert DatajudApiClient.sanitizar_cnj("") == ""
-    assert DatajudApiClient.sanitizar_cnj(None) == ""
+@pytest.mark.parametrize(
+    "entrada,esperado",
+    [
+        ("1000000-00.2026.8.26.0100", "10000000020268260100"),
+        ("", ""),
+        (None, ""),
+    ],
+)
+def test_sanitizar_cnj(entrada, esperado):
+    assert DatajudApiClient.sanitizar_cnj(entrada) == esperado
 
 
-def test_extrair_alias_tribunal():
-    assert DatajudApiClient.extrair_alias_tribunal("10000000020268260100") == "tjsp"
-    assert DatajudApiClient.extrair_alias_tribunal("10000000020268270100") == "tjto"
-    assert DatajudApiClient.extrair_alias_tribunal("00008323520184013202") == "trf1"
-    assert DatajudApiClient.extrair_alias_tribunal("10000000020265020100") == "trt2"
-    assert DatajudApiClient.extrair_alias_tribunal("123") is None
-    assert DatajudApiClient.extrair_alias_tribunal("10000000020269990100") is None
+@pytest.mark.parametrize(
+    "cnj,alias_esperado",
+    [
+        ("10000000020268260100", "tjsp"),
+        ("10000000020268270100", "tjto"),
+        ("00008323520184013202", "trf1"),
+        ("10000000020265020100", "trt2"),
+        ("123", None),
+        ("10000000020269990100", None),
+    ],
+)
+def test_extrair_alias_tribunal(cnj, alias_esperado):
+    assert DatajudApiClient.extrair_alias_tribunal(cnj) == alias_esperado
 
 
+@pytest.mark.parametrize("cnj_vazio", ["", None])
 @pytest.mark.asyncio
-async def test_fetch_processo_cnj_vazio(api_client_real):
-    assert await api_client_real.fetch_processo("") is None
-    assert await api_client_real.fetch_processo(None) is None
+async def test_fetch_processo_cnj_vazio(api_client_real, cnj_vazio):
+    assert await api_client_real.fetch_processo(cnj_vazio) is None
 
 
 @pytest.mark.asyncio
