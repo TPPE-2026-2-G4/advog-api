@@ -1,6 +1,7 @@
 import pytest
 
-from app.atividade.model import Atividade, AtividadeFuncionario
+from app.atividade.model import Atividade
+from app.atividade_funcionario.model import AtividadeFuncionario
 
 ROTA = "/dashboard/atividades/resumo"
 

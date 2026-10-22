@@ -6,14 +6,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.config.database import Base
 
 
-class EtapaKanban(Base):
-    __tablename__ = "etapas_kanban"
-
-    etapa_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    nome: Mapped[str] = mapped_column(String(100), nullable=False)
-    ordem: Mapped[int] = mapped_column(Integer, nullable=False)
-
-
 class Atividade(Base):
     __tablename__ = "atividades"
 
@@ -26,15 +18,4 @@ class Atividade(Base):
     etapa_id: Mapped[int] = mapped_column(ForeignKey("etapas_kanban.etapa_id"), nullable=False)
     processo_id: Mapped[int | None] = mapped_column(
         ForeignKey("processos.processo_id"), nullable=True
-    )
-
-
-class AtividadeFuncionario(Base):
-    __tablename__ = "atividade_funcionario"
-
-    funcionario_id: Mapped[int] = mapped_column(
-        ForeignKey("funcionarios.funcionario_id"), primary_key=True
-    )
-    atividade_id: Mapped[int] = mapped_column(
-        ForeignKey("atividades.atividade_id"), primary_key=True
     )

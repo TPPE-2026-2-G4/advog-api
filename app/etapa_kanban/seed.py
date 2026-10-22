@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.atividade.model import EtapaKanban
+from app.etapa_kanban.model import EtapaKanban
 
 ETAPAS_PADRAO = ("Backlog", "Em Execução", "Revisão", "Finalizado")
 

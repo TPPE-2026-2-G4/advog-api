@@ -3,8 +3,9 @@ from datetime import datetime
 import pytest
 from sqlalchemy import event
 
-from app.atividade.model import Atividade, EtapaKanban
+from app.atividade.model import Atividade
 from app.dashboard.repository import DashboardRepository
+from app.etapa_kanban.model import EtapaKanban
 
 INICIO_DO_DIA = datetime(2026, 10, 15)
 

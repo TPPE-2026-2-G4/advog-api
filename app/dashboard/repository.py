@@ -3,7 +3,9 @@ from datetime import datetime
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from app.atividade.model import Atividade, AtividadeFuncionario, EtapaKanban
+from app.atividade.model import Atividade
+from app.atividade_funcionario.model import AtividadeFuncionario
+from app.etapa_kanban.model import EtapaKanban
 
 
 class DashboardRepository:

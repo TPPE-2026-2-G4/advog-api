@@ -15,7 +15,6 @@ from slowapi import _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from starlette.types import ExceptionHandler  # noqa: E402
 
-from app.atividade.seed import inicializar_etapas_kanban  # noqa: E402
 from app.atuacao.controller import router as atuacao_router  # noqa: E402
 from app.auth.controller import router as auth_router  # noqa: E402
 from app.cargo.controller import router as cargo_router  # noqa: E402
@@ -24,6 +23,7 @@ from app.cliente.controller import router as cliente_router  # noqa: E402
 from app.config.database import Base, SessionLocal, engine  # noqa: E402
 from app.config.limiter import limiter  # noqa: E402
 from app.dashboard.controller import router as dashboard_router  # noqa: E402
+from app.etapa_kanban.seed import inicializar_etapas_kanban  # noqa: E402
 from app.funcionario.controller import router as funcionario_router  # noqa: E402
 from app.institucional.controller import router as institucional_router  # noqa: E402
 from app.institucional.model import Institucional  # noqa: E402

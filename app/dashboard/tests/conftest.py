@@ -1,8 +1,8 @@
 import pytest
 from sqlalchemy import select
 
-from app.atividade.model import EtapaKanban
-from app.atividade.seed import inicializar_etapas_kanban
+from app.etapa_kanban.model import EtapaKanban
+from app.etapa_kanban.seed import inicializar_etapas_kanban
 from app.funcionario.model import Funcionario, StatusFuncionario
 
 
