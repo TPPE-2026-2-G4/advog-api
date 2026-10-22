@@ -7,7 +7,7 @@ from app.config.database import get_db
 from app.core.dependencies import obter_funcionario_atual
 from app.funcionario.model import Funcionario
 
-router = APIRouter(prefix="/clientes", tags=["clientes"])
+router = APIRouter(prefix="/clientes", tags=["Clientes"])
 
 
 @router.get("/", response_model=list[ClienteResponse])

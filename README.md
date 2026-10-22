@@ -156,15 +156,16 @@ Todo Pull Request para `main` dispara o workflow [`test.yml`](.github/workflows/
 ## Estrutura do Repositório
 
 - `main.py`: Ponto de entrada da aplicação FastAPI — carrega `.env`/`.env.local`, cria as tabelas, configura CORS e registra as rotas.
-- `app/`: Código-fonte da API.
-  - `config/database.py`: Configuração do SQLAlchemy, conexão e sessões do banco.
-  - `dependencies.py`: Dependências do FastAPI reutilizadas entre rotas (ex.: `obter_funcionario_atual`, que extrai o funcionário autenticado a partir do JWT enviado em `Authorization: Bearer`).
-  - `controllers/`: Rotas e controladores HTTP (`processo_controller.py`, `funcionario.py`, `auth.py`).
-  - `models/`: Modelos de dados do SQLAlchemy (`processo_model.py`, `funcionario.py`).
-  - `repositories/`: Operações de persistência e consultas ao banco.
-  - `schemas/`: Schemas de entrada, resposta e filtros com Pydantic (`auth.py`, `funcionario.py`, `processo_schema.py`).
-  - `services/`: Regras de negócio da aplicação (`auth.py`, `funcionario.py`, `processo_service.py`).
-  - `utils/`: Utilitários — hash de senha e JWT (`seguranca.py`) e envio de e-mail (`email.py`).
+- `app/`: Código-fonte da API (Arquitetura orientada a módulos de domínio).
+  - `{entidade}/` (ex: `cliente/`, `funcionario/`, `processo/`): Cada domínio/feature possui sua própria pasta contendo:
+    - `controller.py`: Rotas e endpoints HTTP da entidade.
+    - `model.py`: Modelos de dados mapeados pelo SQLAlchemy.
+    - `repository.py`: Operações de persistência e consultas ao banco.
+    - `schema.py`: Contratos (DTO) de entrada, resposta e validação com Pydantic.
+    - `service.py`: Regras de negócio e casos de uso da entidade.
+  - `config/`: Configurações globais da API, como conexão de banco (`database.py`) e rate limit (`limiter.py`).
+  - `dependencies/`: Dependências injetáveis do FastAPI, como validação de token JWT (`auth.py`).
+  - `utils/`: Funções utilitárias e lógicas compartilhadas, como hashing e e-mails (`seguranca.py`, `email.py`).
 - `tests/`: Testes automatizados — `unit/` (services, repositories, utils) e `integration/` (controllers via `TestClient`).
 - `scripts/hooks/`: Hooks de commit e pre-push.
 - `pyproject.toml`: Metadados, dependências, configurações do Pytest, cobertura e Commitizen.

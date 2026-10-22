@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.atuacao.schema import AtuacaoResponse
+from app.atuacao.service import AtuacaoService
 from app.config.database import get_db
 from app.core.dependencies import exigir_permissao
 from app.funcionario.service import FuncionarioService
@@ -29,6 +31,12 @@ def obter_configuracoes(
 @router.get("/equipe", response_model=list[MembroEquipePublicaResponse])
 def obter_equipe_publica(db: Session = Depends(get_db)):
     service = FuncionarioService(db)
+    return service.buscar_visiveis_institucional()
+
+
+@router.get("/atuacoes", response_model=list[AtuacaoResponse])
+def obter_atuacoes_publicas(db: Session = Depends(get_db)):
+    service = AtuacaoService(db)
     return service.buscar_visiveis_institucional()
 
 

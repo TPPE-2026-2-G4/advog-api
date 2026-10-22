@@ -1,7 +1,8 @@
+from collections.abc import Sequence
 from datetime import date, datetime, time, timedelta
 
-from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy import func, or_
+from sqlalchemy.orm import Query, Session
 
 from app.cliente.model import Cliente
 from app.processo.model import Processo, StatusProcesso
@@ -20,15 +21,14 @@ class ProcessoRepository:
     def buscar_por_cnj(self, cnj: str) -> Processo | None:
         return self.db.query(Processo).filter(Processo.cnj == cnj).first()
 
-    def buscar_paginado_por_filtros(
+    def _montar_query(
         self,
-        page: int,
-        page_size: int,
         processo_id: int | None = None,
         cnj: str | None = None,
         titulo: str | None = None,
         descricao: str | None = None,
         status: StatusProcesso | None = None,
+        status_excluidos: Sequence[StatusProcesso] | None = None,
         tribunal: str | None = None,
         area: str | None = None,
         cliente_id: int | None = None,
@@ -36,7 +36,8 @@ class ProcessoRepository:
         busca: str | None = None,
         prazo_inicio: date | None = None,
         prazo_fim: date | None = None,
-    ) -> tuple[list[Processo], int]:
+        ultima_atividade_ate: datetime | None = None,
+    ) -> Query:
         query = self.db.query(Processo)
 
         if processo_id is not None:
@@ -49,6 +50,8 @@ class ProcessoRepository:
             query = query.filter(Processo.descricao.ilike(f"%{descricao}%"))
         if status is not None:
             query = query.filter(Processo.status == status)
+        if status_excluidos:
+            query = query.filter(Processo.status.notin_(status_excluidos))
         if tribunal:
             query = query.filter(Processo.tribunal.ilike(f"%{tribunal}%"))
         if area:
@@ -70,6 +73,79 @@ class ProcessoRepository:
         if prazo_fim is not None:
             limite = datetime.combine(prazo_fim + timedelta(days=1), time.min)
             query = query.filter(Processo.data_prazo < limite)
+        if ultima_atividade_ate is not None:
+            ultima_atividade = func.coalesce(Processo.data_realizado, Processo.data_inicio)
+            query = query.filter(
+                or_(ultima_atividade.is_(None), ultima_atividade < ultima_atividade_ate)
+            )
+
+        return query
+
+    def buscar_por_filtros(
+        self,
+        processo_id: int | None = None,
+        cnj: str | None = None,
+        titulo: str | None = None,
+        descricao: str | None = None,
+        status: StatusProcesso | None = None,
+        status_excluidos: Sequence[StatusProcesso] | None = None,
+        tribunal: str | None = None,
+        area: str | None = None,
+        cliente_id: int | None = None,
+        funcionario_id: int | None = None,
+        busca: str | None = None,
+        prazo_inicio: date | None = None,
+        prazo_fim: date | None = None,
+        ultima_atividade_ate: datetime | None = None,
+    ) -> list[Processo]:
+        return self._montar_query(
+            processo_id=processo_id,
+            cnj=cnj,
+            titulo=titulo,
+            descricao=descricao,
+            status=status,
+            status_excluidos=status_excluidos,
+            tribunal=tribunal,
+            area=area,
+            cliente_id=cliente_id,
+            funcionario_id=funcionario_id,
+            busca=busca,
+            prazo_inicio=prazo_inicio,
+            prazo_fim=prazo_fim,
+            ultima_atividade_ate=ultima_atividade_ate,
+        ).all()
+
+    def buscar_paginado_por_filtros(
+        self,
+        page: int,
+        page_size: int,
+        processo_id: int | None = None,
+        cnj: str | None = None,
+        titulo: str | None = None,
+        descricao: str | None = None,
+        status: StatusProcesso | None = None,
+        tribunal: str | None = None,
+        area: str | None = None,
+        cliente_id: int | None = None,
+        funcionario_id: int | None = None,
+        busca: str | None = None,
+        prazo_inicio: date | None = None,
+        prazo_fim: date | None = None,
+    ) -> tuple[list[Processo], int]:
+        query = self._montar_query(
+            processo_id=processo_id,
+            cnj=cnj,
+            titulo=titulo,
+            descricao=descricao,
+            status=status,
+            tribunal=tribunal,
+            area=area,
+            cliente_id=cliente_id,
+            funcionario_id=funcionario_id,
+            busca=busca,
+            prazo_inicio=prazo_inicio,
+            prazo_fim=prazo_fim,
+        )
 
         total = query.count()
         itens = (
