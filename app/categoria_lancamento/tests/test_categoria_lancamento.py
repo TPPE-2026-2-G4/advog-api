@@ -26,6 +26,19 @@ def test_crud_categoria(client):
     assert client.get(f"/categorias-lancamento/{cid}").status_code == 404
 
 
+def test_atualizar_categoria_com_nome_duplicado(client):
+    r1 = client.post("/categorias-lancamento", json={"nome_categoria": "Cat1"})
+    assert r1.status_code == 201
+    cid1 = r1.json()["categoria_id"]
+
+    r2 = client.post("/categorias-lancamento", json={"nome_categoria": "Cat2"})
+    assert r2.status_code == 201
+
+    resp = client.put(f"/categorias-lancamento/{cid1}", json={"nome_categoria": "Cat2"})
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "Categoria já cadastrada"
+
+
 def test_nao_exclui_categoria_com_lancamentos(client):
     cid = client.post("/categorias-lancamento", json={"nome_categoria": "X"}).json()["categoria_id"]
     client.post(
