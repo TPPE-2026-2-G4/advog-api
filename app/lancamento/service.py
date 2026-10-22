@@ -1,4 +1,5 @@
-from datetime import date, datetime
+import urllib.parse
+from datetime import date, datetime, timedelta
 from math import ceil
 
 from sqlalchemy.orm import Session
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.lancamento.model import Lancamento, StatusLancamento, TipoLancamento
 from app.lancamento.repository import LancamentoRepository
 from app.lancamento.schema import (
+    LancamentoCalendarioResponse,
     LancamentoCreate,
     LancamentoFilter,
     LancamentoPaginadoResponse,
@@ -128,3 +130,148 @@ class LancamentoService:
 
     def deletar_lancamento(self, lancamento_id: int) -> None:
         self.repository.deletar(self.buscar_por_id(lancamento_id))
+
+
+class FormatadorEventoCalendario:
+    @staticmethod
+    def obter_rotulo_tipo(tipo: TipoLancamento) -> str:
+        return "Entrada" if tipo == TipoLancamento.ENTRADA else "Saída"
+
+    @staticmethod
+    def construir_titulo(lancamento: Lancamento) -> str:
+        rotulo = FormatadorEventoCalendario.obter_rotulo_tipo(lancamento.tipo)
+        return f"[{rotulo}] {lancamento.titulo} - R$ {lancamento.valor:.2f}"
+
+    @staticmethod
+    def construir_descricao(lancamento: Lancamento) -> str:
+        rotulo = FormatadorEventoCalendario.obter_rotulo_tipo(lancamento.tipo)
+        data_formatada = lancamento.data_vencimento.strftime("%d/%m/%Y")
+
+        detalhes = [
+            f"Tipo: {rotulo}",
+            f"Valor: R$ {lancamento.valor:.2f}",
+            f"Status: {lancamento.status.value}",
+            f"Vencimento: {data_formatada}",
+        ]
+        if lancamento.descricao:
+            detalhes.append(f"Descrição: {lancamento.descricao}")
+
+        return "\n".join(detalhes)
+
+
+class GeradorUrlCalendario:
+    URL_BASE_GOOGLE = "https://calendar.google.com/calendar/render"
+    URL_BASE_OUTLOOK = "https://outlook.office.com/calendar/0/deeplink/compose"
+
+    @classmethod
+    def gerar_url_google_calendar(cls, lancamento: Lancamento) -> str:
+        data_str = lancamento.data_vencimento.strftime("%Y%m%d")
+
+        parametros = {
+            "action": "TEMPLATE",
+            "text": FormatadorEventoCalendario.construir_titulo(lancamento),
+            "dates": f"{data_str}/{data_str}",
+            "details": FormatadorEventoCalendario.construir_descricao(lancamento),
+        }
+        return f"{cls.URL_BASE_GOOGLE}?{urllib.parse.urlencode(parametros)}"
+
+    @classmethod
+    def gerar_url_outlook_calendar(cls, lancamento: Lancamento) -> str:
+        data_str = lancamento.data_vencimento.strftime("%Y-%m-%d")
+
+        parametros = {
+            "path": "/calendar/action/compose",
+            "rru": "addevent",
+            "subject": FormatadorEventoCalendario.construir_titulo(lancamento),
+            "startdt": data_str,
+            "enddt": data_str,
+            "allday": "true",
+            "body": FormatadorEventoCalendario.construir_descricao(lancamento),
+        }
+        return f"{cls.URL_BASE_OUTLOOK}?{urllib.parse.urlencode(parametros)}"
+
+
+class LancamentoCalendarioService:
+    def __init__(self, repositorio: LancamentoRepository):
+        self.repositorio = repositorio
+
+    def _validar_periodo(self, filtros: LancamentoFilter) -> None:
+        if filtros.inicio and filtros.fim and filtros.inicio > filtros.fim:
+            raise ValueError("A data inicial não pode ser posterior à data final")
+
+    def _sincronizar_atrasos(self) -> None:
+        self.repositorio.marcar_atrasados(date.today())
+
+    def obter_calendario(self, filtros: LancamentoFilter) -> list[LancamentoCalendarioResponse]:
+        if not filtros.inicio or not filtros.fim:
+            raise ValueError("As datas inicial e final são obrigatórias para o calendário")
+
+        self._validar_periodo(filtros)
+        self._sincronizar_atrasos()
+
+        lancamentos = self.repositorio.buscar_por_filtros(
+            inicio=filtros.inicio,
+            fim=filtros.fim,
+            status=None,
+            tipo=None,
+            categoria_id=None,
+            cliente_id=None,
+        )
+
+        return [self._construir_evento_calendario(item) for item in lancamentos]
+
+    def exportar_icalendar(self, filtros: LancamentoFilter) -> str:
+        if not filtros.inicio or not filtros.fim:
+            raise ValueError("As datas inicial e final são obrigatórias para a exportação")
+
+        self._validar_periodo(filtros)
+        self._sincronizar_atrasos()
+
+        lancamentos = self.repositorio.buscar_por_filtros(
+            inicio=filtros.inicio,
+            fim=filtros.fim,
+            status=None,
+            tipo=None,
+            categoria_id=None,
+            cliente_id=None,
+        )
+
+        data_carimbo_utc = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        linhas = [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//Escritorio Advocacia//Lancamentos Financeiros//PT",
+            "CALSCALE:GREGORIAN",
+            "METHOD:PUBLISH",
+        ]
+
+        for item in lancamentos:
+            linhas.extend(self._gerar_evento_ical(item, data_carimbo_utc))
+
+        linhas.append("END:VCALENDAR")
+        return "\r\n".join(linhas)
+
+    def _construir_evento_calendario(self, lancamento: Lancamento) -> LancamentoCalendarioResponse:
+        evento = LancamentoCalendarioResponse.model_validate(lancamento)
+        evento.google_calendar_url = GeradorUrlCalendario.gerar_url_google_calendar(lancamento)
+        evento.outlook_calendar_url = GeradorUrlCalendario.gerar_url_outlook_calendar(lancamento)
+        return evento
+
+    def _gerar_evento_ical(self, lancamento: Lancamento, data_carimbo_utc: str) -> list[str]:
+        titulo = FormatadorEventoCalendario.construir_titulo(lancamento)
+        descricao = FormatadorEventoCalendario.construir_descricao(lancamento).replace("\n", "\\n")
+
+        data_inicio = lancamento.data_vencimento.strftime("%Y%m%d")
+        data_fim = (lancamento.data_vencimento + timedelta(days=1)).strftime("%Y%m%d")
+        identificador_unico = f"lancamento-{lancamento.id}@escritorio.com.br"
+
+        return [
+            "BEGIN:VEVENT",
+            f"UID:{identificador_unico}",
+            f"DTSTAMP:{data_carimbo_utc}",
+            f"DTSTART;VALUE=DATE:{data_inicio}",
+            f"DTEND;VALUE=DATE:{data_fim}",
+            f"SUMMARY:{titulo}",
+            f"DESCRIPTION:{descricao}",
+            "END:VEVENT",
+        ]

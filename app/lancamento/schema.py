@@ -78,3 +78,20 @@ class LancamentoResumo(BaseModel):
     pendente: ResumoStatus
     realizado: ResumoStatus
     atrasado: ResumoStatus
+
+
+class LancamentoCalendarioResponse(BaseModel):
+    lancamento_id: int
+    titulo: str
+    descricao: str | None = None
+    tipo: TipoLancamento
+    status: StatusLancamento
+    valor: float
+    data_vencimento: datetime
+    data_pagamento: datetime | None = None
+    categoria_id: int | None = None
+    cliente_id: int | None = None
+    google_calendar_url: str
+    outlook_calendar_url: str
+
+    model_config = ConfigDict(from_attributes=True)
