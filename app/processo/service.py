@@ -104,7 +104,7 @@ class ProcessoService:
         try:
             api_client = DatajudApiClient()
 
-            processos = db.query(Processo).filter(Processo.cnj != None).all()  # noqa: E711
+            processos = db.query(Processo).filter(Processo.cnj.is_not(None)).all()
 
             updates_count = 0
             for processo in processos:

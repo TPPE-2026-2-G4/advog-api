@@ -28,17 +28,11 @@ def test_sanitizar_cnj():
 
 
 def test_extrair_alias_tribunal():
-    # TJSP: 8.26
     assert DatajudApiClient.extrair_alias_tribunal("10000000020268260100") == "tjsp"
-    # TJTO: 8.27
     assert DatajudApiClient.extrair_alias_tribunal("10000000020268270100") == "tjto"
-    # TRF1: 4.01
     assert DatajudApiClient.extrair_alias_tribunal("00008323520184013202") == "trf1"
-    # TRT2: 5.02
     assert DatajudApiClient.extrair_alias_tribunal("10000000020265020100") == "trt2"
-    # CNJ inválido ou tamanho errado
     assert DatajudApiClient.extrair_alias_tribunal("123") is None
-    # Tribunal desconhecido
     assert DatajudApiClient.extrair_alias_tribunal("10000000020269990100") is None
 
 
