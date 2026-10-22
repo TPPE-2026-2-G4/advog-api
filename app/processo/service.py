@@ -115,7 +115,6 @@ class ProcessoService:
                 if data:
                     if "status" in data and data["status"]:
                         raw_status = data["status"]
-                        # Normaliza status para os valores suportados pelo Enum StatusProcesso
                         status_map = {
                             "Em Andamento": StatusProcesso.ATIVO,
                             "Ativo": StatusProcesso.ATIVO,
