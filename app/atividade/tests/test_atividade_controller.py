@@ -194,3 +194,30 @@ def test_kanban_com_dez_mil_atividades(
         cartao["responsaveis"] == [{"funcionario_id": funcionario_id, "nome": "Funcionário 0"}]
         for cartao in cartoes
     )
+
+
+def test_endpoint_produtividade(client, token_admin, funcionario_admin):
+    resposta = client.get(
+        "/atividades/produtividade",
+        headers={"Authorization": f"Bearer {token_admin}"},
+    )
+    assert resposta.status_code == 200
+    assert resposta.json() == [
+        {
+            "funcionario_id": funcionario_admin.funcionario_id,
+            "nome": funcionario_admin.nome,
+            "finalizadas": 0,
+            "a_fazer": 0,
+            "em_andamento": 0,
+            "atrasadas": 0,
+            "progresso": 0,
+        }
+    ]
+
+
+@pytest.mark.parametrize("autenticado, status", [(False, 401), (True, 403)])
+def test_produtividade_requer_permissao(client, funcionarios, token_acesso, autenticado, status):
+    headers = {}
+    if autenticado:
+        headers["Authorization"] = f"Bearer {token_acesso(funcionarios[0].funcionario_id)}"
+    assert client.get("/atividades/produtividade", headers=headers).status_code == status

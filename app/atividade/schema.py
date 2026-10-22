@@ -33,3 +33,13 @@ class KanbanResponse(BaseModel):
         description="usuario: Minhas atividades; escritorio: Atividades do escritório."
     )
     etapas: list[EtapaKanbanResponse]
+
+
+class ProdutividadeResponse(BaseModel):
+    funcionario_id: int
+    nome: str
+    finalizadas: int
+    em_andamento: int
+    a_fazer: int
+    atrasadas: int
+    progresso: float

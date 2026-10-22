@@ -4,7 +4,12 @@ import pytest
 from pydantic import ValidationError
 
 from app.atividade.model import Atividade
-from app.atividade.schema import AtividadeKanbanResponse, EtapaKanbanResponse, KanbanResponse
+from app.atividade.schema import (
+    AtividadeKanbanResponse,
+    EtapaKanbanResponse,
+    KanbanResponse,
+    ProdutividadeResponse,
+)
 from app.etapa_kanban.model import EtapaKanban
 
 
@@ -44,3 +49,35 @@ def test_etapas_vazias_possuem_listas_independentes():
 def test_kanban_rejeita_escopo_desconhecido():
     with pytest.raises(ValidationError):
         KanbanResponse.model_validate({"escopo": "todos", "etapas": []})
+
+
+def test_produtividade_serializa_contrato():
+    dados = {
+        "funcionario_id": 7,
+        "nome": "Responsável",
+        "finalizadas": 1,
+        "a_fazer": 1,
+        "em_andamento": 3,
+        "atrasadas": 3,
+        "progresso": 12.5,
+    }
+    assert ProdutividadeResponse.model_validate(dados).model_dump(mode="json") == dados
+
+
+@pytest.mark.parametrize(
+    "campo",
+    ["funcionario_id", "nome", "finalizadas", "a_fazer", "em_andamento", "atrasadas", "progresso"],
+)
+def test_produtividade_exige_campos_do_contrato(campo):
+    dados = {
+        "funcionario_id": 7,
+        "nome": "Responsável",
+        "finalizadas": 0,
+        "a_fazer": 0,
+        "em_andamento": 0,
+        "atrasadas": 0,
+        "progresso": 0.0,
+    }
+    del dados[campo]
+    with pytest.raises(ValidationError):
+        ProdutividadeResponse.model_validate(dados)
