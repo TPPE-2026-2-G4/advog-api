@@ -5,7 +5,7 @@ from app.config.database import Base
 
 
 class EtapaKanban(Base):
-    __tablename__ = "etapas_kanban"
+    __tablename__ = "etapa_kanban"
 
     etapa_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     nome: Mapped[str] = mapped_column(String(100), nullable=False)
