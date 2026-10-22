@@ -692,11 +692,14 @@ async def test_sincronizar_processos_controller_sucesso(
     token_acesso,
 ):
     from unittest.mock import patch
+
     cargo = criar_cargo(db_session, {"editar_processos": True})
     usuario = criar_funcionario(db_session, cargo, "sync.admin@test.com")
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
-    with patch("app.processo.service.ProcessoService.sincronizar_processos_com_api", return_value=3):
+    with patch(
+        "app.processo.service.ProcessoService.sincronizar_processos_com_api", return_value=3
+    ):
         response = client.post("/processos/sincronizar", headers=auth_header(token))
 
     assert response.status_code == 200
@@ -712,11 +715,15 @@ async def test_sincronizar_processos_controller_erro(
     token_acesso,
 ):
     from unittest.mock import patch
+
     cargo = criar_cargo(db_session, {"editar_processos": True})
     usuario = criar_funcionario(db_session, cargo, "sync.erro@test.com")
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
-    with patch("app.processo.service.ProcessoService.sincronizar_processos_com_api", side_effect=Exception("Falha de conexão")):
+    with patch(
+        "app.processo.service.ProcessoService.sincronizar_processos_com_api",
+        side_effect=Exception("Falha de conexão"),
+    ):
         response = client.post("/processos/sincronizar", headers=auth_header(token))
 
     assert response.status_code == 500

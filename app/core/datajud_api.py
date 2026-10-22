@@ -106,9 +106,7 @@ class DatajudApiClient:
 
         tribunal_alias = self.extrair_alias_tribunal(cnj_limpo)
         if not tribunal_alias:
-            logger.warning(
-                f"Tribunal não identificado a partir do CNJ {cnj_limpo}."
-            )
+            logger.warning(f"Tribunal não identificado a partir do CNJ {cnj_limpo}.")
             return None
 
         url = f"{self.base_url}/api_publica_{tribunal_alias}/_search"
@@ -126,9 +124,7 @@ class DatajudApiClient:
 
                 hits = data.get("hits", {}).get("hits", [])
                 if not hits:
-                    logger.info(
-                        f"Nenhum processo encontrado no Datajud para o CNJ {cnj_limpo}."
-                    )
+                    logger.info(f"Nenhum processo encontrado no Datajud para o CNJ {cnj_limpo}.")
                     return None
 
                 primeiro_hit = hits[0].get("_source", {})
@@ -153,7 +149,9 @@ class DatajudApiClient:
                             clean_dt_str = data_hora_str.replace("Z", "+00:00")
                             data_movimento = datetime.fromisoformat(clean_dt_str)
                         except (ValueError, TypeError):
-                            logger.warning(f"Formato de dataHora inválido no movimento: {data_hora_str}")
+                            logger.warning(
+                                f"Formato de dataHora inválido no movimento: {data_hora_str}"
+                            )
 
                 return {
                     "status": status_atual,
@@ -161,9 +159,7 @@ class DatajudApiClient:
                     "data_realizado": data_movimento,
                 }
         except Exception as e:
-            logger.warning(
-                f"Erro ou timeout ao buscar processo {cnj_limpo} no Datajud: {e}."
-            )
+            logger.warning(f"Erro ou timeout ao buscar processo {cnj_limpo} no Datajud: {e}.")
             return None
 
     def _mock_fetch_processo(self, cnj: str) -> dict[str, Any]:
