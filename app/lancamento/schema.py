@@ -1,6 +1,7 @@
 from datetime import date, datetime
 
 from fastapi import Query
+from fastapi.params import Param
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.lancamento.model import StatusLancamento, TipoLancamento
@@ -58,12 +59,12 @@ class LancamentoFilter:
         categoria_id: int | None = Query(None, description="Filtrar por categoria"),
         cliente_id: int | None = Query(None, description="Filtrar por cliente"),
     ):
-        self.inicio = inicio
-        self.fim = fim
-        self.status = status
-        self.tipo = tipo
-        self.categoria_id = categoria_id
-        self.cliente_id = cliente_id
+        self.inicio = None if isinstance(inicio, Param) else inicio
+        self.fim = None if isinstance(fim, Param) else fim
+        self.status = None if isinstance(status, Param) else status
+        self.tipo = None if isinstance(tipo, Param) else tipo
+        self.categoria_id = None if isinstance(categoria_id, Param) else categoria_id
+        self.cliente_id = None if isinstance(cliente_id, Param) else cliente_id
 
 
 class ResumoStatus(BaseModel):

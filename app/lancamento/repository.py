@@ -25,12 +25,12 @@ class LancamentoRepository:
 
     def _filtrar(
         self,
-        inicio: date | None,
-        fim: date | None,
-        status: StatusLancamento | None,
-        tipo: TipoLancamento | None,
-        categoria_id: int | None,
-        cliente_id: int | None,
+        inicio: date | None = None,
+        fim: date | None = None,
+        status: StatusLancamento | None = None,
+        tipo: TipoLancamento | None = None,
+        categoria_id: int | None = None,
+        cliente_id: int | None = None,
     ) -> Query:
         query = self.db.query(Lancamento)
         if inicio is not None:
