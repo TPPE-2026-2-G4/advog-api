@@ -42,3 +42,4 @@ class Processo(Base):
     funcionario_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("funcionarios.funcionario_id"), nullable=True
     )
+
