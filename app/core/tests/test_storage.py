@@ -108,7 +108,7 @@ def test_remover_arquivo_com_erro_client_error_silenciado(mock_s3):
     remover_arquivo("logotipos/inexistente.png")
 
 
-@patch("app.core.storage.s3_client")
+@patch("app.core.storage.s3_public_client")
 def test_obter_url_publica_erro_retorna_none(mock_s3):
     mock_s3.generate_presigned_url.side_effect = Exception("S3 Indisponível")
     assert obter_url_publica("arquivo.png") is None
