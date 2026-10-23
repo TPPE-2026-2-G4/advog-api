@@ -56,9 +56,7 @@ class ProcessoService:
         contagens = self.repository.contar_por_status(funcionario_id=filtro_funcionario_id)
         em_andamento = contagens.get(StatusProcesso.ATIVO, 0)
         em_analise = contagens.get(StatusProcesso.EM_ANALISE, 0)
-        concluidos = contagens.get(StatusProcesso.CONCLUIDO, 0)
-        arquivados = contagens.get(StatusProcesso.ARQUIVADO, 0)
-        finalizados = concluidos + arquivados
+        finalizados = contagens.get(StatusProcesso.CONCLUIDO, 0)
         total = em_andamento + em_analise + finalizados
 
         hoje = datetime.now(UTC).date()
@@ -79,8 +77,6 @@ class ProcessoService:
             em_andamento=em_andamento,
             em_analise=em_analise,
             finalizados=finalizados,
-            concluidos=concluidos,
-            arquivados=arquivados,
             proximos_do_prazo=proximos_do_prazo,
             atrasados=atrasados,
         )

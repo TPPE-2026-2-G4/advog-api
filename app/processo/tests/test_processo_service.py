@@ -474,14 +474,10 @@ def test_obter_resumo_processos_parametrizado(
 
     em_andamento_esp = contagens_status.get(StatusProcesso.ATIVO, 0)
     em_analise_esp = contagens_status.get(StatusProcesso.EM_ANALISE, 0)
-    concluidos_esp = contagens_status.get(StatusProcesso.CONCLUIDO, 0)
-    arquivados_esp = contagens_status.get(StatusProcesso.ARQUIVADO, 0)
-    finalizados_esp = concluidos_esp + arquivados_esp
+    finalizados_esp = contagens_status.get(StatusProcesso.CONCLUIDO, 0)
 
     assert resumo.em_andamento == em_andamento_esp
     assert resumo.em_analise == em_analise_esp
-    assert resumo.concluidos == concluidos_esp
-    assert resumo.arquivados == arquivados_esp
     assert resumo.finalizados == finalizados_esp
     assert resumo.total == em_andamento_esp + em_analise_esp + finalizados_esp
     assert resumo.atrasados == atrasados_mock

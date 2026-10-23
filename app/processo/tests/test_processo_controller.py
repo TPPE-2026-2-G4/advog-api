@@ -733,8 +733,8 @@ async def test_sincronizar_processos_controller_erro(
 @pytest.mark.parametrize(
     "eh_admin,filtrar_outro_advogado,esperado_total,esperado_em_andamento,esperado_em_analise,esperado_finalizados,esperado_proximos,esperado_atrasados",
     [
-        (True, False, 5, 2, 1, 2, 1, 1),
-        (True, True, 2, 1, 0, 1, 0, 0),
+        (True, False, 4, 2, 1, 1, 1, 1),
+        (True, True, 1, 1, 0, 0, 0, 0),
         (False, False, 3, 1, 1, 1, 1, 1),
         (False, True, 3, 1, 1, 1, 1, 1),
     ],

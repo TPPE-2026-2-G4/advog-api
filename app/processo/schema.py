@@ -62,8 +62,6 @@ class ProcessoResumoResponse(BaseModel):
     em_andamento: int = 0
     em_analise: int = 0
     finalizados: int = 0
-    concluidos: int = 0
-    arquivados: int = 0
     proximos_do_prazo: int = 0
     atrasados: int = 0
 
