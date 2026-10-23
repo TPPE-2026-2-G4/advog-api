@@ -156,6 +156,19 @@ class ProcessoRepository:
         )
         return itens, total
 
+    def buscar_para_exportacao(self, limite: int, **filtros) -> list[Processo]:
+        return (
+            self._montar_query(**filtros).order_by(Processo.processo_id.desc()).limit(limite).all()
+        )
+
+    def buscar_nomes_clientes(self, cliente_ids: set[int]) -> dict[int, str]:
+        if not cliente_ids:
+            return {}
+        consulta = self.db.query(Cliente.cliente_id, Cliente.nome).filter(
+            Cliente.cliente_id.in_(cliente_ids)
+        )
+        return {cliente_id: nome for cliente_id, nome in consulta.all()}
+
     def criar(self, processo: Processo) -> Processo:
         self.db.add(processo)
         self.db.commit()

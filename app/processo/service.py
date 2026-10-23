@@ -6,6 +6,15 @@ from sqlalchemy.orm import Session
 
 from app.config.database import SessionLocal
 from app.core.datajud_api import DatajudApiClient
+from app.core.relatorio import (
+    LIMITE_LINHAS,
+    Arquivo,
+    Coluna,
+    FormatoRelatorio,
+    Tabela,
+    TipoColuna,
+    gerar_arquivo,
+)
 from app.processo.model import Processo, StatusProcesso
 from app.processo.repository import ProcessoRepository
 from app.processo.schema import (
@@ -52,6 +61,59 @@ class ProcessoService:
             page_size=filters.page_size,
             total_pages=max(1, ceil(total / filters.page_size)),
         )
+
+    def exportar_processos(self, filters: ProcessoFilter, formato: FormatoRelatorio) -> Arquivo:
+        processos = self.repository.buscar_para_exportacao(
+            LIMITE_LINHAS + 1,
+            processo_id=filters.processo_id,
+            cnj=filters.cnj,
+            titulo=filters.titulo,
+            descricao=filters.descricao,
+            status=filters.status,
+            tribunal=filters.tribunal,
+            area=filters.area,
+            cliente_id=filters.cliente_id,
+            funcionario_id=filters.funcionario_id,
+            busca=filters.busca,
+            prazo_inicio=filters.prazo_inicio,
+            prazo_fim=filters.prazo_fim,
+        )
+        if len(processos) > LIMITE_LINHAS:
+            raise ValueError(
+                f"A exportação excede {LIMITE_LINHAS} processos; refine os filtros e tente novamente"
+            )
+        clientes = self.repository.buscar_nomes_clientes({p.cliente_id for p in processos})
+        tabela = Tabela(
+            titulo="Relatório de Processos",
+            colunas=[
+                Coluna("CNJ"),
+                Coluna("Título"),
+                Coluna("Descrição"),
+                Coluna("Status"),
+                Coluna("Tribunal"),
+                Coluna("Área"),
+                Coluna("Cliente"),
+                Coluna("Data de início", TipoColuna.DATA),
+                Coluna("Prazo", TipoColuna.DATA),
+                Coluna("Data realizado", TipoColuna.DATA),
+            ],
+            linhas=[
+                [
+                    p.cnj,
+                    p.titulo,
+                    p.descricao,
+                    p.status.value,
+                    p.tribunal,
+                    p.area,
+                    clientes.get(p.cliente_id),
+                    p.data_inicio,
+                    p.data_prazo,
+                    p.data_realizado,
+                ]
+                for p in processos
+            ],
+        )
+        return gerar_arquivo(tabela, formato)
 
     def criar_processo(self, dados: ProcessoCreate) -> Processo:
         processo_existente = self.repository.buscar_por_cnj(dados.cnj)
