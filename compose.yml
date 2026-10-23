@@ -14,7 +14,10 @@ services:
     env_file:
       - .env
     depends_on:
-      - advog-db
+      advog-db:
+        condition: service_healthy
+      advog-minio:
+        condition: service_started
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@advog-db:5432/${POSTGRES_DB}
   advog-db:

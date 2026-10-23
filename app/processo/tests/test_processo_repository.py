@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.cargo.model import Cargo
 from app.cliente.model import Cliente
 from app.funcionario.model import Funcionario, StatusFuncionario
-from app.processo.model import Processo, StatusProcesso
+from app.processo.model import DocumentoProcesso, Processo, StatusProcesso
 from app.processo.repository import ProcessoRepository
 
 
@@ -421,3 +421,52 @@ def test_buscar_por_filtros_atividade_e_status_excluidos(
         assert any(p.processo_id == proc.processo_id for p in criticos)
     else:
         assert not any(p.processo_id == proc.processo_id for p in criticos)
+
+
+def test_documento_repository_crud(db_session: Session, dados_base: dict):
+    repository = ProcessoRepository(db_session)
+    cliente = dados_base["cliente"]
+    funcionario = dados_base["funcionario"]
+
+    proc = Processo(
+        cnj="88888888888888888888",
+        titulo="Processo com Documento",
+        status=StatusProcesso.ATIVO,
+        tribunal="TJDFT",
+        area="Civil",
+        cliente_id=cliente.cliente_id,
+        funcionario_id=funcionario.funcionario_id,
+    )
+    repository.criar(proc)
+
+    docs = repository.listar_documentos(proc.processo_id)
+    assert docs == []
+
+    # Adicionar documento
+    doc = DocumentoProcesso(
+        processo_id=proc.processo_id,
+        nome_original="peticao.pdf",
+        chave_minio=f"processos/{proc.processo_id}/peticao.pdf",
+        origem="manual",
+        tamanho_bytes=2048,
+        entrada_tipo="application/pdf",
+        funcionario_id=funcionario.funcionario_id,
+    )
+    doc_salvo = repository.adicionar_documento(doc)
+    assert doc_salvo.documento_id is not None
+    assert doc_salvo.nome_original == "peticao.pdf"
+    assert doc_salvo.origem == "manual"
+
+    doc_encontrado = repository.buscar_documento_por_id(doc_salvo.documento_id)
+    assert doc_encontrado is not None
+    assert doc_encontrado.chave_minio == doc.chave_minio
+
+    assert repository.buscar_documento_por_id(999999) is None
+
+    docs_listados = repository.listar_documentos(proc.processo_id)
+    assert len(docs_listados) == 1
+    assert docs_listados[0].documento_id == doc_salvo.documento_id
+
+    repository.deletar_documento(doc_salvo)
+    assert repository.buscar_documento_por_id(doc_salvo.documento_id) is None
+    assert repository.listar_documentos(proc.processo_id) == []

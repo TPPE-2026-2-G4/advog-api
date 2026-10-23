@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -728,3 +729,210 @@ async def test_sincronizar_processos_controller_erro(
 
     assert response.status_code == 500
     assert "Falha ao sincronizar processos com a API do Datajud" in response.json()["detail"]
+
+
+def test_upload_documento_sem_token(client):
+    response = client.post("/processos/1/documentos")
+    assert response.status_code == 401
+
+
+def test_upload_documento_sem_permissao(client, db_session, token_acesso):
+    cargo = criar_cargo(db_session, {"editar_processos": False})
+    usuario = criar_funcionario(db_session, cargo, "semperm.doc@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    response = client.post("/processos/1/documentos", headers=auth_header(token))
+    assert response.status_code == 403
+
+
+@patch("app.processo.service.salvar_arquivo")
+@patch("app.processo.service.obter_url_publica")
+def test_upload_documento_sucesso(
+    mock_url, mock_salvar, client, db_session, token_acesso, cliente_processo
+):
+    cargo = criar_cargo(db_session, {"editar_processos": True, "visualizar_processos": True})
+    usuario = criar_funcionario(db_session, cargo, "comperm.doc@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    proc = criar_processo(db_session, cliente_processo.cliente_id, cnj="11111222223333344444")
+
+    mock_salvar.return_value = f"processos/{proc.processo_id}/arquivo.pdf"
+    mock_url.return_value = "http://minio/doc.pdf"
+
+    pdf_bytes = b"%PDF-1.4\n%conteudo de teste"
+    response = client.post(
+        f"/processos/{proc.processo_id}/documentos",
+        headers=auth_header(token),
+        files={"file": ("peticao.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 201
+    dados = response.json()
+    assert dados["nome_original"] == "peticao.pdf"
+    assert dados["origem"] == "manual"
+    assert dados["processo_id"] == proc.processo_id
+    assert dados["funcionario_id"] == usuario.funcionario_id
+    assert dados["url"] == "http://minio/doc.pdf"
+
+
+def test_upload_documento_processo_inexistente(client, db_session, token_acesso):
+    cargo = criar_cargo(db_session, {"editar_processos": True})
+    usuario = criar_funcionario(db_session, cargo, "proc.inex@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    pdf_bytes = b"%PDF-1.4\n%conteudo"
+    response = client.post(
+        "/processos/99999/documentos",
+        headers=auth_header(token),
+        files={"file": ("peticao.pdf", pdf_bytes, "application/pdf")},
+    )
+
+    assert response.status_code == 404
+    assert "Processo não encontrado" in response.json()["detail"]
+
+
+def test_upload_documento_arquivo_invalido(client, db_session, token_acesso, cliente_processo):
+    cargo = criar_cargo(db_session, {"editar_processos": True})
+    usuario = criar_funcionario(db_session, cargo, "arquivo.inv@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    proc = criar_processo(db_session, cliente_processo.cliente_id, cnj="99999888887777766666")
+
+    response = client.post(
+        f"/processos/{proc.processo_id}/documentos",
+        headers=auth_header(token),
+        files={"file": ("malware.exe", b"MZ\x90\x00", "application/octet-stream")},
+    )
+
+    assert response.status_code == 400
+    assert "Extensão de arquivo não permitida" in response.json()["detail"]
+
+
+def test_listar_documentos_controller_sem_permissao(client, db_session, token_acesso):
+    cargo = criar_cargo(db_session, {"visualizar_processos": False})
+    usuario = criar_funcionario(db_session, cargo, "list.semperm@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    response = client.get("/processos/1/documentos", headers=auth_header(token))
+    assert response.status_code == 403
+
+
+def test_listar_documentos_processo_inexistente(client, db_session, token_acesso):
+    cargo = criar_cargo(db_session, {"visualizar_processos": True})
+    usuario = criar_funcionario(db_session, cargo, "list.inex@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    response = client.get("/processos/99999/documentos", headers=auth_header(token))
+    assert response.status_code == 404
+    assert "Processo não encontrado" in response.json()["detail"]
+
+
+@patch("app.processo.service.salvar_arquivo")
+@patch("app.processo.service.obter_url_publica")
+def test_listar_documentos_sucesso(
+    mock_url, mock_salvar, client, db_session, token_acesso, cliente_processo
+):
+    cargo = criar_cargo(db_session, {"editar_processos": True, "visualizar_processos": True})
+    usuario = criar_funcionario(db_session, cargo, "list.ok@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    proc = criar_processo(db_session, cliente_processo.cliente_id, cnj="77777666665555544444")
+
+    mock_salvar.return_value = f"processos/{proc.processo_id}/doc.pdf"
+    mock_url.return_value = "http://minio/doc.pdf"
+
+    # Faz upload de um documento
+    client.post(
+        f"/processos/{proc.processo_id}/documentos",
+        headers=auth_header(token),
+        files={"file": ("peticao.pdf", b"%PDF-1.4\n%content", "application/pdf")},
+    )
+
+    response = client.get(f"/processos/{proc.processo_id}/documentos", headers=auth_header(token))
+    assert response.status_code == 200
+    docs = response.json()
+    assert len(docs) == 1
+    assert docs[0]["nome_original"] == "peticao.pdf"
+
+
+def test_obter_url_documento_controller_erro(client, db_session, token_acesso):
+    cargo = criar_cargo(db_session, {"visualizar_processos": True})
+    usuario = criar_funcionario(db_session, cargo, "url.erro@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    response = client.get("/processos/1/documentos/99999/url", headers=auth_header(token))
+    assert response.status_code == 404
+    assert "Documento não encontrado" in response.json()["detail"]
+
+
+@patch("app.processo.service.salvar_arquivo")
+@patch("app.processo.service.obter_url_publica")
+def test_obter_url_documento_controller_sucesso(
+    mock_url, mock_salvar, client, db_session, token_acesso, cliente_processo
+):
+    cargo = criar_cargo(db_session, {"editar_processos": True, "visualizar_processos": True})
+    usuario = criar_funcionario(db_session, cargo, "url.ok@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    proc = criar_processo(db_session, cliente_processo.cliente_id, cnj="55555444443333322222")
+    mock_salvar.return_value = f"processos/{proc.processo_id}/doc.pdf"
+    mock_url.return_value = "http://minio/presigned-url"
+
+    up_res = client.post(
+        f"/processos/{proc.processo_id}/documentos",
+        headers=auth_header(token),
+        files={"file": ("doc.pdf", b"%PDF-1.4\n%content", "application/pdf")},
+    )
+    doc_id = up_res.json()["documento_id"]
+
+    response = client.get(
+        f"/processos/{proc.processo_id}/documentos/{doc_id}/url?expiracao_segundos=900",
+        headers=auth_header(token),
+    )
+    assert response.status_code == 200
+    dados = response.json()
+    assert dados["documento_id"] == doc_id
+    assert dados["url"] == "http://minio/presigned-url"
+    assert dados["expira_em_segundos"] == 900
+
+
+def test_deletar_documento_controller_erro(client, db_session, token_acesso):
+    cargo = criar_cargo(db_session, {"editar_processos": True})
+    usuario = criar_funcionario(db_session, cargo, "del.erro@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    response = client.delete("/processos/1/documentos/99999", headers=auth_header(token))
+    assert response.status_code == 404
+    assert "Documento não encontrado" in response.json()["detail"]
+
+
+@patch("app.processo.service.salvar_arquivo")
+@patch("app.processo.service.remover_arquivo")
+@patch("app.processo.service.obter_url_publica")
+def test_deletar_documento_controller_sucesso(
+    mock_url, mock_remover, mock_salvar, client, db_session, token_acesso, cliente_processo
+):
+    cargo = criar_cargo(db_session, {"editar_processos": True, "visualizar_processos": True})
+    usuario = criar_funcionario(db_session, cargo, "del.ok@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    proc = criar_processo(db_session, cliente_processo.cliente_id, cnj="33333222221111100000")
+    mock_salvar.return_value = f"processos/{proc.processo_id}/doc.pdf"
+    mock_url.return_value = "http://minio/doc.pdf"
+
+    up_res = client.post(
+        f"/processos/{proc.processo_id}/documentos",
+        headers=auth_header(token),
+        files={"file": ("doc.pdf", b"%PDF-1.4\n%content", "application/pdf")},
+    )
+    doc_id = up_res.json()["documento_id"]
+
+    del_res = client.delete(
+        f"/processos/{proc.processo_id}/documentos/{doc_id}",
+        headers=auth_header(token),
+    )
+    assert del_res.status_code == 204
+
+    # Confirma que documento não é mais listado
+    list_res = client.get(f"/processos/{proc.processo_id}/documentos", headers=auth_header(token))
+    assert list_res.json() == []
