@@ -166,3 +166,36 @@ def test_processo_response():
 
     assert response.processo_id == 1
     assert response.funcionario_id == 1
+
+
+def test_processo_resumo_response_padrao_e_customizado():
+    from app.processo.schema import ProcessoResumoResponse
+
+    padrao = ProcessoResumoResponse()
+    assert padrao.total == 0
+    assert padrao.em_andamento == 0
+    assert padrao.em_analise == 0
+    assert padrao.finalizados == 0
+    assert padrao.concluidos == 0
+    assert padrao.arquivados == 0
+    assert padrao.proximos_do_prazo == 0
+    assert padrao.atrasados == 0
+
+    custom = ProcessoResumoResponse(
+        total=10,
+        em_andamento=4,
+        em_analise=2,
+        finalizados=4,
+        concluidos=3,
+        arquivados=1,
+        proximos_do_prazo=2,
+        atrasados=1,
+    )
+    assert custom.total == 10
+    assert custom.em_andamento == 4
+    assert custom.em_analise == 2
+    assert custom.finalizados == 4
+    assert custom.concluidos == 3
+    assert custom.arquivados == 1
+    assert custom.proximos_do_prazo == 2
+    assert custom.atrasados == 1
