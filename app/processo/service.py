@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.config.database import SessionLocal
 from app.core.datajud_api import DatajudApiClient
+from app.funcionario.model import Funcionario
 from app.processo.model import Processo, StatusProcesso
 from app.processo.repository import ProcessoRepository
 from app.processo.schema import (
@@ -13,17 +14,72 @@ from app.processo.schema import (
     ProcessoFilter,
     ProcessoPaginadoResponse,
     ProcessoResponse,
+    ProcessoResumoResponse,
     ProcessoUpdate,
 )
 
 logger = logging.getLogger(__name__)
 
 STATUS_FINALIZADOS = [StatusProcesso.CONCLUIDO, StatusProcesso.ARQUIVADO]
+CARGOS_ADMINISTRADOR = ("administrador", "admin")
 
 
 class ProcessoService:
     def __init__(self, db_session: Session):
         self.repository = ProcessoRepository(db_session)
+
+    @staticmethod
+    def _eh_administrador(usuario: Funcionario | None) -> bool:
+        if usuario is None:
+            return True
+        cargo = getattr(usuario, "cargo", None)
+        if cargo is None:
+            return False
+        nome_cargo = (cargo.nome_cargo or "").strip().lower()
+        permissoes = cargo.permissao or {}
+        return nome_cargo in CARGOS_ADMINISTRADOR or bool(
+            permissoes.get("configuracoes_sistema", False)
+        )
+
+    def obter_resumo_processos(
+        self,
+        usuario: Funcionario | None = None,
+        funcionario_id: int | None = None,
+        dias_proximo_prazo: int = 7,
+    ) -> ProcessoResumoResponse:
+        filtro_funcionario_id = (
+            funcionario_id
+            if self._eh_administrador(usuario)
+            else getattr(usuario, "funcionario_id", None)
+        )
+
+        contagens = self.repository.contar_por_status(funcionario_id=filtro_funcionario_id)
+        em_andamento = contagens.get(StatusProcesso.ATIVO, 0)
+        em_analise = contagens.get(StatusProcesso.EM_ANALISE, 0)
+        finalizados = contagens.get(StatusProcesso.CONCLUIDO, 0)
+        total = em_andamento + em_analise + finalizados
+
+        hoje = datetime.now(UTC).date()
+        atrasados = self.repository.contar_por_filtros(
+            status_excluidos=STATUS_FINALIZADOS,
+            funcionario_id=filtro_funcionario_id,
+            prazo_fim=hoje - timedelta(days=1),
+        )
+        proximos_do_prazo = self.repository.contar_por_filtros(
+            status_excluidos=STATUS_FINALIZADOS,
+            funcionario_id=filtro_funcionario_id,
+            prazo_inicio=hoje,
+            prazo_fim=hoje + timedelta(days=dias_proximo_prazo),
+        )
+
+        return ProcessoResumoResponse(
+            total=total,
+            em_andamento=em_andamento,
+            em_analise=em_analise,
+            finalizados=finalizados,
+            proximos_do_prazo=proximos_do_prazo,
+            atrasados=atrasados,
+        )
 
     def buscar_todos(self) -> list[Processo]:
         return self.repository.buscar_todos()
