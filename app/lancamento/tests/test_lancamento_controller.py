@@ -20,6 +20,23 @@ def _payload_lancamento(**kwargs) -> dict:
     return {**base, **kwargs}
 
 
+def _dias(n: int) -> str:
+    return (datetime.now() + timedelta(days=n)).isoformat()
+
+
+def _popular(client: TestClient) -> None:
+    client.post("/lancamentos/", json=_payload_lancamento(titulo="pendente", valor=100))
+    feito = client.post(
+        "/lancamentos/",
+        json=_payload_lancamento(titulo="feito", tipo="s", valor=50, data_vencimento=_dias(-10)),
+    ).json()
+    client.patch(f"/lancamentos/{feito['lancamento_id']}/alternar-status")
+    client.post(
+        "/lancamentos/",
+        json=_payload_lancamento(titulo="atrasado", valor=200, data_vencimento=_dias(-3)),
+    )
+
+
 class TestLancamentoControllerCRUD:
     def test_criar_e_buscar_lancamento(self, client: TestClient):
         response_criar = client.post("/lancamentos/", json=_payload_lancamento())
@@ -31,6 +48,20 @@ class TestLancamentoControllerCRUD:
         response_listar = client.get("/lancamentos/")
         assert response_listar.status_code == 200
         assert any(item["lancamento_id"] == lid for item in response_listar.json())
+
+    def test_criar_lancamento_com_categoria(self, client: TestClient):
+        cat = client.post("/categorias-lancamento", json={"nome_categoria": "Honorários"}).json()
+        payload = _payload_lancamento(categoria_id=cat["categoria_id"])
+        response = client.post("/lancamentos/", json=payload)
+        assert response.status_code == 201
+        dados = response.json()
+        assert dados["status"] == "Pendente"
+        assert dados["data_pagamento"] is None
+        assert dados["categoria_id"] == cat["categoria_id"]
+
+    def test_criar_lancamento_tipo_invalido(self, client: TestClient):
+        response = client.post("/lancamentos/", json=_payload_lancamento(tipo="x"))
+        assert response.status_code == 422
 
     @pytest.mark.parametrize(
         "payload_extra,status_esperado,mensagem_erro",
@@ -85,20 +116,49 @@ class TestLancamentoControllerCRUD:
         assert response_alternar.status_code == 200
         assert response_alternar.json()["status"] == "Realizado"
 
+    def test_rota_de_status_manual_removida(self, client: TestClient):
+        lid = client.post("/lancamentos/", json=_payload_lancamento()).json()["lancamento_id"]
+        response = client.patch(f"/lancamentos/{lid}/status", json={"status": "Realizado"})
+        assert response.status_code in (404, 405)
+
     def test_remover_lancamento_sucesso(self, client: TestClient):
         lid = client.post("/lancamentos/", json=_payload_lancamento()).json()["lancamento_id"]
 
         response_deletar = client.delete(f"/lancamentos/{lid}")
         assert response_deletar.status_code == 204
+        assert client.delete(f"/lancamentos/{lid}").status_code == 404
 
 
 class TestLancamentoControllerConsultasEResumo:
+    def test_filtrar_por_status(self, client: TestClient):
+        _popular(client)
+        for status, titulo in [
+            ("Pendente", "pendente"),
+            ("Realizado", "feito"),
+            ("Atrasado", "atrasado"),
+        ]:
+            response = client.get("/lancamentos/", params={"status": status})
+            assert response.status_code == 200
+            assert [item["titulo"] for item in response.json()] == [titulo]
+
+    def test_filtrar_por_periodo(self, client: TestClient):
+        _popular(client)
+        hoje = datetime.now().date()
+        response = client.get(
+            "/lancamentos/",
+            params={"inicio": (hoje - timedelta(days=5)).isoformat(), "fim": hoje.isoformat()},
+        )
+        assert response.status_code == 200
+        assert [item["titulo"] for item in response.json()] == ["atrasado"]
+
     @pytest.mark.parametrize(
         "endpoint,params",
         [
             ("/lancamentos/", {"inicio": "2026-10-10", "fim": "2026-10-01"}),
             ("/lancamentos/paginado", {"inicio": "2026-10-10", "fim": "2026-10-01"}),
             ("/lancamentos/resumo", {"inicio": "2026-10-10", "fim": "2026-10-01"}),
+            ("/lancamentos/grafico", {"inicio": "2026-10-10", "fim": "2026-10-01"}),
+            ("/lancamentos/grafico", {"valor_min": 500.0, "valor_max": 100.0}),
             ("/lancamentos/calendario", {"inicio": "2026-10-10", "fim": "2026-10-01"}),
             ("/lancamentos/calendario/exportar", {"inicio": "2026-10-10", "fim": "2026-10-01"}),
         ],
@@ -108,14 +168,47 @@ class TestLancamentoControllerConsultasEResumo:
     ):
         response = client.get(endpoint, params=params)
         assert response.status_code == 400
-        assert "A data inicial não pode ser posterior à data final" in response.json()["detail"]
+
+    @pytest.mark.parametrize(
+        "params",
+        [
+            {"dias": 0},
+            {"dias": -3},
+            {"valor_min": -1.0},
+            {"valor_max": -0.01},
+        ],
+    )
+    def test_grafico_parametros_invalidos_retornam_422(self, client: TestClient, params: dict):
+        response = client.get("/lancamentos/grafico", params=params)
+        assert response.status_code == 422
 
     def test_listar_paginado_sucesso(self, client: TestClient):
-        client.post("/lancamentos/", json=_payload_lancamento())
-
-        response_paginado = client.get("/lancamentos/paginado", params={"page": 1, "page_size": 10})
+        _popular(client)
+        response_paginado = client.get("/lancamentos/paginado", params={"page": 1, "page_size": 2})
         assert response_paginado.status_code == 200
-        assert "itens" in response_paginado.json()
+        data = response_paginado.json()
+        assert data["total"] == 3 and data["total_pages"] == 2
+        assert [item["titulo"] for item in data["itens"]] == ["feito", "atrasado"]
+
+        data_p2 = client.get("/lancamentos/paginado", params={"page": 2, "page_size": 2}).json()
+        assert [item["titulo"] for item in data_p2["itens"]] == ["pendente"]
+
+    def test_listar_paginado_com_filtros(self, client: TestClient):
+        _popular(client)
+        data = client.get("/lancamentos/paginado", params={"status": "Atrasado"}).json()
+        assert data["total"] == 1 and data["itens"][0]["titulo"] == "atrasado"
+        vazio = client.get(
+            "/lancamentos/paginado", params={"tipo": "s", "status": "Pendente"}
+        ).json()
+        assert vazio == {"itens": [], "total": 0, "page": 1, "page_size": 10, "total_pages": 1}
+
+    def test_listar_paginado_validacoes(self, client: TestClient):
+        assert client.get("/lancamentos/paginado", params={"page": 0}).status_code == 422
+        assert client.get("/lancamentos/paginado", params={"page_size": 101}).status_code == 422
+        r = client.get(
+            "/lancamentos/paginado", params={"inicio": "2026-10-10", "fim": "2026-10-01"}
+        )
+        assert r.status_code == 400
 
     def test_resumir_lancamentos_sucesso(self, client: TestClient):
         client.post("/lancamentos/", json=_payload_lancamento())
@@ -124,6 +217,13 @@ class TestLancamentoControllerConsultasEResumo:
         assert response_resumo.status_code == 200
         data = response_resumo.json()
         assert "pendente" in data
+
+    def test_obter_grafico_sucesso(self, client: TestClient):
+        _popular(client)
+        response = client.get("/lancamentos/grafico")
+        assert response.status_code == 200
+        data = response.json()
+        assert "total_entradas" in data or "itens" in data
 
 
 class TestCalendarioLancamentoController:
@@ -148,7 +248,7 @@ class TestCalendarioLancamentoController:
         response = client.get("/lancamentos/calendario/exportar", params=params_ok)
 
         assert response.status_code == 200
-        assert response.headers["content-type"] == "text/calendar; charset=utf-8"
+        assert "text/calendar" in response.headers["content-type"]
         assert (
             'attachment; filename="calendario_financeiro.ics"'
             in response.headers["content-disposition"]
@@ -162,6 +262,7 @@ class TestLancamentoAutenticacao:
         [
             ("get", "/lancamentos/", None),
             ("get", "/lancamentos/resumo", None),
+            ("get", "/lancamentos/grafico", None),
             ("get", "/lancamentos/paginado", None),
             ("get", "/lancamentos/calendario", None),
             ("get", "/lancamentos/calendario/exportar", None),

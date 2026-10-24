@@ -10,10 +10,12 @@ from app.lancamento.schema import (
     LancamentoCalendarioResponse,
     LancamentoCreate,
     LancamentoFilter,
+    LancamentoGrafico,
     LancamentoPaginadoResponse,
     LancamentoResponse,
     LancamentoResumo,
     LancamentoUpdate,
+    PontoGrafico,
     ResumoStatus,
 )
 
@@ -81,9 +83,21 @@ class LancamentoService:
     def __init__(self, db: Session):
         self.repository = LancamentoRepository(db)
 
-    def _validar_periodo(self, filtros: LancamentoFilter) -> None:
-        if filtros.inicio and filtros.fim and filtros.inicio > filtros.fim:
+    @staticmethod
+    def _resolver_periodo(
+        inicio: date | None, fim: date | None, dias: int | None
+    ) -> tuple[date | None, date | None]:
+        if dias is not None:
+            fim = fim or date.today()
+            inicio = inicio or (fim - timedelta(days=dias - 1))
+        if inicio and fim and inicio > fim:
             raise ValueError("A data inicial não pode ser posterior à data final")
+        return inicio, fim
+
+    @staticmethod
+    def _validar_valores(valor_min: float | None, valor_max: float | None) -> None:
+        if valor_min is not None and valor_max is not None and valor_min > valor_max:
+            raise ValueError("O valor mínimo não pode ser maior que o valor máximo")
 
     def _validar_referencias(self, categoria_id: int | None, cliente_id: int | None) -> None:
         if categoria_id is not None and not self.repository.categoria_existe(categoria_id):
@@ -94,15 +108,19 @@ class LancamentoService:
     def _sincronizar_atrasos(self) -> None:
         self.repository.marcar_atrasados(date.today())
 
-    @staticmethod
-    def _filtros(filtros: LancamentoFilter) -> dict:
+    def _preparar_filtros(self, filtros: LancamentoFilter) -> dict:
+        inicio, fim = self._resolver_periodo(filtros.inicio, filtros.fim, filtros.dias)
+        self._validar_valores(filtros.valor_min, filtros.valor_max)
+        self._sincronizar_atrasos()
         return {
-            "inicio": filtros.inicio,
-            "fim": filtros.fim,
+            "inicio": inicio,
+            "fim": fim,
             "status": filtros.status,
             "tipo": filtros.tipo,
             "categoria_id": filtros.categoria_id,
             "cliente_id": filtros.cliente_id,
+            "valor_min": filtros.valor_min,
+            "valor_max": filtros.valor_max,
         }
 
     def buscar_por_id(self, lancamento_id: int) -> Lancamento:
@@ -113,16 +131,14 @@ class LancamentoService:
         return lancamento
 
     def listar_lancamentos(self, filtros: LancamentoFilter) -> list[Lancamento]:
-        self._validar_periodo(filtros)
-        self._sincronizar_atrasos()
-        return self.repository.buscar_por_filtros(**self._filtros(filtros))
+        return self.repository.buscar_por_filtros(**self._preparar_filtros(filtros))
 
     def listar_lancamentos_paginado(
         self, filtros: LancamentoFilter, page: int, page_size: int
     ) -> LancamentoPaginadoResponse:
-        self._validar_periodo(filtros)
-        self._sincronizar_atrasos()
-        itens, total = self.repository.buscar_paginado(page, page_size, **self._filtros(filtros))
+        itens, total = self.repository.buscar_paginado(
+            page, page_size, **self._preparar_filtros(filtros)
+        )
         return LancamentoPaginadoResponse(
             itens=[LancamentoResponse.model_validate(item) for item in itens],
             total=total,
@@ -132,9 +148,7 @@ class LancamentoService:
         )
 
     def resumir_lancamentos(self, filtros: LancamentoFilter) -> LancamentoResumo:
-        self._validar_periodo(filtros)
-        self._sincronizar_atrasos()
-        filtros_sql = self._filtros(filtros) | {"status": None}
+        filtros_sql = self._preparar_filtros(filtros) | {"status": None}
         resumos = {status: ResumoStatus() for status in StatusLancamento}
         for status, tipo, quantidade, soma in self.repository.totais_por_status_e_tipo(
             **filtros_sql
@@ -146,11 +160,40 @@ class LancamentoService:
             else:
                 resumo.total_saidas += soma
         return LancamentoResumo(
-            inicio=filtros.inicio,
-            fim=filtros.fim,
+            inicio=filtros_sql["inicio"],
+            fim=filtros_sql["fim"],
             pendente=resumos[StatusLancamento.PENDENTE],
             realizado=resumos[StatusLancamento.REALIZADO],
             atrasado=resumos[StatusLancamento.ATRASADO],
+        )
+
+    def gerar_grafico(self, filtros: LancamentoFilter) -> LancamentoGrafico:
+        filtros_sql = self._preparar_filtros(filtros)
+        pontos: dict[date, PontoGrafico] = {}
+        total_entradas = 0.0
+        total_saidas = 0.0
+
+        for dia_raw, tipo, quantidade, soma in self.repository.totais_por_dia_e_tipo(**filtros_sql):
+            dia = date.fromisoformat(str(dia_raw))
+            ponto = pontos.setdefault(dia, PontoGrafico(data=dia))
+            ponto.quantidade += quantidade
+            if tipo == TipoLancamento.ENTRADA:
+                ponto.total_entradas += soma
+                total_entradas += soma
+            else:
+                ponto.total_saidas += soma
+                total_saidas += soma
+            ponto.saldo = ponto.total_entradas - ponto.total_saidas
+
+        return LancamentoGrafico(
+            inicio=filtros_sql["inicio"],
+            fim=filtros_sql["fim"],
+            valor_min=filtros.valor_min,
+            valor_max=filtros.valor_max,
+            total_entradas=total_entradas,
+            total_saidas=total_saidas,
+            saldo=total_entradas - total_saidas,
+            itens=list(pontos.values()),
         )
 
     def criar_lancamento(self, dados: LancamentoCreate) -> Lancamento:

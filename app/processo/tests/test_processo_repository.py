@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.orm import Session
@@ -98,6 +98,28 @@ def test_buscar_por_id_encontra_processo(db_session, processo):
 
     assert resultado is not None
     assert resultado.processo_id == processo.processo_id
+
+
+def test_buscar_por_filtros_busca_textual_e_datas_prazo(db_session, processo):
+    repository = ProcessoRepository(db_session)
+
+    itens_busca, total_busca = repository.buscar_paginado_por_filtros(
+        page=1,
+        page_size=10,
+        busca=processo.titulo,
+    )
+    assert total_busca == 1
+    assert len(itens_busca) == 1
+
+    prazo_data = processo.data_prazo.date()
+    itens_prazo, total_prazo = repository.buscar_paginado_por_filtros(
+        page=1,
+        page_size=10,
+        prazo_inicio=prazo_data,
+        prazo_fim=prazo_data,
+    )
+    assert total_prazo == 1
+    assert len(itens_prazo) == 1
 
 
 def test_buscar_por_id_nao_encontra_processo(db_session):
@@ -309,3 +331,93 @@ def test_deletar(db_session, processo):
     resultado = repository.buscar_por_id(processo_id)
 
     assert resultado is None
+
+
+@pytest.mark.parametrize(
+    "status,data_realizado,data_inicio,func_vinculo,dias_filtro,func_filtro,espera_critico",
+    [
+        (StatusProcesso.ATIVO, None, datetime.now(UTC) - timedelta(days=40), True, 30, None, True),
+        (
+            StatusProcesso.ATIVO,
+            datetime.now(UTC) - timedelta(days=5),
+            datetime.now(UTC) - timedelta(days=40),
+            True,
+            30,
+            None,
+            False,
+        ),
+        (
+            StatusProcesso.ATIVO,
+            datetime.now(UTC) - timedelta(days=45),
+            datetime.now(UTC) - timedelta(days=100),
+            True,
+            30,
+            None,
+            True,
+        ),
+        (
+            StatusProcesso.CONCLUIDO,
+            None,
+            datetime.now(UTC) - timedelta(days=50),
+            True,
+            30,
+            None,
+            False,
+        ),
+        (
+            StatusProcesso.ARQUIVADO,
+            None,
+            datetime.now(UTC) - timedelta(days=50),
+            True,
+            30,
+            None,
+            False,
+        ),
+        (StatusProcesso.ATIVO, None, datetime.now(UTC) - timedelta(days=40), False, 30, 999, False),
+        (StatusProcesso.ATIVO, None, datetime.now(UTC) - timedelta(days=40), True, 30, True, True),
+        (StatusProcesso.ATIVO, None, datetime.now(UTC) - timedelta(days=15), True, 10, None, True),
+        (StatusProcesso.ATIVO, None, None, True, 30, None, True),
+    ],
+)
+def test_buscar_por_filtros_atividade_e_status_excluidos(
+    db_session,
+    dados_base,
+    status,
+    data_realizado,
+    data_inicio,
+    func_vinculo,
+    dias_filtro,
+    func_filtro,
+    espera_critico,
+):
+    repository = ProcessoRepository(db_session)
+    funcionario = dados_base["funcionario"]
+    cliente = dados_base["cliente"]
+
+    funcionario_id = funcionario.funcionario_id if func_vinculo else None
+
+    proc = Processo(
+        cnj="99999999999999999999",
+        titulo="Processo Teste Crítico",
+        status=status,
+        tribunal="TJDFT",
+        area="Trabalhista",
+        cliente_id=cliente.cliente_id,
+        funcionario_id=funcionario_id,
+        data_realizado=data_realizado,
+        data_inicio=data_inicio,
+    )
+    repository.criar(proc)
+
+    filtro_func = funcionario.funcionario_id if func_filtro is True else func_filtro
+
+    criticos = repository.buscar_por_filtros(
+        status_excluidos=[StatusProcesso.CONCLUIDO, StatusProcesso.ARQUIVADO],
+        ultima_atividade_ate=datetime.now(UTC) - timedelta(days=dias_filtro),
+        funcionario_id=filtro_func,
+    )
+
+    if espera_critico:
+        assert any(p.processo_id == proc.processo_id for p in criticos)
+    else:
+        assert not any(p.processo_id == proc.processo_id for p in criticos)

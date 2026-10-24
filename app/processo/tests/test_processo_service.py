@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
@@ -321,3 +322,45 @@ def test_deletar_processo_inexistente():
         service.deletar_processo(999)
 
     service.repository.deletar.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "dias,func_id",
+    [
+        (30, None),
+        (15, 1),
+        (60, 2),
+        (0, None),
+    ],
+)
+def test_buscar_processos_criticos_parametrizado(dias, func_id):
+    service = criar_service()
+    processos = [
+        Processo(
+            processo_id=1,
+            cnj="11111111111111111111",
+            titulo="Proc Crítico",
+            status=StatusProcesso.ATIVO,
+            tribunal="TJSP",
+            area="Civil",
+            cliente_id=1,
+            funcionario_id=func_id,
+        )
+    ]
+    service.repository.buscar_por_filtros.return_value = processos
+
+    antes = datetime.now(UTC) - timedelta(days=dias)
+    resultado = service.buscar_processos_criticos(
+        dias_sem_movimentacao=dias,
+        funcionario_id=func_id,
+    )
+    depois = datetime.now(UTC) - timedelta(days=dias)
+
+    assert len(resultado) == 1
+    assert resultado[0].processo_id == 1
+    assert resultado[0].cnj == "11111111111111111111"
+    service.repository.buscar_por_filtros.assert_called_once()
+    kwargs = service.repository.buscar_por_filtros.call_args.kwargs
+    assert kwargs["status_excluidos"] == [StatusProcesso.CONCLUIDO, StatusProcesso.ARQUIVADO]
+    assert kwargs["funcionario_id"] == func_id
+    assert antes <= kwargs["ultima_atividade_ate"] <= depois

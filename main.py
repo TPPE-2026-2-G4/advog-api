@@ -7,14 +7,18 @@ load_dotenv(
     ".env.local", override=True
 )  # overrides p/ rodar localmente fora do Docker (ver .env.local.example)
 
+import logging  # noqa: E402
+from contextlib import asynccontextmanager  # noqa: E402
 from typing import cast  # noqa: E402
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from slowapi import _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from starlette.types import ExceptionHandler  # noqa: E402
 
+from app.atuacao.controller import router as atuacao_router  # noqa: E402
 from app.auth.controller import router as auth_router  # noqa: E402
 from app.cargo.controller import router as cargo_router  # noqa: E402
 from app.categoria_lancamento.controller import router as categoria_lancamento_router  # noqa: E402
@@ -26,6 +30,7 @@ from app.institucional.controller import router as institucional_router  # noqa:
 from app.institucional.model import Institucional  # noqa: E402
 from app.lancamento.controller import router as lancamento_router  # noqa: E402
 from app.processo.controller import router as processo_router  # noqa: E402
+from app.processo.service import ProcessoService  # noqa: E402
 from app.solicitacao.controller import router as solicitacao_router  # noqa: E402
 
 Base.metadata.create_all(bind=engine)
@@ -47,8 +52,30 @@ def _seed_institucional() -> None:
 
 _seed_institucional()
 
+
+logger = logging.getLogger("advog-api")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        ProcessoService.sincronizar_processos_com_api, "interval", hours=12, id="sync_datajud"
+    )
+    scheduler.start()
+    logger.info("Scheduler iniciado para jobs em background.")
+    yield
+
+    scheduler.shutdown()
+    logger.info("Scheduler encerrado.")
+
+
 app = FastAPI(
-    title="Advocacia API", description="API para gestão de processos da advocacia", version="1.0.0"
+    title="Advocacia API",
+    description="API para gestão de processos da advocacia",
+    version="1.0.0",
+    lifespan=lifespan,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, cast(ExceptionHandler, _rate_limit_exceeded_handler))
@@ -68,6 +95,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(atuacao_router)
 app.include_router(cargo_router)
 app.include_router(funcionario_router)
 app.include_router(institucional_router)

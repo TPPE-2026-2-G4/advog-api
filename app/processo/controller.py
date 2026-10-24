@@ -9,6 +9,7 @@ from app.processo.schema import (
     ProcessoPaginadoResponse,
     ProcessoResponse,
     ProcessoUpdate,
+    SincronizacaoResponse,
 )
 from app.processo.service import ProcessoService
 
@@ -17,6 +18,25 @@ router = APIRouter(prefix="/processos", tags=["Processos"])
 
 def get_processo_service(db: Session = Depends(get_db)) -> ProcessoService:
     return ProcessoService(db)
+
+
+@router.post(
+    "/sincronizar",
+    response_model=SincronizacaoResponse,
+    dependencies=[Depends(exigir_permissao("editar_processos"))],
+)
+async def sincronizar_processos():
+    try:
+        total = await ProcessoService.sincronizar_processos_com_api()
+        return SincronizacaoResponse(
+            atualizados=total,
+            mensagem=f"{total} processos sincronizados com sucesso via Datajud.",
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Falha ao sincronizar processos com a API do Datajud: {error}",
+        ) from error
 
 
 @router.post(
@@ -43,6 +63,22 @@ def filtrar_processos(
     filtros: ProcessoFilter = Depends(), service: ProcessoService = Depends(get_processo_service)
 ):
     return service.buscar_processos(filtros)
+
+
+@router.get(
+    "/criticos/",
+    response_model=list[ProcessoResponse],
+    dependencies=[Depends(exigir_permissao("visualizar_processos"))],
+)
+def listar_processos_criticos(
+    dias_sem_movimentacao: int = 30,
+    funcionario_id: int | None = None,
+    service: ProcessoService = Depends(get_processo_service),
+):
+    return service.buscar_processos_criticos(
+        dias_sem_movimentacao=dias_sem_movimentacao,
+        funcionario_id=funcionario_id,
+    )
 
 
 @router.patch(

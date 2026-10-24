@@ -52,6 +52,15 @@ class LancamentoFilter:
         self,
         inicio: date | None = Query(None, description="Vencimento a partir de (inclusive)"),
         fim: date | None = Query(None, description="Vencimento até (inclusive)"),
+        dias: int | None = Query(
+            None, ge=1, description="Quantidade de dias recentes a considerar"
+        ),
+        valor_min: float | None = Query(
+            None, ge=0, description="Valor mínimo do lançamento (inclusive)"
+        ),
+        valor_max: float | None = Query(
+            None, ge=0, description="Valor máximo do lançamento (inclusive)"
+        ),
         status: StatusLancamento | None = Query(
             None, description="Pendente, Realizado ou Atrasado"
         ),
@@ -65,6 +74,9 @@ class LancamentoFilter:
         self.tipo = None if isinstance(tipo, Param) else tipo
         self.categoria_id = None if isinstance(categoria_id, Param) else categoria_id
         self.cliente_id = None if isinstance(cliente_id, Param) else cliente_id
+        self.dias = dias
+        self.valor_min = valor_min
+        self.valor_max = valor_max
 
 
 class ResumoStatus(BaseModel):
@@ -96,3 +108,22 @@ class LancamentoCalendarioResponse(BaseModel):
     outlook_calendar_url: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PontoGrafico(BaseModel):
+    data: date
+    quantidade: int = 0
+    total_entradas: float = 0.0
+    total_saidas: float = 0.0
+    saldo: float = 0.0
+
+
+class LancamentoGrafico(BaseModel):
+    inicio: date | None
+    fim: date | None
+    valor_min: float | None = None
+    valor_max: float | None = None
+    total_entradas: float = 0.0
+    total_saidas: float = 0.0
+    saldo: float = 0.0
+    itens: list[PontoGrafico]

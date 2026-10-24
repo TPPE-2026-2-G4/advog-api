@@ -122,6 +122,23 @@ class TestLancamentoRepositoryOperacoesBasicas:
         assert buscado is not None
         assert buscado.status == status_esperado
 
+    def test_pendente_vencido_vira_atrasado_automaticamente(self, db_session: Session):
+        repo = LancamentoRepository(db_session)
+        hoje = date.today()
+        lancamento = Lancamento(
+            titulo="Antigo",
+            tipo=TipoLancamento.SAIDA,
+            valor=10.0,
+            status=StatusLancamento.PENDENTE,
+            data_vencimento=datetime.now() - timedelta(days=2),
+        )
+        repo.criar(lancamento)
+        repo.marcar_atrasados(hoje)
+
+        buscado = repo.buscar_por_id(lancamento.lancamento_id)
+        assert buscado is not None
+        assert buscado.status == StatusLancamento.ATRASADO
+
 
 class TestLancamentoRepositoryFiltrosEConsultas:
     @pytest.mark.parametrize(
