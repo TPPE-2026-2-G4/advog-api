@@ -1,6 +1,7 @@
 from datetime import date, datetime
 
 from fastapi import Query
+from fastapi.params import Param
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.lancamento.model import StatusLancamento, TipoLancamento
@@ -67,15 +68,15 @@ class LancamentoFilter:
         categoria_id: int | None = Query(None, description="Filtrar por categoria"),
         cliente_id: int | None = Query(None, description="Filtrar por cliente"),
     ):
-        self.inicio = inicio
-        self.fim = fim
-        self.dias = dias
-        self.valor_min = valor_min
-        self.valor_max = valor_max
-        self.status = status
-        self.tipo = tipo
-        self.categoria_id = categoria_id
-        self.cliente_id = cliente_id
+        self.inicio = None if isinstance(inicio, Param) else inicio
+        self.fim = None if isinstance(fim, Param) else fim
+        self.dias = None if isinstance(dias, Param) else dias
+        self.valor_min = None if isinstance(valor_min, Param) else valor_min
+        self.valor_max = None if isinstance(valor_max, Param) else valor_max
+        self.status = None if isinstance(status, Param) else status
+        self.tipo = None if isinstance(tipo, Param) else tipo
+        self.categoria_id = None if isinstance(categoria_id, Param) else categoria_id
+        self.cliente_id = None if isinstance(cliente_id, Param) else cliente_id
 
 
 class ResumoStatus(BaseModel):
@@ -90,6 +91,23 @@ class LancamentoResumo(BaseModel):
     pendente: ResumoStatus
     realizado: ResumoStatus
     atrasado: ResumoStatus
+
+
+class LancamentoCalendarioResponse(BaseModel):
+    lancamento_id: int
+    titulo: str
+    descricao: str | None = None
+    tipo: TipoLancamento
+    status: StatusLancamento
+    valor: float
+    data_vencimento: datetime
+    data_pagamento: datetime | None = None
+    categoria_id: int | None = None
+    cliente_id: int | None = None
+    google_calendar_url: str
+    outlook_calendar_url: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PontoGrafico(BaseModel):
