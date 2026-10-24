@@ -255,3 +255,19 @@ class TestLancamentoRepositoryFiltrosEConsultas:
         )
 
         assert len(totais) >= 2
+
+    def test_buscar_por_filtros_com_valor_min_e_valor_max(self, db_session):
+        repo = LancamentoRepository(db_session)
+        resultados = repo.buscar_por_filtros(
+            valor_min=100.0,
+            valor_max=500.0,
+        )
+        assert isinstance(resultados, list)
+
+    def test_totais_por_dia_e_tipo_com_filtros_de_valor(self, db_session):
+        repo = LancamentoRepository(db_session)
+        resultados = repo.totais_por_dia_e_tipo(
+            valor_min=50.0,
+            valor_max=1000.0,
+        )
+        assert isinstance(resultados, list)

@@ -70,13 +70,13 @@ class LancamentoFilter:
     ):
         self.inicio = None if isinstance(inicio, Param) else inicio
         self.fim = None if isinstance(fim, Param) else fim
+        self.dias = None if isinstance(dias, Param) else dias
+        self.valor_min = None if isinstance(valor_min, Param) else valor_min
+        self.valor_max = None if isinstance(valor_max, Param) else valor_max
         self.status = None if isinstance(status, Param) else status
         self.tipo = None if isinstance(tipo, Param) else tipo
         self.categoria_id = None if isinstance(categoria_id, Param) else categoria_id
         self.cliente_id = None if isinstance(cliente_id, Param) else cliente_id
-        self.dias = dias
-        self.valor_min = valor_min
-        self.valor_max = valor_max
 
 
 class ResumoStatus(BaseModel):

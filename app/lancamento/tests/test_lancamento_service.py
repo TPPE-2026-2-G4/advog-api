@@ -111,6 +111,27 @@ class TestLancamentoServiceListarEFiltrar:
         assert resultado.page_size == page_size
         assert resultado.total_pages == total_pages_esperado
 
+    def test_resolver_periodo_com_dias_calcula_inicio_e_fim_default(self, lancamento_service):
+        filtros = LancamentoFilter(dias=7)
+        lancamento_service.repository.buscar_por_filtros.return_value = []
+
+        lancamento_service.listar_lancamentos(filtros)
+
+        _, kwargs = lancamento_service.repository.buscar_por_filtros.call_args
+        assert kwargs["fim"] == date.today()
+        assert kwargs["inicio"] == date.today() - timedelta(days=6)
+
+    def test_resolver_periodo_com_dias_e_fim_especifico(self, lancamento_service):
+        data_fim = date(2026, 10, 20)
+        filtros = LancamentoFilter(dias=5, fim=data_fim)
+        lancamento_service.repository.buscar_por_filtros.return_value = []
+
+        lancamento_service.listar_lancamentos(filtros)
+
+        _, kwargs = lancamento_service.repository.buscar_por_filtros.call_args
+        assert kwargs["fim"] == data_fim
+        assert kwargs["inicio"] == date(2026, 10, 16)
+
 
 class TestLancamentoServiceResumo:
     def test_resumir_lancamentos_calcula_totais_corretamente(self, lancamento_service):
