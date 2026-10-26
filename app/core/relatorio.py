@@ -75,6 +75,21 @@ def _texto(valor: Any, tipo: TipoColuna) -> str:
     return str(valor)
 
 
+def _texto_resumo(valor: Any) -> str:
+    return _texto(valor, TipoColuna.MOEDA if isinstance(valor, float) else TipoColuna.TEXTO)
+
+
+def _larguras_pdf(tabela: Tabela, largura_total: float) -> list[float]:
+    pesos = []
+    for indice, coluna in enumerate(tabela.colunas):
+        maior = len(coluna.titulo)
+        for linha in tabela.linhas:
+            maior = max(maior, len(_texto(linha[indice], coluna.tipo)))
+        pesos.append(min(max(maior, 6), 40))
+    total = sum(pesos)
+    return [largura_total * peso / total for peso in pesos]
+
+
 def _gerar_csv(tabela: Tabela) -> bytes:
     saida = io.StringIO()
     escritor = csv.writer(saida, delimiter=";", lineterminator="\r\n")
@@ -87,6 +102,10 @@ def _gerar_csv(tabela: Tabela) -> bytes:
                 for texto in [_texto(valor, coluna.tipo)]
             ]
         )
+    if tabela.resumo:
+        escritor.writerow([])
+        for rotulo, valor in tabela.resumo:
+            escritor.writerow([_protegido(rotulo), _texto_resumo(valor)])
     return b"\xef\xbb\xbf" + saida.getvalue().encode("utf-8")
 
 
@@ -138,7 +157,9 @@ def _gerar_xlsx(tabela: Tabela) -> bytes:
 
 def _gerar_pdf(tabela: Tabela) -> bytes:
     estilos = getSampleStyleSheet()
-    celula = ParagraphStyle("celula", parent=estilos["BodyText"], fontSize=7, leading=9)
+    celula = ParagraphStyle(
+        "celula", parent=estilos["BodyText"], fontSize=7, leading=9, wordWrap="CJK"
+    )
     cabecalho = ParagraphStyle(
         "cabecalho", parent=celula, fontName="Helvetica-Bold", textColor=colors.white
     )
@@ -163,6 +184,7 @@ def _gerar_pdf(tabela: Tabela) -> bytes:
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ]
     )
+    margem = 1 * cm
     elementos: list[Any] = [
         Paragraph(escape(tabela.titulo), estilos["Title"]),
         Paragraph(
@@ -170,20 +192,22 @@ def _gerar_pdf(tabela: Tabela) -> bytes:
             estilos["Normal"],
         ),
         Spacer(1, 0.4 * cm),
-        Table(dados, repeatRows=1, style=estilo_tabela),
+        Table(
+            dados,
+            colWidths=_larguras_pdf(tabela, landscape(A4)[0] - 2 * margem),
+            repeatRows=1,
+            style=estilo_tabela,
+        ),
     ]
     if tabela.resumo:
         elementos.append(Spacer(1, 0.4 * cm))
         for rotulo, valor in tabela.resumo:
-            texto = _texto(
-                valor, TipoColuna.MOEDA if isinstance(valor, float) else TipoColuna.TEXTO
-            )
+            texto = _texto_resumo(valor)
             elementos.append(
                 Paragraph(f"<b>{escape(rotulo)}:</b> {escape(texto)}", estilos["Normal"])
             )
 
     saida = io.BytesIO()
-    margem = 1 * cm
     SimpleDocTemplate(
         saida,
         pagesize=landscape(A4),
