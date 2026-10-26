@@ -57,6 +57,15 @@ class ProcessoPaginadoResponse(BaseModel):
     total_pages: int
 
 
+class ProcessoResumoResponse(BaseModel):
+    total: int = 0
+    em_andamento: int = 0
+    em_analise: int = 0
+    finalizados: int = 0
+    proximos_do_prazo: int = 0
+    atrasados: int = 0
+
+
 class ProcessoFilter:
     def __init__(
         self,

@@ -156,6 +156,34 @@ class ProcessoRepository:
         )
         return itens, total
 
+    def contar_por_status(
+        self,
+        funcionario_id: int | None = None,
+    ) -> dict[StatusProcesso, int]:
+        linhas = (
+            self._montar_query(funcionario_id=funcionario_id)
+            .with_entities(Processo.status, func.count())
+            .group_by(Processo.status)
+            .all()
+        )
+        return {status: int(quantidade) for status, quantidade in linhas}
+
+    def contar_por_filtros(
+        self,
+        status: StatusProcesso | None = None,
+        status_excluidos: Sequence[StatusProcesso] | None = None,
+        funcionario_id: int | None = None,
+        prazo_inicio: date | None = None,
+        prazo_fim: date | None = None,
+    ) -> int:
+        return self._montar_query(
+            status=status,
+            status_excluidos=status_excluidos,
+            funcionario_id=funcionario_id,
+            prazo_inicio=prazo_inicio,
+            prazo_fim=prazo_fim,
+        ).count()
+
     def criar(self, processo: Processo) -> Processo:
         self.db.add(processo)
         self.db.commit()
