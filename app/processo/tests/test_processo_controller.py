@@ -728,3 +728,134 @@ async def test_sincronizar_processos_controller_erro(
 
     assert response.status_code == 500
     assert "Falha ao sincronizar processos com a API do Datajud" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "eh_admin,filtrar_outro_advogado,esperado_total,esperado_em_andamento,esperado_em_analise,esperado_finalizados,esperado_proximos,esperado_atrasados",
+    [
+        (True, False, 4, 2, 1, 1, 1, 1),
+        (True, True, 1, 1, 0, 0, 0, 0),
+        (False, False, 3, 1, 1, 1, 1, 1),
+        (False, True, 3, 1, 1, 1, 1, 1),
+    ],
+)
+def test_obter_resumo_processos_controller_parametrizado(
+    client,
+    db_session,
+    cliente_processo,
+    token_acesso,
+    eh_admin,
+    filtrar_outro_advogado,
+    esperado_total,
+    esperado_em_andamento,
+    esperado_em_analise,
+    esperado_finalizados,
+    esperado_proximos,
+    esperado_atrasados,
+):
+    nome_cargo = "Administrador" if eh_admin else "Advogado Associado"
+    permissoes = {
+        "visualizar_processos": True,
+        "configuracoes_sistema": eh_admin,
+    }
+    cargo_usuario = Cargo(
+        nome_cargo=nome_cargo,
+        descricao="Cargo para teste de resumo",
+        permissao=permissoes,
+    )
+    cargo_outro = Cargo(
+        nome_cargo="Advogado",
+        descricao="Outro cargo",
+        permissao={"visualizar_processos": True},
+    )
+    db_session.add_all([cargo_usuario, cargo_outro])
+    db_session.commit()
+    db_session.refresh(cargo_usuario)
+    db_session.refresh(cargo_outro)
+
+    usuario = criar_funcionario(db_session, cargo_usuario, "usuario.resumo@test.com")
+    outro_advogado = criar_funcionario(db_session, cargo_outro, "outro.resumo@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    hoje = datetime.now(UTC).date()
+    processos_seed = [
+        (
+            "30000000000000000001",
+            StatusProcesso.ATIVO,
+            usuario.funcionario_id,
+            datetime.combine(hoje - timedelta(days=2), datetime.min.time()),
+        ),
+        (
+            "30000000000000000002",
+            StatusProcesso.EM_ANALISE,
+            usuario.funcionario_id,
+            datetime.combine(hoje + timedelta(days=3), datetime.min.time()),
+        ),
+        (
+            "30000000000000000003",
+            StatusProcesso.CONCLUIDO,
+            usuario.funcionario_id,
+            datetime.combine(hoje - timedelta(days=5), datetime.min.time()),
+        ),
+        (
+            "30000000000000000004",
+            StatusProcesso.ATIVO,
+            outro_advogado.funcionario_id,
+            datetime.combine(hoje + timedelta(days=20), datetime.min.time()),
+        ),
+        (
+            "30000000000000000005",
+            StatusProcesso.ARQUIVADO,
+            outro_advogado.funcionario_id,
+            None,
+        ),
+    ]
+    for cnj, status_proc, func_id, data_prazo in processos_seed:
+        db_session.add(
+            Processo(
+                cnj=cnj,
+                titulo=f"Proc Resumo {cnj}",
+                status=status_proc,
+                tribunal="TJDFT",
+                area="Civil",
+                cliente_id=cliente_processo.cliente_id,
+                funcionario_id=func_id,
+                data_prazo=data_prazo,
+            )
+        )
+    db_session.commit()
+
+    params = {}
+    if filtrar_outro_advogado:
+        params["funcionario_id"] = outro_advogado.funcionario_id
+
+    response = client.get(
+        "/processos/resumo",
+        params=params,
+        headers=auth_header(token),
+    )
+
+    assert response.status_code == 200
+    dados = response.json()
+    assert dados["total"] == esperado_total
+    assert dados["em_andamento"] == esperado_em_andamento
+    assert dados["em_analise"] == esperado_em_analise
+    assert dados["finalizados"] == esperado_finalizados
+    assert dados["proximos_do_prazo"] == esperado_proximos
+    assert dados["atrasados"] == esperado_atrasados
+
+
+def test_obter_resumo_processos_sem_autenticacao_e_sem_permissao(
+    client,
+    db_session,
+    token_acesso,
+):
+    resp_401 = client.get("/processos/resumo")
+    assert resp_401.status_code == 401
+
+    cargo_sem_perm = criar_cargo(db_session, {"visualizar_processos": False})
+    usuario = criar_funcionario(db_session, cargo_sem_perm, "sem.perm.resumo@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    resp_403 = client.get("/processos/resumo", headers=auth_header(token))
+    assert resp_403.status_code == 403

@@ -1,3 +1,6 @@
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
+
 from sqlalchemy.orm import Session
 
 from app.atividade.model import Atividade
@@ -9,6 +12,7 @@ from app.atividade.schema import (
     AtividadeUpdate,
     EtapaKanbanResponse,
     KanbanResponse,
+    ProdutividadeResponse,
     ResponsavelKanbanResponse,
 )
 from app.funcionario.model import Funcionario
@@ -106,3 +110,16 @@ class AtividadeService:
             escopo="escritorio" if escopo_escritorio else "usuario",
             etapas=list(etapas.values()),
         )
+
+    def visualizar_produtividade_equipe(self) -> list[ProdutividadeResponse]:
+        hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+        inicio_do_dia = datetime.combine(hoje, time.min)
+        resultado = []
+        for totais in self.repository.buscar_produtividade_equipe(inicio_do_dia):
+            total = sum(
+                totais[categoria]
+                for categoria in ("finalizadas", "a_fazer", "em_andamento", "atrasadas")
+            )
+            progresso = round(100 * totais["finalizadas"] / total, 2) if total else 0.0
+            resultado.append(ProdutividadeResponse(**totais, progresso=progresso))
+        return resultado

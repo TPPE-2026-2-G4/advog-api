@@ -1,4 +1,6 @@
-from sqlalchemy import select
+from datetime import datetime
+
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app.atividade.model import Atividade
@@ -70,3 +72,34 @@ class AtividadeRepository:
     def deletar(self, atividade: Atividade) -> None:
         self.db.delete(atividade)
         self.db.commit()
+
+    def buscar_produtividade_equipe(self, inicio_do_dia: datetime) -> list[dict]:
+        finalizada = EtapaKanban.nome == "Finalizado"
+        no_prazo = Atividade.data_prazo >= inicio_do_dia
+        condicoes = {
+            "finalizadas": finalizada,
+            "a_fazer": (EtapaKanban.nome == "Backlog") & no_prazo,
+            "em_andamento": EtapaKanban.nome.not_in(("Backlog", "Finalizado")) & no_prazo,
+            "atrasadas": (EtapaKanban.nome != "Finalizado")
+            & (Atividade.data_prazo < inicio_do_dia),
+        }
+        consulta = (
+            select(
+                Funcionario.funcionario_id,
+                Funcionario.nome,
+                *(
+                    func.coalesce(func.sum(case((condicao, 1), else_=0)), 0).label(nome)
+                    for nome, condicao in condicoes.items()
+                ),
+            )
+            .select_from(Funcionario)
+            .outerjoin(
+                AtividadeFuncionario,
+                AtividadeFuncionario.funcionario_id == Funcionario.funcionario_id,
+            )
+            .outerjoin(Atividade, Atividade.atividade_id == AtividadeFuncionario.atividade_id)
+            .outerjoin(EtapaKanban, EtapaKanban.etapa_id == Atividade.etapa_id)
+            .group_by(Funcionario.funcionario_id, Funcionario.nome)
+            .order_by(Funcionario.nome, Funcionario.funcionario_id)
+        )
+        return [dict(linha) for linha in self.db.execute(consulta).mappings()]

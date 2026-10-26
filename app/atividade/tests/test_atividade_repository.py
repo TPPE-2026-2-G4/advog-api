@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import event, insert
@@ -107,3 +107,73 @@ def test_kanban_executa_tres_consultas_sem_escrita(db_session, etapas, funcionar
     assert sum(len(etapa.atividades) for etapa in resultado.etapas) == quantidade
     assert db_session.query(Atividade).count() == quantidade
     assert db_session.query(AtividadeFuncionario).count() == quantidade
+
+
+def test_produtividade_categorias_exclusivas_e_responsaveis(db_session, etapas, funcionarios):
+    hoje = datetime(2026, 10, 22)
+    casos = [
+        ("Backlog", hoje),
+        ("Em Execução", hoje),
+        ("Revisão", hoje + timedelta(days=1)),
+        ("Aguardando cliente", hoje),
+        ("Backlog", hoje - timedelta(seconds=1)),
+        ("Em Execução", hoje - timedelta(days=1)),
+        ("Revisão", hoje - timedelta(days=1)),
+        ("Finalizado", hoje - timedelta(days=1)),
+    ]
+    for indice, (etapa, prazo) in enumerate(casos):
+        atividade = Atividade(
+            titulo=f"Atividade {indice}",
+            descricao="Teste",
+            data_inicio=hoje - timedelta(days=2),
+            data_prazo=prazo,
+            etapa_id=etapas[etapa].etapa_id,
+        )
+        db_session.add(atividade)
+        db_session.flush()
+        db_session.add(
+            AtividadeFuncionario(
+                atividade_id=atividade.atividade_id,
+                funcionario_id=funcionarios[0].funcionario_id,
+            )
+        )
+        if etapa == "Finalizado":
+            db_session.add(
+                AtividadeFuncionario(
+                    atividade_id=atividade.atividade_id,
+                    funcionario_id=funcionarios[1].funcionario_id,
+                )
+            )
+    db_session.flush()
+    resultado = AtividadeRepository(db_session).buscar_produtividade_equipe(hoje)
+    assert resultado == [
+        {
+            "funcionario_id": funcionarios[0].funcionario_id,
+            "nome": funcionarios[0].nome,
+            "finalizadas": 1,
+            "a_fazer": 1,
+            "em_andamento": 3,
+            "atrasadas": 3,
+        },
+        {
+            "funcionario_id": funcionarios[1].funcionario_id,
+            "nome": funcionarios[1].nome,
+            "finalizadas": 1,
+            "a_fazer": 0,
+            "em_andamento": 0,
+            "atrasadas": 0,
+        },
+    ]
+
+
+def test_produtividade_funcionarios_sem_atividades(db_session, funcionarios):
+    resultado = AtividadeRepository(db_session).buscar_produtividade_equipe(datetime(2026, 10, 22))
+    assert len(resultado) == 2
+    for linha in resultado:
+        assert all(
+            linha[campo] == 0 for campo in ("finalizadas", "a_fazer", "em_andamento", "atrasadas")
+        )
+
+
+def test_produtividade_equipe_vazia(db_session):
+    assert AtividadeRepository(db_session).buscar_produtividade_equipe(datetime(2026, 10, 22)) == []

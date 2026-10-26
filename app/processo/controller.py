@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
 from app.core.dependencies import exigir_permissao
+from app.funcionario.model import Funcionario
 from app.processo.schema import (
     ProcessoCreate,
     ProcessoFilter,
     ProcessoPaginadoResponse,
     ProcessoResponse,
+    ProcessoResumoResponse,
     ProcessoUpdate,
     SincronizacaoResponse,
 )
@@ -63,6 +65,27 @@ def filtrar_processos(
     filtros: ProcessoFilter = Depends(), service: ProcessoService = Depends(get_processo_service)
 ):
     return service.buscar_processos(filtros)
+
+
+@router.get(
+    "/resumo",
+    response_model=ProcessoResumoResponse,
+)
+def obter_resumo_processos(
+    dias_proximo_prazo: int = Query(
+        7, ge=0, description="Quantidade de dias para considerar um processo próximo do prazo"
+    ),
+    funcionario_id: int | None = Query(
+        None, description="Filtrar resumo por ID do funcionário (apenas administradores)"
+    ),
+    usuario_atual: Funcionario = Depends(exigir_permissao("visualizar_processos")),
+    service: ProcessoService = Depends(get_processo_service),
+):
+    return service.obter_resumo_processos(
+        usuario=usuario_atual,
+        funcionario_id=funcionario_id,
+        dias_proximo_prazo=dias_proximo_prazo,
+    )
 
 
 @router.get(

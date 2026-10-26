@@ -8,6 +8,7 @@ from app.atividade.schema import (
     AtividadeResponse,
     AtividadeUpdate,
     KanbanResponse,
+    ProdutividadeResponse,
 )
 from app.atividade.service import (
     AtividadeNaoEncontradaError,
@@ -114,3 +115,15 @@ def deletar_atividade(
         service.deletar_atividade(atividade_id)
     except ValueError as erro:
         raise _traduzir_erro(erro) from erro
+
+
+@router.get(
+    "/produtividade",
+    response_model=list[ProdutividadeResponse],
+    summary="Visualizar a produtividade da equipe",
+    dependencies=[Depends(exigir_permissao("gerenciar_equipe"))],
+)
+def visualizar_produtividade(
+    service: AtividadeService = Depends(get_atividade_service),
+) -> list[ProdutividadeResponse]:
+    return service.visualizar_produtividade_equipe()
