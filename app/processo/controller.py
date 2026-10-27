@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
 from app.core.dependencies import exigir_permissao
+from app.core.relatorio import FormatoRelatorio, resposta_arquivo
 from app.funcionario.model import Funcionario
 from app.processo.schema import (
     ProcessoCreate,
@@ -65,6 +66,32 @@ def filtrar_processos(
     filtros: ProcessoFilter = Depends(), service: ProcessoService = Depends(get_processo_service)
 ):
     return service.buscar_processos(filtros)
+
+
+@router.get(
+    "/exportar",
+    summary="Exportar processos em CSV, Excel ou PDF",
+    description=(
+        "Aceita os mesmos filtros de `GET /processos/` (a paginação é ignorada: "
+        "todos os processos filtrados são exportados)."
+    ),
+    response_class=Response,
+    responses={
+        200: {"description": "Arquivo gerado", "content": {"application/octet-stream": {}}},
+        422: {"description": "Parâmetros inválidos ou exportação acima do limite de linhas"},
+    },
+    dependencies=[Depends(exigir_permissao("visualizar_processos"))],
+)
+def exportar_processos(
+    formato: FormatoRelatorio = Query(description="csv, xlsx ou pdf"),
+    filtros: ProcessoFilter = Depends(),
+    service: ProcessoService = Depends(get_processo_service),
+):
+    try:
+        arquivo = service.exportar_processos(filtros, formato)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return resposta_arquivo(arquivo, "processos")
 
 
 @router.get(
