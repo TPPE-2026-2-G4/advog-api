@@ -1,7 +1,14 @@
-from fastapi import APIRouter, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.atividade.schema import KanbanResponse, ProdutividadeResponse
+from app.atividade.schema import (
+    AtividadeFilter,
+    AtividadeResponse,
+    KanbanResponse,
+    ProdutividadeResponse,
+)
 from app.atividade.service import AtividadeService
 from app.config.database import get_db
 from app.core.dependencies import exigir_permissao, obter_funcionario_atual
@@ -37,3 +44,17 @@ def visualizar_produtividade(
     service: AtividadeService = Depends(get_atividade_service),
 ) -> list[ProdutividadeResponse]:
     return service.visualizar_produtividade_equipe()
+
+
+@router.get(
+    "/",
+    response_model=list[AtividadeResponse],
+    summary="Filtrar e pesquisar atividades",
+    responses={401: {"description": "Credenciais ausentes ou inválidas"}},
+)
+def filtrar_atividades(
+    filtros: Annotated[AtividadeFilter, Query()],
+    usuario: Funcionario = Depends(obter_funcionario_atual),
+    service: AtividadeService = Depends(get_atividade_service),
+) -> list[AtividadeResponse]:
+    return service.buscar_atividades(filtros, usuario)
