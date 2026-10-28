@@ -41,6 +41,38 @@ class AtividadeRepository:
         )
         return list(self.db.execute(consulta).tuples())
 
+    def buscar_por_id(self, atividade_id: int) -> Atividade | None:
+        return self.db.get(Atividade, atividade_id)
+
+    def existe_etapa(self, etapa_id: int) -> bool:
+        return self.db.get(EtapaKanban, etapa_id) is not None
+
+    def existe_processo(self, processo_id: int) -> bool:
+        return self.db.get(Processo, processo_id) is not None
+
+    def buscar_funcionarios(self, funcionario_ids: list[int]) -> list[Funcionario]:
+        consulta = (
+            select(Funcionario)
+            .where(Funcionario.funcionario_id.in_(funcionario_ids))
+            .order_by(Funcionario.funcionario_id)
+        )
+        return list(self.db.scalars(consulta))
+
+    def criar(self, atividade: Atividade) -> Atividade:
+        self.db.add(atividade)
+        self.db.commit()
+        self.db.refresh(atividade)
+        return atividade
+
+    def atualizar(self, atividade: Atividade) -> Atividade:
+        self.db.commit()
+        self.db.refresh(atividade)
+        return atividade
+
+    def deletar(self, atividade: Atividade) -> None:
+        self.db.delete(atividade)
+        self.db.commit()
+
     def buscar_produtividade_equipe(self, inicio_do_dia: datetime) -> list[dict]:
         finalizada = EtapaKanban.nome == "Finalizado"
         no_prazo = Atividade.data_prazo >= inicio_do_dia
