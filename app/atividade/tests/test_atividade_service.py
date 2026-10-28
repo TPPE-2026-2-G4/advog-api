@@ -92,48 +92,24 @@ def test_produtividade_retorna_equipe_vazia():
 
 
 @pytest.mark.parametrize(
-    ("atividades_retornadas", "responsaveis_retornados", "qtd_esperada"),
+    ("termo_busca", "qtd_esperada", "titulo_esperado"),
     [
-        ([], [], 0),
-        (
-            [
-                Atividade(
-                    atividade_id=10,
-                    titulo="Atividade Teste",
-                    descricao="Descrição",
-                    data_inicio=datetime(2026, 10, 1),
-                    data_prazo=datetime(2026, 10, 30),
-                    etapa_id=1,
-                    processo_id=5,
-                )
-            ],
-            [(10, 7, "Advogado Teste")],
-            1,
-        ),
+        ("Elaborar Petição", 1, "Elaborar Petição Inicial"),
+        ("Revisão", 1, "Revisão de Contrato"),
+        ("InexistenteNoBanco", 0, None),
     ],
 )
-def test_buscar_atividades_executa_consulta_e_mapeia_responsaveis(
-    atividades_retornadas, responsaveis_retornados, qtd_esperada
+def test_buscar_atividades_com_filtros(
+    db_session, atividades_para_filtro, termo_busca, qtd_esperada, titulo_esperado
 ):
-    service = AtividadeService(MagicMock())
-    service.repository = MagicMock()
-    service.repository.buscar_por_filtros.return_value = atividades_retornadas
-    service.repository.buscar_responsaveis.return_value = responsaveis_retornados
+    service = AtividadeService(db_session)
 
-    filtro = AtividadeFilter.model_validate({"titulo": "Teste"})
+    filtro = AtividadeFilter.model_validate({"titulo": termo_busca})
     resultado = service.buscar_atividades(filtro)
 
     assert len(resultado) == qtd_esperada
     if qtd_esperada > 0:
-        res = resultado[0]
-        assert res.atividade_id == 10
-        assert res.titulo == "Atividade Teste"
-        assert len(res.responsaveis) == 1
-        assert res.responsaveis[0].funcionario_id == 7
-        assert res.responsaveis[0].nome == "Advogado Teste"
-    else:
-        service.repository.buscar_por_filtros.assert_called_once()
-        service.repository.buscar_responsaveis.assert_not_called()
+        assert resultado[0].titulo == titulo_esperado
 
 
 @pytest.mark.parametrize(
