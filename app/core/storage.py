@@ -4,7 +4,7 @@ from typing import BinaryIO
 
 from botocore.exceptions import ClientError
 
-from app.config.storage import MINIO_BUCKET, MINIO_PUBLIC_URL, s3_client
+from app.config.storage import MINIO_BUCKET, s3_client, s3_public_client
 
 
 def garantir_bucket() -> None:
@@ -43,22 +43,10 @@ def obter_url_publica(chave: str | None, expiracao_segundos: int = 3600) -> str 
         return None
 
     try:
-        url = s3_client.generate_presigned_url(
+        return s3_public_client.generate_presigned_url(
             "get_object",
             Params={"Bucket": MINIO_BUCKET, "Key": chave.lstrip("/")},
             ExpiresIn=expiracao_segundos,
         )
-
-        if MINIO_PUBLIC_URL:
-            from urllib.parse import urlparse
-
-            parsed_url = urlparse(url)
-            parsed_public = urlparse(MINIO_PUBLIC_URL)
-
-            url = parsed_url._replace(
-                scheme=parsed_public.scheme, netloc=parsed_public.netloc
-            ).geturl()
-
-        return url
     except Exception:
         return None

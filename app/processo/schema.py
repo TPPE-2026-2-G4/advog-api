@@ -44,6 +44,27 @@ class ProcessoResponse(ProcessoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class DocumentoProcessoResponse(BaseModel):
+    documento_id: int
+    processo_id: int
+    nome_original: str
+    chave_minio: str
+    origem: str = "manual"
+    tamanho_bytes: int
+    entrada_tipo: str
+    data_upload: datetime
+    funcionario_id: int | None = None
+    url: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentoUrlResponse(BaseModel):
+    documento_id: int
+    url: str
+    expira_em_segundos: int = 1800
+
+
 class SincronizacaoResponse(BaseModel):
     atualizados: int
     mensagem: str
