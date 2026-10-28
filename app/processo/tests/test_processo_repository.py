@@ -470,3 +470,148 @@ def test_documento_repository_crud(db_session: Session, dados_base: dict):
     repository.deletar_documento(doc_salvo)
     assert repository.buscar_documento_por_id(doc_salvo.documento_id) is None
     assert repository.listar_documentos(proc.processo_id) == []
+
+
+@pytest.mark.parametrize(
+    "filtrar_por_funcionario,esperado",
+    [
+        (
+            False,
+            {
+                StatusProcesso.ATIVO: 2,
+                StatusProcesso.EM_ANALISE: 1,
+                StatusProcesso.CONCLUIDO: 1,
+                StatusProcesso.ARQUIVADO: 1,
+            },
+        ),
+        (
+            True,
+            {
+                StatusProcesso.ATIVO: 1,
+                StatusProcesso.EM_ANALISE: 1,
+                StatusProcesso.CONCLUIDO: 1,
+            },
+        ),
+    ],
+)
+def test_contar_por_status_parametrizado(
+    db_session,
+    dados_base,
+    filtrar_por_funcionario,
+    esperado,
+):
+    repository = ProcessoRepository(db_session)
+    funcionario = dados_base["funcionario"]
+    cliente = dados_base["cliente"]
+
+    outro_funcionario = Funcionario(
+        nome="Outro Advogado",
+        email="outro.adv@teste.com",
+        status=StatusFuncionario.ATIVO,
+        cargo_id=funcionario.cargo_id,
+    )
+    db_session.add(outro_funcionario)
+    db_session.commit()
+    db_session.refresh(outro_funcionario)
+
+    processos_seed = [
+        ("10000000000000000001", StatusProcesso.ATIVO, funcionario.funcionario_id),
+        ("10000000000000000002", StatusProcesso.ATIVO, outro_funcionario.funcionario_id),
+        ("10000000000000000003", StatusProcesso.EM_ANALISE, funcionario.funcionario_id),
+        ("10000000000000000004", StatusProcesso.CONCLUIDO, funcionario.funcionario_id),
+        ("10000000000000000005", StatusProcesso.ARQUIVADO, outro_funcionario.funcionario_id),
+    ]
+    for cnj, status_proc, func_id in processos_seed:
+        repository.criar(
+            Processo(
+                cnj=cnj,
+                titulo=f"Proc {cnj}",
+                status=status_proc,
+                tribunal="TJDFT",
+                area="Civil",
+                cliente_id=cliente.cliente_id,
+                funcionario_id=func_id,
+            )
+        )
+
+    filtro_id = funcionario.funcionario_id if filtrar_por_funcionario else None
+    resultado = repository.contar_por_status(funcionario_id=filtro_id)
+
+    assert resultado == esperado
+
+
+@pytest.mark.parametrize(
+    "dias_offset_inicio,dias_offset_fim,incluir_excluidos,esperado",
+    [
+        (-10, -1, True, 1),
+        (0, 7, True, 2),
+        (0, 7, False, 3),
+        (30, 60, True, 0),
+    ],
+)
+def test_contar_por_filtros_prazos_parametrizado(
+    db_session,
+    dados_base,
+    dias_offset_inicio,
+    dias_offset_fim,
+    incluir_excluidos,
+    esperado,
+):
+    repository = ProcessoRepository(db_session)
+    funcionario = dados_base["funcionario"]
+    cliente = dados_base["cliente"]
+    hoje = datetime.now(UTC).date()
+
+    processos_seed = [
+        (
+            "20000000000000000001",
+            StatusProcesso.ATIVO,
+            datetime.combine(hoje - timedelta(days=3), datetime.min.time()),
+        ),
+        (
+            "20000000000000000002",
+            StatusProcesso.ATIVO,
+            datetime.combine(hoje + timedelta(days=2), datetime.min.time()),
+        ),
+        (
+            "20000000000000000003",
+            StatusProcesso.EM_ANALISE,
+            datetime.combine(hoje + timedelta(days=5), datetime.min.time()),
+        ),
+        (
+            "20000000000000000004",
+            StatusProcesso.CONCLUIDO,
+            datetime.combine(hoje + timedelta(days=2), datetime.min.time()),
+        ),
+    ]
+    for cnj, status_proc, data_prazo in processos_seed:
+        repository.criar(
+            Processo(
+                cnj=cnj,
+                titulo=f"Proc Prazo {cnj}",
+                status=status_proc,
+                tribunal="TJDFT",
+                area="Civil",
+                cliente_id=cliente.cliente_id,
+                funcionario_id=funcionario.funcionario_id,
+                data_prazo=data_prazo,
+            )
+        )
+
+    excluidos = [StatusProcesso.CONCLUIDO, StatusProcesso.ARQUIVADO] if incluir_excluidos else None
+    total = repository.contar_por_filtros(
+        status_excluidos=excluidos,
+        funcionario_id=funcionario.funcionario_id,
+        prazo_inicio=hoje + timedelta(days=dias_offset_inicio),
+        prazo_fim=hoje + timedelta(days=dias_offset_fim),
+    )
+
+    assert total == esperado
+
+
+def test_buscar_por_filtros_com_busca_textual(db_session, processo):
+    repository = ProcessoRepository(db_session)
+    encontrados = repository.buscar_por_filtros(busca="Cliente Teste")
+    assert len(encontrados) == 1
+    assert encontrados[0].processo_id == processo.processo_id
+

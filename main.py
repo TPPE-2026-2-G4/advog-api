@@ -18,6 +18,10 @@ from slowapi import _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from starlette.types import ExceptionHandler  # noqa: E402
 
+from app.atividade.controller import router as atividade_router  # noqa: E402
+from app.atividade_funcionario.controller import (  # noqa: E402
+    router as atividade_funcionario_router,
+)
 from app.atuacao.controller import router as atuacao_router  # noqa: E402
 from app.auth.controller import router as auth_router  # noqa: E402
 from app.cargo.controller import router as cargo_router  # noqa: E402
@@ -25,6 +29,8 @@ from app.categoria_lancamento.controller import router as categoria_lancamento_r
 from app.cliente.controller import router as cliente_router  # noqa: E402
 from app.config.database import Base, SessionLocal, engine  # noqa: E402
 from app.config.limiter import limiter  # noqa: E402
+from app.dashboard.controller import router as dashboard_router  # noqa: E402
+from app.etapa_kanban.seed import inicializar_etapas_kanban  # noqa: E402
 from app.funcionario.controller import router as funcionario_router  # noqa: E402
 from app.institucional.controller import router as institucional_router  # noqa: E402
 from app.institucional.model import Institucional  # noqa: E402
@@ -36,7 +42,7 @@ from app.solicitacao.controller import router as solicitacao_router  # noqa: E40
 Base.metadata.create_all(bind=engine)
 
 
-def _seed_institucional() -> None:
+def _seed_dados_iniciais() -> None:
     from sqlalchemy import insert
 
     db = SessionLocal()
@@ -45,12 +51,13 @@ def _seed_institucional() -> None:
         if institucional is None:
             stmt = insert(Institucional).values(institucional_id=1)
             db.execute(stmt)
-            db.commit()
+        inicializar_etapas_kanban(db)
+        db.commit()
     finally:
         db.close()
 
 
-_seed_institucional()
+_seed_dados_iniciais()
 
 
 logger = logging.getLogger("advog-api")
@@ -95,6 +102,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(atividade_router)
+app.include_router(atividade_funcionario_router)
 app.include_router(atuacao_router)
 app.include_router(cargo_router)
 app.include_router(funcionario_router)
@@ -104,6 +113,7 @@ app.include_router(categoria_lancamento_router)
 app.include_router(cliente_router)
 app.include_router(processo_router)
 app.include_router(solicitacao_router)
+app.include_router(dashboard_router)
 
 
 @app.get("/")

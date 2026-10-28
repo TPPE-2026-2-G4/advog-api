@@ -614,3 +614,125 @@ def test_remover_documento_sucesso(mock_remover):
 
     service.repository.deletar_documento.assert_called_once_with(doc)
     mock_remover.assert_called_once_with("processos/1/a.pdf")
+
+
+@pytest.mark.parametrize(
+    "nome_cargo,permissoes,sem_cargo,usuario_nulo,esperado",
+    [
+        ("Administrador", {}, False, False, True),
+        ("  admin ", {}, False, False, True),
+        ("Advogado Sênior", {"configuracoes_sistema": True}, False, False, True),
+        ("Advogado Pleno", {"visualizar_processos": True}, False, False, False),
+        ("", None, True, False, False),
+        ("", None, False, True, True),
+    ],
+)
+def test_eh_administrador_parametrizado(
+    nome_cargo,
+    permissoes,
+    sem_cargo,
+    usuario_nulo,
+    esperado,
+):
+    if usuario_nulo:
+        usuario = None
+    else:
+        usuario = MagicMock()
+        if sem_cargo:
+            usuario.cargo = None
+        else:
+            cargo = MagicMock()
+            cargo.nome_cargo = nome_cargo
+            cargo.permissao = permissoes
+            usuario.cargo = cargo
+
+    assert ProcessoService._eh_administrador(usuario) is esperado
+
+
+@pytest.mark.parametrize(
+    "eh_admin,usuario_id,filtro_param,dias_prazo,contagens_status,atrasados_mock,proximos_mock,filtro_esperado",
+    [
+        (
+            True,
+            1,
+            None,
+            7,
+            {
+                StatusProcesso.ATIVO: 4,
+                StatusProcesso.EM_ANALISE: 2,
+                StatusProcesso.CONCLUIDO: 3,
+                StatusProcesso.ARQUIVADO: 1,
+            },
+            1,
+            2,
+            None,
+        ),
+        (
+            True,
+            1,
+            25,
+            15,
+            {
+                StatusProcesso.ATIVO: 2,
+            },
+            0,
+            1,
+            25,
+        ),
+        (
+            False,
+            10,
+            99,
+            7,
+            {
+                StatusProcesso.EM_ANALISE: 3,
+                StatusProcesso.ARQUIVADO: 2,
+            },
+            2,
+            0,
+            10,
+        ),
+    ],
+)
+def test_obter_resumo_processos_parametrizado(
+    eh_admin,
+    usuario_id,
+    filtro_param,
+    dias_prazo,
+    contagens_status,
+    atrasados_mock,
+    proximos_mock,
+    filtro_esperado,
+):
+    service = criar_service()
+
+    usuario = MagicMock()
+    usuario.funcionario_id = usuario_id
+    cargo = MagicMock()
+    cargo.nome_cargo = "Administrador" if eh_admin else "Advogado"
+    cargo.permissao = {"configuracoes_sistema": eh_admin}
+    usuario.cargo = cargo
+
+    service.repository.contar_por_status.return_value = contagens_status
+    service.repository.contar_por_filtros.side_effect = [atrasados_mock, proximos_mock]
+
+    resumo = service.obter_resumo_processos(
+        usuario=usuario,
+        funcionario_id=filtro_param,
+        dias_proximo_prazo=dias_prazo,
+    )
+
+    em_andamento_esp = contagens_status.get(StatusProcesso.ATIVO, 0)
+    em_analise_esp = contagens_status.get(StatusProcesso.EM_ANALISE, 0)
+    finalizados_esp = contagens_status.get(StatusProcesso.CONCLUIDO, 0)
+
+    assert resumo.em_andamento == em_andamento_esp
+    assert resumo.em_analise == em_analise_esp
+    assert resumo.finalizados == finalizados_esp
+    assert resumo.total == em_andamento_esp + em_analise_esp + finalizados_esp
+    assert resumo.atrasados == atrasados_mock
+    assert resumo.proximos_do_prazo == proximos_mock
+
+    service.repository.contar_por_status.assert_called_once_with(funcionario_id=filtro_esperado)
+    assert service.repository.contar_por_filtros.call_count == 2
+

@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 load_dotenv(".env.local", override=True)
 
+from app.atuacao.model import Atuacao  # noqa: E402
 from app.cargo.model import Cargo  # noqa: E402
 from app.cargo.schema import PermissaoBase  # noqa: E402
 from app.config.database import Base, SessionLocal, engine  # noqa: E402
@@ -53,6 +54,39 @@ def seed() -> None:
             print(f"Usuário administrador criado com sucesso: {email}")
         else:
             print(f"Usuário administrador já existe: {email}")
+
+        atuacoes = db.query(Atuacao).all()
+        if not atuacoes:
+            atuacoes = [
+                Atuacao(
+                    atuacao_id=1,
+                    nome="Direito Trabalhista",
+                    descricao="Representação em reclamações trabalhistas, acordos, rescisões e defesas patronais.",
+                    exibicao_institucional=True,
+                ),
+                Atuacao(
+                    atuacao_id=2,
+                    nome="Direito Civil",
+                    descricao="Ações de indenização, contratos, usucapião, família e sucessões.",
+                    exibicao_institucional=True,
+                ),
+                Atuacao(
+                    atuacao_id=3,
+                    nome="Direito Previdenciário",
+                    descricao="Aposentadorias, benefícios por incapacidade, pensões e revisões de benefícios.",
+                    exibicao_institucional=True,
+                ),
+                Atuacao(
+                    atuacao_id=4,
+                    nome="Direito Tributário",
+                    descricao="Planejamento fiscal, execuções fiscais, mandados de segurança e consultoria tributária.",
+                    exibicao_institucional=True,
+                ),
+            ]
+            db.add_all(atuacoes)
+            print("Áreas de atuação criadas com sucesso.")
+        else:
+            print("Áreas de atuação já existem.")
 
         institucional = db.query(Institucional).first()
         if institucional is None:

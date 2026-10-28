@@ -8,6 +8,16 @@ from sqlalchemy.orm import Session
 
 from app.config.database import SessionLocal
 from app.core.datajud_api import DatajudApiClient
+from app.core.relatorio import (
+    LIMITE_LINHAS,
+    Arquivo,
+    Coluna,
+    FormatoRelatorio,
+    Tabela,
+    TipoColuna,
+    gerar_arquivo,
+)
+from app.funcionario.model import Funcionario
 from app.core.storage import obter_url_publica, remover_arquivo, salvar_arquivo
 from app.processo.model import DocumentoProcesso, Processo, StatusProcesso
 from app.processo.repository import ProcessoRepository
@@ -17,6 +27,7 @@ from app.processo.schema import (
     ProcessoFilter,
     ProcessoPaginadoResponse,
     ProcessoResponse,
+    ProcessoResumoResponse,
     ProcessoUpdate,
 )
 
@@ -25,11 +36,65 @@ logger = logging.getLogger(__name__)
 STATUS_FINALIZADOS = [StatusProcesso.CONCLUIDO, StatusProcesso.ARQUIVADO]
 TAMANHO_MAXIMO_DOCUMENTO = 25 * 1024 * 1024  # 25MB
 EXTENSOES_PERMITIDAS = {"pdf", "docx", "doc", "png", "jpg", "jpeg"}
+CARGOS_ADMINISTRADOR = ("administrador", "admin")
 
 
 class ProcessoService:
     def __init__(self, db_session: Session):
         self.repository = ProcessoRepository(db_session)
+
+    @staticmethod
+    def _eh_administrador(usuario: Funcionario | None) -> bool:
+        if usuario is None:
+            return True
+        cargo = getattr(usuario, "cargo", None)
+        if cargo is None:
+            return False
+        nome_cargo = (cargo.nome_cargo or "").strip().lower()
+        permissoes = cargo.permissao or {}
+        return nome_cargo in CARGOS_ADMINISTRADOR or bool(
+            permissoes.get("configuracoes_sistema", False)
+        )
+
+    def obter_resumo_processos(
+        self,
+        usuario: Funcionario | None = None,
+        funcionario_id: int | None = None,
+        dias_proximo_prazo: int = 7,
+    ) -> ProcessoResumoResponse:
+        filtro_funcionario_id = (
+            funcionario_id
+            if self._eh_administrador(usuario)
+            else getattr(usuario, "funcionario_id", None)
+        )
+
+        contagens = self.repository.contar_por_status(funcionario_id=filtro_funcionario_id)
+        em_andamento = contagens.get(StatusProcesso.ATIVO, 0)
+        em_analise = contagens.get(StatusProcesso.EM_ANALISE, 0)
+        finalizados = contagens.get(StatusProcesso.CONCLUIDO, 0)
+        total = em_andamento + em_analise + finalizados
+
+        hoje = datetime.now(UTC).date()
+        atrasados = self.repository.contar_por_filtros(
+            status_excluidos=STATUS_FINALIZADOS,
+            funcionario_id=filtro_funcionario_id,
+            prazo_fim=hoje - timedelta(days=1),
+        )
+        proximos_do_prazo = self.repository.contar_por_filtros(
+            status_excluidos=STATUS_FINALIZADOS,
+            funcionario_id=filtro_funcionario_id,
+            prazo_inicio=hoje,
+            prazo_fim=hoje + timedelta(days=dias_proximo_prazo),
+        )
+
+        return ProcessoResumoResponse(
+            total=total,
+            em_andamento=em_andamento,
+            em_analise=em_analise,
+            finalizados=finalizados,
+            proximos_do_prazo=proximos_do_prazo,
+            atrasados=atrasados,
+        )
 
     def buscar_todos(self) -> list[Processo]:
         return self.repository.buscar_todos()
@@ -58,6 +123,59 @@ class ProcessoService:
             page_size=filters.page_size,
             total_pages=max(1, ceil(total / filters.page_size)),
         )
+
+    def exportar_processos(self, filters: ProcessoFilter, formato: FormatoRelatorio) -> Arquivo:
+        processos = self.repository.buscar_para_exportacao(
+            LIMITE_LINHAS + 1,
+            processo_id=filters.processo_id,
+            cnj=filters.cnj,
+            titulo=filters.titulo,
+            descricao=filters.descricao,
+            status=filters.status,
+            tribunal=filters.tribunal,
+            area=filters.area,
+            cliente_id=filters.cliente_id,
+            funcionario_id=filters.funcionario_id,
+            busca=filters.busca,
+            prazo_inicio=filters.prazo_inicio,
+            prazo_fim=filters.prazo_fim,
+        )
+        if len(processos) > LIMITE_LINHAS:
+            raise ValueError(
+                f"A exportação excede {LIMITE_LINHAS} processos; refine os filtros e tente novamente"
+            )
+        clientes = self.repository.buscar_nomes_clientes({p.cliente_id for p in processos})
+        tabela = Tabela(
+            titulo="Relatório de Processos",
+            colunas=[
+                Coluna("CNJ"),
+                Coluna("Título"),
+                Coluna("Descrição"),
+                Coluna("Status"),
+                Coluna("Tribunal"),
+                Coluna("Área"),
+                Coluna("Cliente"),
+                Coluna("Data de início", TipoColuna.DATA),
+                Coluna("Prazo", TipoColuna.DATA),
+                Coluna("Data realizado", TipoColuna.DATA),
+            ],
+            linhas=[
+                [
+                    p.cnj,
+                    p.titulo,
+                    p.descricao,
+                    p.status.value,
+                    p.tribunal,
+                    p.area,
+                    clientes.get(p.cliente_id),
+                    p.data_inicio,
+                    p.data_prazo,
+                    p.data_realizado,
+                ]
+                for p in processos
+            ],
+        )
+        return gerar_arquivo(tabela, formato)
 
     def criar_processo(self, dados: ProcessoCreate) -> Processo:
         processo_existente = self.repository.buscar_por_cnj(dados.cnj)

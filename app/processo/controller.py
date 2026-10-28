@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Query, status, Response
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
 from app.core.dependencies import exigir_permissao, obter_funcionario_atual
+from app.core.relatorio import FormatoRelatorio, resposta_arquivo
 from app.funcionario.model import Funcionario
 from app.processo.schema import (
     DocumentoProcessoResponse,
@@ -11,6 +12,7 @@ from app.processo.schema import (
     ProcessoFilter,
     ProcessoPaginadoResponse,
     ProcessoResponse,
+    ProcessoResumoResponse,
     ProcessoUpdate,
     SincronizacaoResponse,
 )
@@ -66,6 +68,53 @@ def filtrar_processos(
     filtros: ProcessoFilter = Depends(), service: ProcessoService = Depends(get_processo_service)
 ):
     return service.buscar_processos(filtros)
+
+
+@router.get(
+    "/exportar",
+    summary="Exportar processos em CSV, Excel ou PDF",
+    description=(
+        "Aceita os mesmos filtros de `GET /processos/` (a paginação é ignorada: "
+        "todos os processos filtrados são exportados)."
+    ),
+    response_class=Response,
+    responses={
+        200: {"description": "Arquivo gerado", "content": {"application/octet-stream": {}}},
+        422: {"description": "Parâmetros inválidos ou exportação acima do limite de linhas"},
+    },
+    dependencies=[Depends(exigir_permissao("visualizar_processos"))],
+)
+def exportar_processos(
+    formato: FormatoRelatorio = Query(description="csv, xlsx ou pdf"),
+    filtros: ProcessoFilter = Depends(),
+    service: ProcessoService = Depends(get_processo_service),
+):
+    try:
+        arquivo = service.exportar_processos(filtros, formato)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return resposta_arquivo(arquivo, "processos")
+
+
+@router.get(
+    "/resumo",
+    response_model=ProcessoResumoResponse,
+)
+def obter_resumo_processos(
+    dias_proximo_prazo: int = Query(
+        7, ge=0, description="Quantidade de dias para considerar um processo próximo do prazo"
+    ),
+    funcionario_id: int | None = Query(
+        None, description="Filtrar resumo por ID do funcionário (apenas administradores)"
+    ),
+    usuario_atual: Funcionario = Depends(exigir_permissao("visualizar_processos")),
+    service: ProcessoService = Depends(get_processo_service),
+):
+    return service.obter_resumo_processos(
+        usuario=usuario_atual,
+        funcionario_id=funcionario_id,
+        dias_proximo_prazo=dias_proximo_prazo,
+    )
 
 
 @router.get(
