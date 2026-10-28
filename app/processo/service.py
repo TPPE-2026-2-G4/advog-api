@@ -17,8 +17,8 @@ from app.core.relatorio import (
     TipoColuna,
     gerar_arquivo,
 )
-from app.funcionario.model import Funcionario
 from app.core.storage import obter_url_publica, remover_arquivo, salvar_arquivo
+from app.funcionario.model import Funcionario
 from app.processo.model import DocumentoProcesso, Processo, StatusProcesso
 from app.processo.repository import ProcessoRepository
 from app.processo.schema import (
