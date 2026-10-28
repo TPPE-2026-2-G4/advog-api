@@ -4,6 +4,8 @@ from fastapi import UploadFile
 from PIL import Image
 from sqlalchemy.orm import Session
 
+from app.arquivo.model import Arquivo
+from app.arquivo.repository import ArquivoRepository
 from app.core.storage import obter_url_publica, remover_arquivo, salvar_arquivo
 from app.institucional.model import Institucional
 from app.institucional.repository import InstitucionalRepository
@@ -16,6 +18,7 @@ class UploadInvalidoError(ValueError):
 class InstitucionalService:
     def __init__(self, db: Session):
         self.repository = InstitucionalRepository(db)
+        self.arquivo_repository = ArquivoRepository(db)
 
     def obter_configuracoes(self) -> Institucional:
         return self.repository.buscar_configuracoes()
@@ -93,13 +96,16 @@ class InstitucionalService:
 
         if tipo == "logo":
             pasta = "logotipos"
-            campo_banco = "logotipo"
+            campo_banco = "imagem_logotipo"
+            arquivo_atual = "arquivo_logotipo"
         elif tipo == "banner":
             pasta = "banners"
             campo_banco = "banner_hero"
+            arquivo_atual = "arquivo_banner"
         else:
             pasta = "sobre"
-            campo_banco = "imagem_sobre"
+            campo_banco = "imagem_sobre_escritorio"
+            arquivo_atual = "arquivo_sobre"
 
         content_type = file.content_type or f"image/{extensao}"
         if extensao == "svg":
@@ -113,12 +119,23 @@ class InstitucionalService:
         )
 
         config = self.repository.buscar_configuracoes()
-        chave_antiga = getattr(config, campo_banco)
+        arquivo_antigo = getattr(config, arquivo_atual)
 
-        self.repository.atualizar_configuracoes({campo_banco: nova_chave})
+        novo_arquivo = self.arquivo_repository.adicionar(
+            Arquivo(
+                nome_arquivo=(file.filename or f"{tipo}.{extensao}")[:255],
+                tipo_mime=content_type,
+                tamanho_bytes=tamanho_bytes,
+                bucket_link=nova_chave,
+                origem="institucional",
+            )
+        )
+        self.repository.atualizar_configuracoes({campo_banco: novo_arquivo.arquivo_id})
 
+        chave_antiga = arquivo_antigo.bucket_link
         if chave_antiga:
             remover_arquivo(chave_antiga)
+            self.arquivo_repository.deletar(arquivo_antigo)
 
         url_completa = obter_url_publica(nova_chave) or ""
         return url_completa, warning

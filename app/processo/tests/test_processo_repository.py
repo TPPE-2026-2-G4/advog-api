@@ -3,11 +3,13 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy.orm import Session
 
+from app.arquivo.model import Arquivo
 from app.cargo.model import Cargo
 from app.cliente.model import Cliente
 from app.funcionario.model import Funcionario, StatusFuncionario
-from app.processo.model import DocumentoProcesso, Processo, StatusProcesso
+from app.processo.model import Processo, StatusProcesso
 from app.processo.repository import ProcessoRepository
+from app.processo_arquivo.model import ProcessoArquivo
 
 
 @pytest.fixture
@@ -23,6 +25,8 @@ def dados_base(db_session: Session):
     db_session.refresh(cargo)
 
     funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Funcionário Teste",
         email="funcionario@teste.com",
         status=StatusFuncionario.ATIVO,
@@ -215,6 +219,9 @@ def test_buscar_por_filtros_ids(
 )
 def test_buscar_por_status(db_session, dados_base, status):
     processo = Processo(
+        descricao="Descrição",
+        data_inicio=datetime(2026, 1, 1),
+        data_prazo=datetime(2026, 12, 31),
         cnj=f"{list(StatusProcesso).index(status) + 2:020d}",
         titulo="Processo",
         status=status,
@@ -258,6 +265,9 @@ def test_buscar_por_filtros_paginado(db_session, dados_base):
 
     for i in range(3):
         processo = Processo(
+            descricao="Descrição",
+            data_inicio=datetime(2026, 1, 1),
+            data_prazo=datetime(2026, 12, 31),
             cnj=f"{i + 1:020d}",
             titulo=f"Processo {i + 1}",
             status=StatusProcesso.ATIVO,
@@ -296,6 +306,9 @@ def test_criar(db_session, dados_base):
     repository = ProcessoRepository(db_session)
 
     processo = Processo(
+        descricao="Descrição",
+        data_inicio=datetime(2026, 1, 1),
+        data_prazo=datetime(2026, 12, 31),
         cnj="22222222222222222222",
         titulo="Novo Processo",
         status=StatusProcesso.EM_ANALISE,
@@ -376,7 +389,6 @@ def test_deletar(db_session, processo):
         (StatusProcesso.ATIVO, None, datetime.now(UTC) - timedelta(days=40), False, 30, 999, False),
         (StatusProcesso.ATIVO, None, datetime.now(UTC) - timedelta(days=40), True, 30, True, True),
         (StatusProcesso.ATIVO, None, datetime.now(UTC) - timedelta(days=15), True, 10, None, True),
-        (StatusProcesso.ATIVO, None, None, True, 30, None, True),
     ],
 )
 def test_buscar_por_filtros_atividade_e_status_excluidos(
@@ -394,9 +406,23 @@ def test_buscar_por_filtros_atividade_e_status_excluidos(
     funcionario = dados_base["funcionario"]
     cliente = dados_base["cliente"]
 
-    funcionario_id = funcionario.funcionario_id if func_vinculo else None
+    if func_vinculo:
+        funcionario_id = funcionario.funcionario_id
+    else:
+        outro = Funcionario(
+            atuacao_id=1,
+            foto_perfil=1,
+            nome="Outro Advogado",
+            email="outro.advogado@test.com",
+            cargo_id=funcionario.cargo_id,
+        )
+        db_session.add(outro)
+        db_session.commit()
+        funcionario_id = outro.funcionario_id
 
     proc = Processo(
+        descricao="Descrição",
+        data_prazo=datetime(2026, 12, 31),
         cnj="99999999999999999999",
         titulo="Processo Teste Crítico",
         status=status,
@@ -429,6 +455,9 @@ def test_documento_repository_crud(db_session: Session, dados_base: dict):
     funcionario = dados_base["funcionario"]
 
     proc = Processo(
+        descricao="Descrição",
+        data_inicio=datetime(2026, 1, 1),
+        data_prazo=datetime(2026, 12, 31),
         cnj="88888888888888888888",
         titulo="Processo com Documento",
         status=StatusProcesso.ATIVO,
@@ -443,33 +472,66 @@ def test_documento_repository_crud(db_session: Session, dados_base: dict):
     assert docs == []
 
     # Adicionar documento
-    doc = DocumentoProcesso(
-        processo_id=proc.processo_id,
-        nome_original="peticao.pdf",
-        chave_minio=f"processos/{proc.processo_id}/peticao.pdf",
+    doc = Arquivo(
+        nome_arquivo="peticao.pdf",
+        bucket_link=f"processos/{proc.processo_id}/peticao.pdf",
         origem="manual",
         tamanho_bytes=2048,
-        entrada_tipo="application/pdf",
+        tipo_mime="application/pdf",
         funcionario_id=funcionario.funcionario_id,
     )
-    doc_salvo = repository.adicionar_documento(doc)
-    assert doc_salvo.documento_id is not None
-    assert doc_salvo.nome_original == "peticao.pdf"
+    doc_salvo = repository.adicionar_documento(proc.processo_id, doc)
+    assert doc_salvo.arquivo_id is not None
+    assert doc_salvo.nome_arquivo == "peticao.pdf"
     assert doc_salvo.origem == "manual"
 
-    doc_encontrado = repository.buscar_documento_por_id(doc_salvo.documento_id)
+    doc_encontrado = repository.buscar_documento(proc.processo_id, doc_salvo.arquivo_id)
     assert doc_encontrado is not None
-    assert doc_encontrado.chave_minio == doc.chave_minio
+    assert doc_encontrado.bucket_link == doc.bucket_link
 
-    assert repository.buscar_documento_por_id(999999) is None
+    assert repository.buscar_documento(proc.processo_id, 999999) is None
+    assert repository.buscar_documento(proc.processo_id + 1, doc_salvo.arquivo_id) is None
 
     docs_listados = repository.listar_documentos(proc.processo_id)
     assert len(docs_listados) == 1
-    assert docs_listados[0].documento_id == doc_salvo.documento_id
+    assert docs_listados[0].arquivo_id == doc_salvo.arquivo_id
 
-    repository.deletar_documento(doc_salvo)
-    assert repository.buscar_documento_por_id(doc_salvo.documento_id) is None
+    repository.deletar_documento(proc.processo_id, doc_salvo)
+    assert repository.buscar_documento(proc.processo_id, doc_salvo.arquivo_id) is None
     assert repository.listar_documentos(proc.processo_id) == []
+    assert db_session.query(Arquivo).count() == 0
+
+
+def test_deletar_processo_remove_arquivos_vinculados(db_session: Session, dados_base: dict):
+    repository = ProcessoRepository(db_session)
+    proc = Processo(
+        cnj="77777777777777777777",
+        titulo="Processo com Arquivos",
+        descricao="Descrição",
+        status=StatusProcesso.ATIVO,
+        tribunal="TJDFT",
+        area="Civil",
+        data_inicio=datetime(2026, 1, 1),
+        data_prazo=datetime(2026, 12, 31),
+        cliente_id=dados_base["cliente"].cliente_id,
+        funcionario_id=dados_base["funcionario"].funcionario_id,
+    )
+    repository.criar(proc)
+    for nome in ("a.pdf", "b.pdf"):
+        repository.adicionar_documento(
+            proc.processo_id,
+            Arquivo(
+                nome_arquivo=nome,
+                tipo_mime="application/pdf",
+                tamanho_bytes=1,
+                bucket_link=f"processos/{nome}",
+            ),
+        )
+
+    repository.deletar(proc)
+
+    assert db_session.query(Arquivo).count() == 0
+    assert db_session.query(ProcessoArquivo).count() == 0
 
 
 @pytest.mark.parametrize(
@@ -505,6 +567,8 @@ def test_contar_por_status_parametrizado(
     cliente = dados_base["cliente"]
 
     outro_funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Outro Advogado",
         email="outro.adv@teste.com",
         status=StatusFuncionario.ATIVO,
@@ -524,6 +588,9 @@ def test_contar_por_status_parametrizado(
     for cnj, status_proc, func_id in processos_seed:
         repository.criar(
             Processo(
+                descricao="Descrição",
+                data_inicio=datetime(2026, 1, 1),
+                data_prazo=datetime(2026, 12, 31),
                 cnj=cnj,
                 titulo=f"Proc {cnj}",
                 status=status_proc,
@@ -587,6 +654,8 @@ def test_contar_por_filtros_prazos_parametrizado(
     for cnj, status_proc, data_prazo in processos_seed:
         repository.criar(
             Processo(
+                descricao="Descrição",
+                data_inicio=datetime(2026, 1, 1),
                 cnj=cnj,
                 titulo=f"Proc Prazo {cnj}",
                 status=status_proc,

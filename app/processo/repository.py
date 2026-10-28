@@ -4,8 +4,10 @@ from datetime import date, datetime, time, timedelta
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Query, Session
 
+from app.arquivo.model import Arquivo
 from app.cliente.model import Cliente
-from app.processo.model import DocumentoProcesso, Processo, StatusProcesso
+from app.processo.model import Processo, StatusProcesso
+from app.processo_arquivo.model import ProcessoArquivo
 
 
 class ProcessoRepository:
@@ -209,30 +211,43 @@ class ProcessoRepository:
         return processo
 
     def deletar(self, processo: Processo) -> None:
+        for arquivo in self.listar_documentos(processo.processo_id):
+            self.db.delete(arquivo)
+        self.db.query(ProcessoArquivo).filter(
+            ProcessoArquivo.processo_id == processo.processo_id
+        ).delete()
         self.db.delete(processo)
         self.db.commit()
 
-    def adicionar_documento(self, documento: DocumentoProcesso) -> DocumentoProcesso:
-        self.db.add(documento)
+    def adicionar_documento(self, processo_id: int, arquivo: Arquivo) -> Arquivo:
+        self.db.add(arquivo)
+        self.db.flush()
+        self.db.add(ProcessoArquivo(processo_id=processo_id, arquivo_id=arquivo.arquivo_id))
         self.db.commit()
-        self.db.refresh(documento)
-        return documento
+        self.db.refresh(arquivo)
+        return arquivo
 
-    def buscar_documento_por_id(self, documento_id: int) -> DocumentoProcesso | None:
+    def buscar_documento(self, processo_id: int, arquivo_id: int) -> Arquivo | None:
         return (
-            self.db.query(DocumentoProcesso)
-            .filter(DocumentoProcesso.documento_id == documento_id)
+            self.db.query(Arquivo)
+            .join(ProcessoArquivo, ProcessoArquivo.arquivo_id == Arquivo.arquivo_id)
+            .filter(ProcessoArquivo.processo_id == processo_id, Arquivo.arquivo_id == arquivo_id)
             .first()
         )
 
-    def listar_documentos(self, processo_id: int) -> list[DocumentoProcesso]:
+    def listar_documentos(self, processo_id: int) -> list[Arquivo]:
         return (
-            self.db.query(DocumentoProcesso)
-            .filter(DocumentoProcesso.processo_id == processo_id)
-            .order_by(DocumentoProcesso.data_upload.desc())
+            self.db.query(Arquivo)
+            .join(ProcessoArquivo, ProcessoArquivo.arquivo_id == Arquivo.arquivo_id)
+            .filter(ProcessoArquivo.processo_id == processo_id)
+            .order_by(Arquivo.data_upload.desc())
             .all()
         )
 
-    def deletar_documento(self, documento: DocumentoProcesso) -> None:
-        self.db.delete(documento)
+    def deletar_documento(self, processo_id: int, arquivo: Arquivo) -> None:
+        self.db.query(ProcessoArquivo).filter(
+            ProcessoArquivo.processo_id == processo_id,
+            ProcessoArquivo.arquivo_id == arquivo.arquivo_id,
+        ).delete()
+        self.db.delete(arquivo)
         self.db.commit()

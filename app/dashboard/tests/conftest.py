@@ -2,14 +2,11 @@ import pytest
 from sqlalchemy import select
 
 from app.etapa_kanban.model import EtapaKanban
-from app.etapa_kanban.seed import inicializar_etapas_kanban
 from app.funcionario.model import Funcionario, StatusFuncionario
 
 
 @pytest.fixture
-def etapas(db_session):
-    inicializar_etapas_kanban(db_session)
-    db_session.flush()
+def etapas(db_session, etapas_kanban_padrao):
     return {etapa.nome: etapa for etapa in db_session.scalars(select(EtapaKanban))}
 
 
@@ -17,6 +14,8 @@ def etapas(db_session):
 def funcionarios(db_session, cargo_padrao):
     usuarios = [
         Funcionario(
+            atuacao_id=1,
+            foto_perfil=1,
             nome=f"Funcionário {indice}",
             email=f"dashboard{indice}@teste.com",
             status=StatusFuncionario.ATIVO,

@@ -4,23 +4,15 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.orm import Session
 
+from app.arquivo.model import Arquivo
 from app.cargo.model import Cargo
 from app.core.seguranca import criar_token_acesso
 from app.funcionario.model import Funcionario, StatusFuncionario
-from app.institucional.model import Institucional
 
 
 @pytest.fixture
-def seed_institucional_db(db_session: Session):
-    config = Institucional(
-        institucional_id=1,
-        nome_escritorio="Escritório Modelo",
-        cor_primaria="#1B2A4A",
-        cor_secundaria="#B79A63",
-    )
-    db_session.add(config)
-    db_session.commit()
-    return config
+def seed_institucional_db(institucional_padrao):
+    return institucional_padrao
 
 
 @pytest.fixture
@@ -33,6 +25,8 @@ def token_admin(db_session: Session):
     db_session.commit()
 
     admin = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Admin Teste",
         email="admin@teste.com",
         cargo_id=cargo.cargo_id,
@@ -54,6 +48,8 @@ def token_sem_permissao(db_session: Session):
     db_session.commit()
 
     user = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="User Comum",
         email="user@teste.com",
         cargo_id=cargo.cargo_id,
@@ -88,6 +84,8 @@ class TestObterInstitucionalController:
         db_session.commit()
 
         f1 = Funcionario(
+            atuacao_id=1,
+            foto_perfil=1,
             nome="Dr. Alexandre",
             email="alexandre@teste.com",
             cargo_id=cargo.cargo_id,
@@ -95,6 +93,8 @@ class TestObterInstitucionalController:
             exibicao_institucional=True,
         )
         f2 = Funcionario(
+            atuacao_id=1,
+            foto_perfil=1,
             nome="Dra. Ana",
             email="ana@teste.com",
             cargo_id=cargo.cargo_id,
@@ -102,6 +102,8 @@ class TestObterInstitucionalController:
             exibicao_institucional=False,
         )
         f3 = Funcionario(
+            atuacao_id=1,
+            foto_perfil=1,
             nome="Dr. Pedro Inativo",
             email="pedro@teste.com",
             cargo_id=cargo.cargo_id,
@@ -195,6 +197,44 @@ class TestUploadMidiaInstitucionalController:
             response.json()["url"]
             == f"http://localhost:9000/institucional/{pasta}/imagem_teste.png"
         )
+
+    @patch("app.institucional.service.remover_arquivo")
+    @patch("app.institucional.service.salvar_arquivo")
+    @patch("app.institucional.service.obter_url_publica")
+    def test_upload_registra_arquivo_e_substitui_o_anterior(
+        self,
+        mock_url,
+        mock_salvar,
+        mock_remover,
+        client,
+        db_session,
+        seed_institucional_db,
+        token_admin,
+    ):
+        mock_url.return_value = "http://localhost:9000/logo"
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        arquivo_padrao_id = seed_institucional_db.imagem_logotipo
+
+        mock_salvar.return_value = "logotipos/primeiro.png"
+        client.post(
+            "/institucional/upload/logo", files=_gerar_upload_file("a.png"), headers=headers
+        )
+        db_session.refresh(seed_institucional_db)
+        primeiro_id = seed_institucional_db.imagem_logotipo
+        assert primeiro_id != arquivo_padrao_id
+        assert seed_institucional_db.link_logotipo == "logotipos/primeiro.png"
+        assert db_session.get(Arquivo, primeiro_id).nome_arquivo == "a.png"
+        mock_remover.assert_not_called()  # o arquivo anterior era o padrão, compartilhado
+
+        mock_salvar.return_value = "logotipos/segundo.png"
+        client.post(
+            "/institucional/upload/logo", files=_gerar_upload_file("b.png"), headers=headers
+        )
+        db_session.refresh(seed_institucional_db)
+        assert seed_institucional_db.link_logotipo == "logotipos/segundo.png"
+        assert db_session.get(Arquivo, primeiro_id) is None
+        mock_remover.assert_called_once_with("logotipos/primeiro.png")
+        assert db_session.get(Arquivo, arquivo_padrao_id) is not None
 
     def test_upload_tipo_invalido_retorna_400(self, client, token_admin):
         headers = {"Authorization": f"Bearer {token_admin}"}

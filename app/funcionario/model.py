@@ -11,6 +11,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.arquivo.model import Arquivo  # noqa: F401  (destino da FK de foto_perfil)
+from app.atuacao.model import Atuacao  # noqa: F401  (destino da FK de atuacao_id)
 from app.config.database import Base
 
 if TYPE_CHECKING:
@@ -36,9 +38,15 @@ class Funcionario(Base):
         Enum(StatusFuncionario), nullable=False, default=StatusFuncionario.PENDENTE
     )
     exibicao_institucional: Mapped[bool] = mapped_column(
-        "exibicaoInstitucional", Boolean, nullable=False, default=False
+        "exibicao_institucional", Boolean, nullable=False, default=False
     )
     cargo_id: Mapped[int] = mapped_column(Integer, ForeignKey("cargos.cargo_id"), nullable=False)
+    foto_perfil: Mapped[int] = mapped_column(
+        Integer, ForeignKey("arquivos.arquivo_id"), nullable=False
+    )
+    atuacao_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("atuacoes.atuacao_id"), nullable=False
+    )
     cargo: Mapped["Cargo"] = relationship("Cargo", back_populates="funcionarios")
 
     __table_args__ = (

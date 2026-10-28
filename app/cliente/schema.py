@@ -1,31 +1,38 @@
 from datetime import datetime
 
 from fastapi import Query
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+ETAPA_INICIAL_ID = 1
 
 
 class ClienteBase(BaseModel):
     nome: str
-    telefone: str | None = None
+    telefone: str = Field(max_length=16)
     email: EmailStr
     area_interesse: str | None = None
     descricao: str | None = None
     documento: str | None = None
-    ultima_interacao: datetime
     responsavel_id: int | None = None
-    etapa_id: int
 
 
 class ClienteCreate(ClienteBase):
-    pass
+    nome: str = Field(min_length=1, max_length=100)
+    descricao: str | None = Field(default=None, max_length=2000)
+    documento: str | None = Field(default=None, max_length=20)
+    ultima_interacao: datetime | None = None
+    etapa_id: int = ETAPA_INICIAL_ID
 
 
 class ClienteUpdate(ClienteBase):
-    pass
+    ultima_interacao: datetime
+    etapa_id: int
 
 
 class ClienteResponse(ClienteBase):
     cliente_id: int
+    ultima_interacao: datetime
+    etapa_id: int
 
     model_config = ConfigDict(from_attributes=True)
 

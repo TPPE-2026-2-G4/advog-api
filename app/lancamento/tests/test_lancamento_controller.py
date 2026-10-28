@@ -7,12 +7,15 @@ from fastapi.testclient import TestClient
 @pytest.fixture()
 def client(client: TestClient, token_admin: str) -> TestClient:
     client.headers["Authorization"] = f"Bearer {token_admin}"
+    client.post("/categorias-lancamento", json={"nome_categoria": "Categoria Padrão"})
     return client
 
 
 def _payload_lancamento(**kwargs) -> dict:
     base = {
         "titulo": "Honorários Advocatícios",
+        "descricao": "Honorários do mês",
+        "categoria_id": 1,  # categoria criada pela fixture client
         "tipo": "e",
         "valor": 1200.0,
         "data_vencimento": (datetime.now() + timedelta(days=5)).isoformat(),
@@ -58,6 +61,12 @@ class TestLancamentoControllerCRUD:
         assert dados["status"] == "Pendente"
         assert dados["data_pagamento"] is None
         assert dados["categoria_id"] == cat["categoria_id"]
+
+    @pytest.mark.parametrize("campo", ["descricao", "categoria_id"])
+    def test_criar_lancamento_sem_campo_obrigatorio_retorna_422(self, client: TestClient, campo):
+        payload = _payload_lancamento()
+        del payload[campo]
+        assert client.post("/lancamentos/", json=payload).status_code == 422
 
     def test_criar_lancamento_tipo_invalido(self, client: TestClient):
         response = client.post("/lancamentos/", json=_payload_lancamento(tipo="x"))
@@ -108,6 +117,17 @@ class TestLancamentoControllerCRUD:
 
         response_nulo = client.put(f"/lancamentos/{lid}", json={"titulo": None})
         assert response_nulo.status_code == 400
+
+    @pytest.mark.parametrize("campo", ["descricao", "categoria_id"])
+    def test_atualizar_lancamento_campo_obrigatorio_nulo_retorna_400(
+        self, client: TestClient, campo: str
+    ):
+        lid = client.post("/lancamentos/", json=_payload_lancamento()).json()["lancamento_id"]
+
+        response = client.put(f"/lancamentos/{lid}", json={campo: None})
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == f"O campo '{campo}' não pode ser nulo"
 
     def test_alternar_status_sucesso(self, client: TestClient):
         lid = client.post("/lancamentos/", json=_payload_lancamento()).json()["lancamento_id"]

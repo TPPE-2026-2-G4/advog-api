@@ -38,6 +38,10 @@ def db_session():
 async def test_sincronizar_processos_com_api(mock_fetch, db_session):
     db, cliente = db_session
     p1 = Processo(
+        descricao="Descrição",
+        data_inicio=datetime(2026, 1, 1),
+        data_prazo=datetime(2026, 12, 31),
+        funcionario_id=1,
         cnj="123456789",
         titulo="Proc 1",
         status=StatusProcesso.ATIVO,
@@ -46,6 +50,10 @@ async def test_sincronizar_processos_com_api(mock_fetch, db_session):
         cliente_id=cliente.cliente_id,
     )
     p2 = Processo(
+        descricao="Descrição",
+        data_inicio=datetime(2026, 1, 1),
+        data_prazo=datetime(2026, 12, 31),
+        funcionario_id=1,
         cnj="987654321",
         titulo="Proc 2",
         status=StatusProcesso.ATIVO,
@@ -87,6 +95,10 @@ async def test_sincronizar_processos_com_api(mock_fetch, db_session):
 async def test_sincronizar_processos_com_api_empty_cnj(mock_fetch, db_session):
     db, cliente = db_session
     p1 = Processo(
+        descricao="Descrição",
+        data_inicio=datetime(2026, 1, 1),
+        data_prazo=datetime(2026, 12, 31),
+        funcionario_id=1,
         cnj=" ",
         titulo="Proc vazio",
         status=StatusProcesso.ATIVO,
@@ -107,6 +119,10 @@ async def test_sincronizar_processos_com_api_empty_cnj(mock_fetch, db_session):
 async def test_sincronizar_processos_com_api_exception(mock_fetch, db_session):
     db, cliente = db_session
     p1 = Processo(
+        descricao="Descrição",
+        data_inicio=datetime(2026, 1, 1),
+        data_prazo=datetime(2026, 12, 31),
+        funcionario_id=1,
         cnj="123",
         titulo="Proc",
         status=StatusProcesso.ATIVO,

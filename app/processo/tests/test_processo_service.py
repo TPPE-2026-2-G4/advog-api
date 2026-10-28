@@ -5,7 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import UploadFile
 
-from app.processo.model import DocumentoProcesso, Processo, StatusProcesso
+from app.arquivo.model import Arquivo
+from app.processo.model import Processo, StatusProcesso
 from app.processo.schema import ProcessoCreate, ProcessoFilter, ProcessoUpdate
 from app.processo.service import ProcessoService
 
@@ -25,6 +26,8 @@ def dados_processo_create() -> ProcessoCreate:
         status=StatusProcesso.ATIVO,
         tribunal="TJSP",
         area="Civil",
+        data_inicio=datetime(2026, 1, 1),
+        data_prazo=datetime(2026, 12, 31),
         cliente_id=1,
         funcionario_id=2,
     )
@@ -63,6 +66,8 @@ def test_buscar_processos():
     )
 
     processo = Processo(
+        data_inicio=datetime(2026, 1, 1),
+        data_prazo=datetime(2026, 12, 31),
         processo_id=1,
         cnj="11111111111111111111",
         titulo="Processo Teste",
@@ -125,6 +130,10 @@ def test_buscar_processos_com_paginacao():
 
     processos = [
         Processo(
+            descricao="Descrição",
+            data_inicio=datetime(2026, 1, 1),
+            data_prazo=datetime(2026, 12, 31),
+            funcionario_id=1,
             processo_id=6,
             cnj="66666666666666666666",
             titulo="Processo 6",
@@ -134,6 +143,10 @@ def test_buscar_processos_com_paginacao():
             cliente_id=1,
         ),
         Processo(
+            descricao="Descrição",
+            data_inicio=datetime(2026, 1, 1),
+            data_prazo=datetime(2026, 12, 31),
+            funcionario_id=1,
             processo_id=7,
             cnj="77777777777777777777",
             titulo="Processo 7",
@@ -245,6 +258,17 @@ def test_atualizar_processo():
     service.repository.atualizar.assert_called_once_with(processo)
 
 
+@pytest.mark.parametrize("campo", ["descricao", "data_inicio", "data_prazo", "funcionario_id"])
+def test_atualizar_processo_campo_obrigatorio_nulo_lanca_erro(campo):
+    service = criar_service()
+    service.repository.buscar_por_id.return_value = MagicMock(spec=Processo)
+
+    with pytest.raises(ValueError, match=f"O campo '{campo}' não pode ser nulo"):
+        service.atualizar_processo(1, ProcessoUpdate(**{campo: None}))
+
+    service.repository.atualizar.assert_not_called()
+
+
 def test_atualizar_processo_inexistente():
     service = criar_service()
 
@@ -308,7 +332,7 @@ def test_deletar_processo(mock_remover):
     service = criar_service()
 
     processo = MagicMock(spec=Processo)
-    doc = MagicMock(chave_minio="processos/1/doc.pdf")
+    doc = MagicMock(bucket_link="processos/1/doc.pdf")
 
     service.repository.buscar_por_id.return_value = processo
     service.repository.listar_documentos.return_value = [doc]
@@ -340,9 +364,13 @@ def test_deletar_processo_inexistente():
     ],
 )
 def test_buscar_processos_criticos_parametrizado(dias, func_id):
+    funcionario_do_processo = func_id or 3
     service = criar_service()
     processos = [
         Processo(
+            descricao="Descrição",
+            data_inicio=datetime(2026, 1, 1),
+            data_prazo=datetime(2026, 12, 31),
             processo_id=1,
             cnj="11111111111111111111",
             titulo="Proc Crítico",
@@ -350,7 +378,7 @@ def test_buscar_processos_criticos_parametrizado(dias, func_id):
             tribunal="TJSP",
             area="Civil",
             cliente_id=1,
-            funcionario_id=func_id,
+            funcionario_id=funcionario_do_processo,
         )
     ]
     service.repository.buscar_por_filtros.return_value = processos
@@ -437,14 +465,13 @@ def test_adicionar_documento_sucesso_pdf(mock_obter_url, mock_salvar):
     pdf_magic_bytes = b"%PDF-1.4\n%test pdf content"
     file_mock = UploadFile(filename="peticao.pdf", file=io.BytesIO(pdf_magic_bytes))
 
-    doc_mock = DocumentoProcesso(
-        documento_id=1,
-        processo_id=1,
-        nome_original="peticao.pdf",
-        chave_minio="processos/1/arquivo.pdf",
+    doc_mock = Arquivo(
+        arquivo_id=1,
+        nome_arquivo="peticao.pdf",
+        bucket_link="processos/1/arquivo.pdf",
         origem="manual",
         tamanho_bytes=len(pdf_magic_bytes),
-        entrada_tipo="application/pdf",
+        tipo_mime="application/pdf",
         funcionario_id=5,
         data_upload=datetime(2026, 1, 1),
     )
@@ -473,14 +500,13 @@ def test_adicionar_documento_sucesso_docx(mock_obter_url, mock_salvar):
     docx_bytes = b"PK\x03\x04 fake docx content"
     file_mock = UploadFile(filename="contrato.docx", file=io.BytesIO(docx_bytes))
 
-    doc_mock = DocumentoProcesso(
-        documento_id=2,
-        processo_id=1,
-        nome_original="contrato.docx",
-        chave_minio="processos/1/arquivo.docx",
+    doc_mock = Arquivo(
+        arquivo_id=2,
+        nome_arquivo="contrato.docx",
+        bucket_link="processos/1/arquivo.docx",
         origem="manual",
         tamanho_bytes=len(docx_bytes),
-        entrada_tipo="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        tipo_mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         funcionario_id=None,
         data_upload=datetime(2026, 1, 1),
     )
@@ -525,14 +551,13 @@ def test_listar_documentos_sucesso(mock_obter_url):
     service.repository.buscar_por_id.return_value = MagicMock(spec=Processo)
     mock_obter_url.return_value = "http://minio/arquivo.pdf"
 
-    doc = DocumentoProcesso(
-        documento_id=1,
-        processo_id=1,
-        nome_original="peticao.pdf",
-        chave_minio="processos/1/a.pdf",
+    doc = Arquivo(
+        arquivo_id=1,
+        nome_arquivo="peticao.pdf",
+        bucket_link="processos/1/a.pdf",
         origem="manual",
         tamanho_bytes=100,
-        entrada_tipo="application/pdf",
+        tipo_mime="application/pdf",
         funcionario_id=None,
         data_upload=datetime(2026, 1, 1),
     )
@@ -548,26 +573,17 @@ def test_listar_documentos_sucesso(mock_obter_url):
 
 def test_obter_url_documento_inexistente():
     service = criar_service()
-    service.repository.buscar_documento_por_id.return_value = None
+    service.repository.buscar_documento.return_value = None
 
     with pytest.raises(ValueError, match="Documento não encontrado"):
         service.obter_url_documento(1, 999)
 
 
-def test_obter_url_documento_processo_diferente():
-    service = criar_service()
-    doc = MagicMock(processo_id=2)
-    service.repository.buscar_documento_por_id.return_value = doc
-
-    with pytest.raises(ValueError, match="Documento não encontrado"):
-        service.obter_url_documento(1, 10)
-
-
 @patch("app.processo.service.obter_url_publica")
 def test_obter_url_documento_falha_geracao(mock_obter_url):
     service = criar_service()
-    doc = MagicMock(processo_id=1, chave_minio="processos/1/a.pdf")
-    service.repository.buscar_documento_por_id.return_value = doc
+    doc = MagicMock(bucket_link="processos/1/a.pdf")
+    service.repository.buscar_documento.return_value = doc
     mock_obter_url.return_value = None
 
     with pytest.raises(ValueError, match="Falha ao gerar URL de acesso ao documento"):
@@ -577,8 +593,8 @@ def test_obter_url_documento_falha_geracao(mock_obter_url):
 @patch("app.processo.service.obter_url_publica")
 def test_obter_url_documento_sucesso(mock_obter_url):
     service = criar_service()
-    doc = MagicMock(processo_id=1, chave_minio="processos/1/a.pdf")
-    service.repository.buscar_documento_por_id.return_value = doc
+    doc = MagicMock(bucket_link="processos/1/a.pdf")
+    service.repository.buscar_documento.return_value = doc
     mock_obter_url.return_value = "http://minio/download-presigned"
 
     url = service.obter_url_documento(1, 10, expiracao_segundos=600)
@@ -589,30 +605,21 @@ def test_obter_url_documento_sucesso(mock_obter_url):
 
 def test_remover_documento_inexistente():
     service = criar_service()
-    service.repository.buscar_documento_por_id.return_value = None
+    service.repository.buscar_documento.return_value = None
 
     with pytest.raises(ValueError, match="Documento não encontrado"):
         service.remover_documento(1, 999)
 
 
-def test_remover_documento_processo_diferente():
-    service = criar_service()
-    doc = MagicMock(processo_id=2)
-    service.repository.buscar_documento_por_id.return_value = doc
-
-    with pytest.raises(ValueError, match="Documento não encontrado"):
-        service.remover_documento(1, 10)
-
-
 @patch("app.processo.service.remover_arquivo")
 def test_remover_documento_sucesso(mock_remover):
     service = criar_service()
-    doc = MagicMock(processo_id=1, chave_minio="processos/1/a.pdf")
-    service.repository.buscar_documento_por_id.return_value = doc
+    doc = MagicMock(bucket_link="processos/1/a.pdf")
+    service.repository.buscar_documento.return_value = doc
 
     service.remover_documento(1, 10)
 
-    service.repository.deletar_documento.assert_called_once_with(doc)
+    service.repository.deletar_documento.assert_called_once_with(1, doc)
     mock_remover.assert_called_once_with("processos/1/a.pdf")
 
 

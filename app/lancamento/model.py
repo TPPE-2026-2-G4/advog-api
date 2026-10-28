@@ -26,7 +26,7 @@ class Lancamento(Base):
         Integer, primary_key=True, index=True, autoincrement=True
     )
     titulo: Mapped[str] = mapped_column(String(100), nullable=False)
-    descricao: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    descricao: Mapped[str] = mapped_column(String(255), nullable=False)
     tipo: Mapped[TipoLancamento] = mapped_column(Enum(TipoLancamento), nullable=False)
     status: Mapped[StatusLancamento] = mapped_column(
         Enum(StatusLancamento), default=StatusLancamento.PENDENTE, nullable=False
@@ -37,11 +37,11 @@ class Lancamento(Base):
     cliente_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("clientes.cliente_id"), nullable=True
     )
-    categoria_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("categoria_lancamentos.categoria_id"), nullable=True
+    categoria_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("categoria_lancamentos.categoria_id"), nullable=False
     )
 
-    categoria_lancamento: Mapped[CategoriaLancamento | None] = relationship(
+    categoria_lancamento: Mapped[CategoriaLancamento] = relationship(
         "CategoriaLancamento", back_populates="lancamentos"
     )
 

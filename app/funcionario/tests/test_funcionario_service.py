@@ -2,6 +2,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from app.arquivo.model import Arquivo
+from app.arquivo.repository import ArquivoRepository
+from app.atuacao.model import Atuacao
+from app.atuacao.repository import AtuacaoRepository
 from app.cargo.model import Cargo
 from app.cargo.repository import CargoRepository
 from app.funcionario.model import Funcionario, StatusFuncionario
@@ -21,7 +25,9 @@ def test_criar_funcionario_com_email_duplicado_gera_erro():
 
     with pytest.raises(ValueError, match="Email já cadastrado"):
         service.criar_funcionario(
-            FuncionarioCreate(nome="Ana Beatriz Souza", email="ana.souza@test.com", cargo_id=1)
+            FuncionarioCreate(
+                nome="Ana Beatriz Souza", email="ana.souza@test.com", cargo_id=1, atuacao_id=1
+            )
         )
 
 
@@ -41,6 +47,10 @@ def test_criar_funcionario_com_email_unico(nome, email):
 
     service.cargo_repository = MagicMock(spec=CargoRepository)
     service.cargo_repository.buscar_por_id.return_value = Cargo(cargo_id=1, nome_cargo="Advogado")
+    service.atuacao_repository = MagicMock(spec=AtuacaoRepository)
+    service.atuacao_repository.buscar_por_id.return_value = Atuacao(atuacao_id=1)
+    service.arquivo_repository = MagicMock(spec=ArquivoRepository)
+    service.arquivo_repository.obter_padrao.return_value = Arquivo(arquivo_id=7)
 
     service.repository.buscar_por_email.return_value = None
     service.repository.criar.return_value = Funcionario(
@@ -54,7 +64,9 @@ def test_criar_funcionario_com_email_unico(nome, email):
         exibicao_institucional=False,
     )
 
-    funcionario = service.criar_funcionario(FuncionarioCreate(nome=nome, email=email, cargo_id=1))
+    funcionario = service.criar_funcionario(
+        FuncionarioCreate(nome=nome, email=email, cargo_id=1, atuacao_id=1)
+    )
 
     assert isinstance(funcionario, Funcionario)
     assert funcionario is not None
@@ -62,6 +74,24 @@ def test_criar_funcionario_com_email_unico(nome, email):
     assert funcionario.email == email.lower()
     assert funcionario.cargo_id == 1
     assert funcionario.status == StatusFuncionario.PENDENTE
+    novo = service.repository.criar.call_args.args[0]
+    assert (novo.atuacao_id, novo.foto_perfil) == (1, 7)
+
+
+def test_criar_funcionario_com_atuacao_inexistente_gera_erro():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    service.repository.buscar_por_email.return_value = None
+    service.cargo_repository = MagicMock(spec=CargoRepository)
+    service.cargo_repository.buscar_por_id.return_value = Cargo(cargo_id=1, nome_cargo="Advogado")
+    service.atuacao_repository = MagicMock(spec=AtuacaoRepository)
+    service.atuacao_repository.buscar_por_id.return_value = None
+
+    with pytest.raises(ValueError, match="Área de atuação não encontrada"):
+        service.criar_funcionario(
+            FuncionarioCreate(nome="Ana", email="ana@test.com", cargo_id=1, atuacao_id=99)
+        )
+    service.repository.criar.assert_not_called()
 
 
 def test_buscar_todos_retorna_lista_de_funcionarios():

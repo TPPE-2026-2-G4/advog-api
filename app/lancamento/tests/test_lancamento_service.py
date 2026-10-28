@@ -36,6 +36,8 @@ def calendario_service():
 class TestLancamentoServiceBuscar:
     def test_buscar_por_id_sucesso(self, lancamento_service):
         lancamento_mock = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             lancamento_id=1,
             titulo="Honorários Iniciais",
             valor=1000.0,
@@ -93,6 +95,8 @@ class TestLancamentoServiceListarEFiltrar:
     ):
         filtros = LancamentoFilter(inicio=None, fim=None)
         lancamento_mock = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             lancamento_id=1,
             titulo="Consulta",
             tipo=TipoLancamento.ENTRADA,
@@ -155,7 +159,7 @@ class TestLancamentoServiceCriarEAtualizar:
         "categoria_id,cliente_id,cat_existe,cli_existe,mensagem_esperada",
         [
             (99, None, False, True, "Categoria não encontrada"),
-            (None, 88, True, False, "Cliente não encontrado"),
+            (1, 88, True, False, "Cliente não encontrado"),
             (99, 88, False, False, "Categoria não encontrada"),
         ],
     )
@@ -173,6 +177,7 @@ class TestLancamentoServiceCriarEAtualizar:
 
         dados = LancamentoCreate(
             titulo="Custas Processuais",
+            descricao="Custas",
             tipo=TipoLancamento.SAIDA,
             valor=150.0,
             data_vencimento=datetime.now() + timedelta(days=2),
@@ -201,19 +206,25 @@ class TestLancamentoServiceCriarEAtualizar:
         vencimento = datetime.now() + timedelta(days=dias_vencimento)
         dados = LancamentoCreate(
             titulo="Pagamento Perícia",
+            descricao="Perícia",
             tipo=TipoLancamento.SAIDA,
             valor=500.0,
             data_vencimento=vencimento,
+            categoria_id=1,
         )
 
         novo_lancamento = lancamento_service.criar_lancamento(dados)
         assert novo_lancamento.status == status_esperado
 
-    @pytest.mark.parametrize("campo", ["titulo", "tipo", "data_vencimento", "valor"])
+    @pytest.mark.parametrize(
+        "campo", ["titulo", "descricao", "tipo", "data_vencimento", "valor", "categoria_id"]
+    )
     def test_atualizar_lancamento_campo_obrigatorio_nulo_lanca_erro(
         self, lancamento_service, campo
     ):
         lancamento_existente = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             lancamento_id=1,
             titulo="Título Original",
             tipo=TipoLancamento.ENTRADA,
@@ -245,6 +256,8 @@ class TestLancamentoServiceCriarEAtualizar:
         status_esperado,
     ):
         lancamento_existente = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             lancamento_id=1,
             titulo="Pagamento Fornecedor",
             tipo=TipoLancamento.SAIDA,
@@ -285,6 +298,8 @@ class TestLancamentoServiceAlternarStatusEDeletar:
         tem_data_pagamento,
     ):
         lancamento_mock = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             lancamento_id=1,
             titulo="Diligência",
             status=status_atual,
@@ -300,7 +315,9 @@ class TestLancamentoServiceAlternarStatusEDeletar:
         assert (resultado.data_pagamento is not None) == tem_data_pagamento
 
     def test_deletar_lancamento_sucesso(self, lancamento_service):
-        lancamento_mock = Lancamento(lancamento_id=1, titulo="Insumos de Escritório")
+        lancamento_mock = Lancamento(
+            descricao="Descrição", categoria_id=1, lancamento_id=1, titulo="Insumos de Escritório"
+        )
         lancamento_service.repository.buscar_por_id.return_value = lancamento_mock
 
         lancamento_service.deletar_lancamento(1)
@@ -347,6 +364,8 @@ class TestLancamentoCalendarioService:
         self, calendario_service, tipo, titulo, valor, prefixo_esperado
     ):
         lancamento_mock = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             lancamento_id=1,
             titulo=titulo,
             tipo=tipo,
@@ -368,6 +387,7 @@ class TestLancamentoCalendarioService:
 
     def test_exportar_icalendar_gera_conteudo_ics_valido(self, calendario_service):
         lancamento_mock = Lancamento(
+            categoria_id=1,
             lancamento_id=1,
             titulo="Aluguel do Escritório",
             tipo=TipoLancamento.SAIDA,
@@ -388,6 +408,7 @@ class TestLancamentoCalendarioService:
 
     def test_exportar_icalendar_lancamento_sem_descricao(self, calendario_service):
         lancamento_mock = Lancamento(
+            categoria_id=1,
             lancamento_id=1,
             titulo="Consulta Simples",
             tipo=TipoLancamento.ENTRADA,

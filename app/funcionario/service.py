@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
 
+from app.arquivo.repository import ArquivoRepository
+from app.atuacao.repository import AtuacaoRepository
 from app.cargo.repository import CargoRepository
 from app.core.seguranca import hash_senha
 from app.funcionario.model import Funcionario, StatusFuncionario
@@ -11,6 +13,8 @@ class FuncionarioService:
     def __init__(self, db_session: Session):
         self.repository = FuncionarioRepository(db_session)
         self.cargo_repository = CargoRepository(db_session)
+        self.atuacao_repository = AtuacaoRepository(db_session)
+        self.arquivo_repository = ArquivoRepository(db_session)
 
     def buscar_todos(self) -> list[Funcionario]:
         return self.repository.buscar_todos()
@@ -26,7 +30,17 @@ class FuncionarioService:
         if not cargo:
             raise ValueError("Cargo não encontrado")
 
-        req = Funcionario(nome=dados.nome, email=dados.email.lower(), cargo_id=dados.cargo_id)
+        if not self.atuacao_repository.buscar_por_id(dados.atuacao_id):
+            raise ValueError("Área de atuação não encontrada")
+
+        foto_padrao = self.arquivo_repository.obter_padrao()
+        req = Funcionario(
+            nome=dados.nome,
+            email=dados.email.lower(),
+            cargo_id=dados.cargo_id,
+            atuacao_id=dados.atuacao_id,
+            foto_perfil=foto_padrao.arquivo_id,
+        )
         return self.repository.criar(req)
 
     def primeiro_acesso(self, funcionario_id: int, dados: FuncionarioPrimeiroAcesso) -> Funcionario:

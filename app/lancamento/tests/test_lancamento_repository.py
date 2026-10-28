@@ -20,7 +20,11 @@ def categoria_bd(db_session: Session) -> CategoriaLancamento:
 
 @pytest.fixture
 def cliente_bd(db_session: Session) -> Cliente:
-    cliente = Cliente(nome="Cliente Teste Repositório", email="cliente_repo@teste.com")
+    cliente = Cliente(
+        nome="Cliente Teste Repositório",
+        email="cliente_repo@teste.com",
+        telefone="61999999999",
+    )
     db_session.add(cliente)
     db_session.commit()
     db_session.refresh(cliente)
@@ -31,6 +35,8 @@ class TestLancamentoRepositoryOperacoesBasicas:
     def test_criar_e_buscar_por_id(self, db_session: Session):
         repo = LancamentoRepository(db_session)
         novo = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             titulo="Consulta Inicial",
             tipo=TipoLancamento.ENTRADA,
             valor=500.0,
@@ -48,6 +54,8 @@ class TestLancamentoRepositoryOperacoesBasicas:
     def test_atualizar_e_deletar(self, db_session: Session):
         repo = LancamentoRepository(db_session)
         lancamento = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             titulo="Taxa Cartório",
             tipo=TipoLancamento.SAIDA,
             valor=100.0,
@@ -108,6 +116,8 @@ class TestLancamentoRepositoryOperacoesBasicas:
         vencimento = datetime.combine(hoje + timedelta(days=dias_vencimento), datetime.min.time())
 
         lancamento = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             titulo="Lançamento Teste Atraso",
             tipo=TipoLancamento.SAIDA,
             valor=150.0,
@@ -126,6 +136,8 @@ class TestLancamentoRepositoryOperacoesBasicas:
         repo = LancamentoRepository(db_session)
         hoje = date.today()
         lancamento = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             titulo="Antigo",
             tipo=TipoLancamento.SAIDA,
             valor=10.0,
@@ -163,6 +175,7 @@ class TestLancamentoRepositoryFiltrosEConsultas:
         hoje = date.today()
 
         item_alvo = Lancamento(
+            descricao="Descrição",
             titulo="Honorário Específico",
             tipo=TipoLancamento.ENTRADA,
             valor=1500.0,
@@ -195,6 +208,7 @@ class TestLancamentoRepositoryFiltrosEConsultas:
         hoje = date.today()
 
         item_alvo = Lancamento(
+            descricao="Descrição",
             titulo="Honorário Específico",
             tipo=TipoLancamento.ENTRADA,
             valor=1500.0,
@@ -204,6 +218,8 @@ class TestLancamentoRepositoryFiltrosEConsultas:
             cliente_id=cliente_bd.cliente_id,
         )
         item_outros = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             titulo="Despesa Geral",
             tipo=TipoLancamento.SAIDA,
             valor=300.0,
@@ -234,6 +250,8 @@ class TestLancamentoRepositoryFiltrosEConsultas:
     def test_totais_por_status_e_tipo(self, db_session: Session):
         repo = LancamentoRepository(db_session)
         l1 = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             titulo="Entrada 1",
             tipo=TipoLancamento.ENTRADA,
             valor=500.0,
@@ -241,6 +259,8 @@ class TestLancamentoRepositoryFiltrosEConsultas:
             status=StatusLancamento.PENDENTE,
         )
         l2 = Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             titulo="Saída 1",
             tipo=TipoLancamento.SAIDA,
             valor=200.0,

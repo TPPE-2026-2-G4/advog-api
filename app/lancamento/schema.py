@@ -9,12 +9,12 @@ from app.lancamento.model import StatusLancamento, TipoLancamento
 
 class LancamentoBase(BaseModel):
     titulo: str = Field(min_length=1, max_length=100)
-    descricao: str | None = Field(default=None, max_length=255)
+    descricao: str = Field(min_length=1, max_length=255)
     tipo: TipoLancamento
     data_vencimento: datetime
     valor: float = Field(gt=0)
     cliente_id: int | None = None
-    categoria_id: int | None = None
+    categoria_id: int
 
 
 class LancamentoCreate(LancamentoBase):
@@ -96,13 +96,13 @@ class LancamentoResumo(BaseModel):
 class LancamentoCalendarioResponse(BaseModel):
     lancamento_id: int
     titulo: str
-    descricao: str | None = None
+    descricao: str
     tipo: TipoLancamento
     status: StatusLancamento
     valor: float
     data_vencimento: datetime
     data_pagamento: datetime | None = None
-    categoria_id: int | None = None
+    categoria_id: int
     cliente_id: int | None = None
     google_calendar_url: str
     outlook_calendar_url: str

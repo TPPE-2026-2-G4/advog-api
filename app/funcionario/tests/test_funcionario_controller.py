@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
+from app.arquivo.model import Arquivo
 from app.cargo.model import Cargo
 from app.funcionario.model import Funcionario, StatusFuncionario
 
@@ -27,12 +28,17 @@ class TestCriarFuncionarioController:
         ],
     )
     def test_criar_funcionario_retorna_funcionario_criado(
-        self, client, cargo_padrao, nome, email, token_admin
+        self, client, cargo_padrao, atuacao_padrao, nome, email, token_admin
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
             "/funcionarios",
-            json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id},
+            json={
+                "nome": nome,
+                "email": email,
+                "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
+            },
             headers=headers,
         )
         assert response.status_code == 201
@@ -40,7 +46,9 @@ class TestCriarFuncionarioController:
         assert response.json()["email"] == email.lower()
         assert response.json()["cargo_id"] == cargo_padrao.cargo_id
 
-    def test_criar_funcionario_com_cargo_inexistente_retorna_erro(self, client, token_admin):
+    def test_criar_funcionario_com_cargo_inexistente_retorna_erro(
+        self, client, token_admin, atuacao_padrao
+    ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
             "/funcionarios",
@@ -48,14 +56,74 @@ class TestCriarFuncionarioController:
                 "nome": "Funcionario Existente",
                 "email": "funcionario.existente@test.com",
                 "cargo_id": 9999,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
         assert response.status_code == 400
         assert response.json()["detail"] == "Cargo não encontrado"
 
+    def test_criar_funcionario_com_atuacao_inexistente_retorna_erro(
+        self, client, token_admin, cargo_padrao
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Funcionario Sem Atuacao",
+                "email": "sem.atuacao@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": 9999,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Área de atuação não encontrada"
+
+    def test_criar_funcionario_sem_atuacao_retorna_422(self, client, token_admin, cargo_padrao):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Funcionario Sem Atuacao",
+                "email": "sem.atuacao@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 422
+
+    def test_criar_funcionario_usa_foto_de_perfil_padrao(
+        self, client, db_session, token_admin, cargo_padrao, atuacao_padrao
+    ):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        primeiro = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Primeiro",
+                "email": "primeiro@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
+            },
+            headers=headers,
+        ).json()
+        segundo = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Segundo",
+                "email": "segundo@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
+            },
+            headers=headers,
+        ).json()
+
+        assert primeiro["foto_perfil"] == segundo["foto_perfil"]
+        assert primeiro["atuacao_id"] == atuacao_padrao.atuacao_id
+        assert db_session.get(Arquivo, primeiro["foto_perfil"]).bucket_link == ""
+
     def test_criar_funcionario_com_email_existente_retorna_erro(
-        self, client, cargo_padrao, token_admin
+        self, client, cargo_padrao, atuacao_padrao, token_admin
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
@@ -64,6 +132,7 @@ class TestCriarFuncionarioController:
                 "nome": "Funcionario Existente",
                 "email": "funcionario.existente@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
@@ -75,6 +144,7 @@ class TestCriarFuncionarioController:
                 "nome": "Funcionario Existente 2",
                 "email": "funcionario.existente@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
@@ -85,7 +155,7 @@ class TestCriarFuncionarioController:
 
 class TestBuscarFuncionariosController:
     def test_buscar_todos_funcionarios_com_funcionarios_cadastrados_retorna_lista(
-        self, client, cargo_padrao, token_admin
+        self, client, cargo_padrao, atuacao_padrao, token_admin
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
@@ -94,6 +164,7 @@ class TestBuscarFuncionariosController:
                 "nome": "Funcionario 1",
                 "email": "funcionario.1@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
@@ -104,6 +175,7 @@ class TestBuscarFuncionariosController:
                 "nome": "Funcionario 2",
                 "email": "funcionario.2@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
@@ -139,7 +211,7 @@ class TestPrimeiroAcessoController:
         ],
     )
     def test_primeiro_acesso_retorna_funcionario_atualizado(
-        self, client, cargo_padrao, token_primeiro_acesso, nome, email, token_admin
+        self, client, cargo_padrao, atuacao_padrao, token_primeiro_acesso, nome, email, token_admin
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
@@ -148,6 +220,7 @@ class TestPrimeiroAcessoController:
                 "nome": nome,
                 "email": email,
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
@@ -177,7 +250,7 @@ class TestPrimeiroAcessoController:
         assert response.json()["detail"] == "Funcionário não encontrado"
 
     def test_primeiro_acesso_funcionario_ja_ativado_retorna_erro(
-        self, client, cargo_padrao, token_primeiro_acesso, token_admin, db_session
+        self, client, cargo_padrao, atuacao_padrao, token_primeiro_acesso, token_admin, db_session
     ):
         admin = db_session.query(Funcionario).filter_by(email="admin.fixture@test.com").first()
         if admin:
@@ -193,6 +266,7 @@ class TestPrimeiroAcessoController:
                 "nome": "Funcionario Ativo",
                 "email": "funcionario.ativo@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
@@ -234,12 +308,17 @@ class TestMudarAcessoController:
         ],
     )
     def test_mudar_acesso_funcionario_muda_atividade_e_manda_funcionario_atualizado(
-        self, client, cargo_padrao, token_primeiro_acesso, nome, email, token_admin
+        self, client, cargo_padrao, atuacao_padrao, token_primeiro_acesso, nome, email, token_admin
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
             "/funcionarios",
-            json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id},
+            json={
+                "nome": nome,
+                "email": email,
+                "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
+            },
             headers=headers,
         )
         assert response.status_code == 201
@@ -270,7 +349,7 @@ class TestMudarAcessoController:
         assert response.json()["detail"] == "Funcionário não encontrado"
 
     def test_mudar_acesso_funcionario_com_conta_pendente_retorna_erro(
-        self, client, cargo_padrao, token_admin
+        self, client, cargo_padrao, atuacao_padrao, token_admin
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
@@ -279,6 +358,7 @@ class TestMudarAcessoController:
                 "nome": "Funcionario Pendente",
                 "email": "funcionario.pendente@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
@@ -298,7 +378,7 @@ class TestMudarAcessoController:
 
 class TestMudarCargoController:
     def test_mudar_cargo_retorna_funcionario_atualizado(
-        self, client, cargo_padrao, outro_cargo, token_admin
+        self, client, cargo_padrao, atuacao_padrao, outro_cargo, token_admin
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
@@ -307,6 +387,7 @@ class TestMudarCargoController:
                 "nome": "Funcionario Teste",
                 "email": "funcionario.cargo@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
@@ -322,7 +403,7 @@ class TestMudarCargoController:
         assert response.json()["cargo_id"] == outro_cargo.cargo_id
 
     def test_mudar_cargo_funcionario_nao_encontrado_retorna_erro(
-        self, client, cargo_padrao, token_admin
+        self, client, cargo_padrao, atuacao_padrao, token_admin
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.patch(
@@ -334,7 +415,7 @@ class TestMudarCargoController:
         assert response.json()["detail"] == "Funcionário não encontrado"
 
     def test_mudar_cargo_com_cargo_inexistente_retorna_erro(
-        self, client, cargo_padrao, token_admin
+        self, client, cargo_padrao, atuacao_padrao, token_admin
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
@@ -343,6 +424,7 @@ class TestMudarCargoController:
                 "nome": "Funcionario Teste",
                 "email": "funcionario.cargo2@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
@@ -359,7 +441,9 @@ class TestMudarCargoController:
 
 
 class TestMudarExibicaoInstitucionalController:
-    def test_mudar_exibicao_institucional_sucesso(self, client, cargo_padrao, token_admin):
+    def test_mudar_exibicao_institucional_sucesso(
+        self, client, cargo_padrao, atuacao_padrao, token_admin
+    ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         res = client.post(
             "/funcionarios",
@@ -367,6 +451,7 @@ class TestMudarExibicaoInstitucionalController:
                 "nome": "Func Exibicao",
                 "email": "exibicao@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
@@ -407,7 +492,7 @@ class TestEditarDadosController:
         assert response.status_code == 401
 
     def test_editar_dados_retorna_funcionario_atualizado(
-        self, client, cargo_padrao, token_acesso, token_admin
+        self, client, cargo_padrao, atuacao_padrao, token_acesso, token_admin
     ):
         headers_admin = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
@@ -416,6 +501,7 @@ class TestEditarDadosController:
                 "nome": "Funcionario Teste",
                 "email": "funcionario.editar@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers_admin,
         )
@@ -445,7 +531,7 @@ class TestEditarDadosController:
         assert response.status_code == 401
 
     def test_editar_dados_erro_service_retorna_400(
-        self, client, cargo_padrao, token_acesso, token_admin
+        self, client, cargo_padrao, atuacao_padrao, token_acesso, token_admin
     ):
         headers_admin = {"Authorization": f"Bearer {token_admin}"}
         res = client.post(
@@ -454,6 +540,7 @@ class TestEditarDadosController:
                 "nome": "Func Teste",
                 "email": "func.erro@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers_admin,
         )
@@ -485,12 +572,17 @@ class TestApagarFuncionarioController:
         ],
     )
     def test_apagar_funcionario_retorna_sucesso(
-        self, client, cargo_padrao, nome, email, token_admin
+        self, client, cargo_padrao, atuacao_padrao, nome, email, token_admin
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
             "/funcionarios",
-            json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id},
+            json={
+                "nome": nome,
+                "email": email,
+                "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
+            },
             headers=headers,
         )
         assert response.status_code == 201

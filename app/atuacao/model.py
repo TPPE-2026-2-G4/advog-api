@@ -13,7 +13,7 @@ class Atuacao(Base):
     nome: Mapped[str] = mapped_column(String(100), nullable=False)
     descricao: Mapped[str] = mapped_column(String(255), nullable=False)
     exibicao_institucional: Mapped[bool] = mapped_column(
-        "exibicaoInstitucional", Boolean, nullable=False, default=True
+        "exibicao_institucional", Boolean, nullable=False, default=True
     )
 
     @property

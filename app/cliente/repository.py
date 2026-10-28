@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -38,7 +40,9 @@ class ClienteRepository:
         return query.all()
 
     def create(self, cliente_data: ClienteCreate) -> Cliente:
-        novo_cliente = Cliente(**cliente_data.model_dump())
+        dados = cliente_data.model_dump()
+        dados["ultima_interacao"] = dados["ultima_interacao"] or datetime.now(UTC)
+        novo_cliente = Cliente(**dados)
         self.db.add(novo_cliente)
         self.db.commit()
         self.db.refresh(novo_cliente)

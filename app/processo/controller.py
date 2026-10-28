@@ -146,8 +146,14 @@ def atualizar_processo(
     try:
         return service.atualizar_processo(processo_id, dados)
     except ValueError as error:
-        status_code = 409 if "CNJ já cadastrado" in str(error) else 404
-        raise HTTPException(status_code=status_code, detail=str(error)) from error
+        mensagem = str(error)
+        if "CNJ já cadastrado" in mensagem:
+            status_code = 409
+        elif "não pode ser nulo" in mensagem:
+            status_code = 422
+        else:
+            status_code = 404
+        raise HTTPException(status_code=status_code, detail=mensagem) from error
 
 
 @router.delete(

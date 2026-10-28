@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.cliente.schema import ClienteCreate, ClienteFilter, ClienteResponse, ClienteUpdate
 from app.cliente.service import ClienteNaoEncontradoError, ClienteService
 from app.config.database import get_db
+from app.config.limiter import limiter
 from app.core.dependencies import obter_funcionario_atual
 from app.funcionario.model import Funcionario
 
@@ -34,10 +35,11 @@ def obter_cliente(
 
 
 @router.post("/", response_model=ClienteResponse, status_code=201)
+@limiter.limit("5/minute")
 def criar_cliente(
+    request: Request,
     cliente_data: ClienteCreate,
     db: Session = Depends(get_db),
-    current_user: Funcionario = Depends(obter_funcionario_atual),
 ):
     service = ClienteService(db)
     return service.create_cliente(cliente_data)

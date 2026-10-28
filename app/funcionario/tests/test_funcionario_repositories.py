@@ -27,6 +27,8 @@ def cargo_padrao(db_session):
 def test_criar_funcionario(db_session, cargo_padrao, nome, email):
     repository = FuncionarioRepository(db_session)
     funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome=nome,
         email=email,
         cargo_id=cargo_padrao.cargo_id,
@@ -48,11 +50,15 @@ def test_criar_funcionario(db_session, cargo_padrao, nome, email):
 def test_obter_todos_funcionarios(db_session, cargo_padrao):
     repository = FuncionarioRepository(db_session)
     funcionario1 = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Ana Beatriz Souza",
         email="ana.souza@test.com",
         cargo_id=cargo_padrao.cargo_id,
     )
     funcionario2 = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Outro Usuário",
         email="outro.usuario@test.com",
         cargo_id=cargo_padrao.cargo_id,
@@ -73,11 +79,15 @@ def test_obter_todos_funcionarios(db_session, cargo_padrao):
 def test_buscar_por_id(db_session, cargo_padrao):
     repository = FuncionarioRepository(db_session)
     funcionario1 = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Ana Beatriz Souza",
         email="ana.souza@test.com",
         cargo_id=cargo_padrao.cargo_id,
     )
     funcionario2 = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Outro Usuário",
         email="outro.usuario@test.com",
         cargo_id=cargo_padrao.cargo_id,
@@ -99,7 +109,11 @@ def test_buscar_por_id(db_session, cargo_padrao):
 def test_buscar_por_email(db_session, cargo_padrao):
     repository = FuncionarioRepository(db_session)
     funcionario = Funcionario(
-        nome="Ana Beatriz Souza", email="ana.souza@test.com", cargo_id=cargo_padrao.cargo_id
+        atuacao_id=1,
+        foto_perfil=1,
+        nome="Ana Beatriz Souza",
+        email="ana.souza@test.com",
+        cargo_id=cargo_padrao.cargo_id,
     )
 
     criacao = repository.criar(funcionario)
@@ -113,7 +127,11 @@ def test_buscar_por_email(db_session, cargo_padrao):
 def test_atualizar_funcionario(db_session, cargo_padrao):
     repository = FuncionarioRepository(db_session)
     funcionario = Funcionario(
-        nome="Ana Beatriz Souza", email="ana.souza@test.com", cargo_id=cargo_padrao.cargo_id
+        atuacao_id=1,
+        foto_perfil=1,
+        nome="Ana Beatriz Souza",
+        email="ana.souza@test.com",
+        cargo_id=cargo_padrao.cargo_id,
     )
 
     criacao = repository.criar(funcionario)
@@ -131,11 +149,15 @@ def test_atualizar_funcionario(db_session, cargo_padrao):
 def test_apagar_funcionario(db_session, cargo_padrao):
     repository = FuncionarioRepository(db_session)
     funcionario1 = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Ana Beatriz Souza",
         email="ana.souza@test.com",
         cargo_id=cargo_padrao.cargo_id,
     )
     funcionario2 = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Outro Usuário",
         email="outro.usuario@test.com",
         cargo_id=cargo_padrao.cargo_id,

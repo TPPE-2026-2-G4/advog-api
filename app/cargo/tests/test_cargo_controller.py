@@ -39,6 +39,8 @@ def cargo_com_funcionario_db(db_session: Session) -> Cargo:
     db_session.refresh(cargo)
 
     funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Carlos Silva",
         email="carlos@empresa.com",
         cargo_id=cargo.cargo_id,

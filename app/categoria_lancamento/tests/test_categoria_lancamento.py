@@ -45,6 +45,7 @@ def test_nao_exclui_categoria_com_lancamentos(client):
         "/lancamentos/",
         json={
             "titulo": "t",
+            "descricao": "d",
             "tipo": "s",
             "valor": 1,
             "categoria_id": cid,
