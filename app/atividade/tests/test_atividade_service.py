@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.atividade.model import Atividade
+from app.atividade.schema import AtividadeFilter
 from app.atividade.service import AtividadeService
 from app.cargo.model import Cargo
 from app.etapa_kanban.model import EtapaKanban
@@ -88,3 +89,73 @@ def test_produtividade_retorna_equipe_vazia():
     service = AtividadeService(MagicMock())
     service.repository.buscar_produtividade_equipe = MagicMock(return_value=[])
     assert service.visualizar_produtividade_equipe() == []
+
+
+@pytest.mark.parametrize(
+    ("atividades_retornadas", "responsaveis_retornados", "qtd_esperada"),
+    [
+        ([], [], 0),
+        (
+            [
+                Atividade(
+                    atividade_id=10,
+                    titulo="Atividade Teste",
+                    descricao="Descrição",
+                    data_inicio=datetime(2026, 10, 1),
+                    data_prazo=datetime(2026, 10, 30),
+                    etapa_id=1,
+                    processo_id=5,
+                )
+            ],
+            [(10, 7, "Advogado Teste")],
+            1,
+        ),
+    ],
+)
+def test_buscar_atividades_executa_consulta_e_mapeia_responsaveis(
+    atividades_retornadas, responsaveis_retornados, qtd_esperada
+):
+    service = AtividadeService(MagicMock())
+    service.repository = MagicMock()
+    service.repository.buscar_por_filtros.return_value = atividades_retornadas
+    service.repository.buscar_responsaveis.return_value = responsaveis_retornados
+
+    filtro = AtividadeFilter.model_validate({"titulo": "Teste"})
+    resultado = service.buscar_atividades(filtro)
+
+    assert len(resultado) == qtd_esperada
+    if qtd_esperada > 0:
+        res = resultado[0]
+        assert res.atividade_id == 10
+        assert res.titulo == "Atividade Teste"
+        assert len(res.responsaveis) == 1
+        assert res.responsaveis[0].funcionario_id == 7
+        assert res.responsaveis[0].nome == "Advogado Teste"
+    else:
+        service.repository.buscar_por_filtros.assert_called_once()
+        service.repository.buscar_responsaveis.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("apenas_minhas", "funcionario_id_filtro", "funcionario_id_esperado"),
+    [
+        (True, 99, 42),
+        (False, 99, 99),
+    ],
+)
+def test_buscar_atividades_trata_funcionario_id_conforme_apenas_minhas(
+    apenas_minhas, funcionario_id_filtro, funcionario_id_esperado
+):
+    service = AtividadeService(MagicMock())
+    service.repository = MagicMock()
+    service.repository.buscar_por_filtros.return_value = []
+
+    usuario = Funcionario(funcionario_id=42)
+    filtro = AtividadeFilter.model_validate(
+        {"apenas_minhas": apenas_minhas, "funcionario_id": funcionario_id_filtro}
+    )
+
+    service.buscar_atividades(filtro, usuario=usuario)
+
+    _, kwargs = service.repository.buscar_por_filtros.call_args
+    assert kwargs["funcionario_id"] == funcionario_id_esperado

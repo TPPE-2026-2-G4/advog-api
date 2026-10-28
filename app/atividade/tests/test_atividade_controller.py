@@ -221,3 +221,62 @@ def test_produtividade_requer_permissao(client, funcionarios, token_acesso, aute
     if autenticado:
         headers["Authorization"] = f"Bearer {token_acesso(funcionarios[0].funcionario_id)}"
     assert client.get("/atividades/produtividade", headers=headers).status_code == status
+
+
+@pytest.mark.parametrize(
+    ("autenticado", "params", "status_esperado", "titulos_esperados"),
+    [
+        (False, {}, 401, None),
+        (
+            True,
+            {},
+            200,
+            {"propria", "terceiros", "compartilhada", "sem_responsavel", "finalizada"},
+        ),
+        (
+            True,
+            {"apenas_minhas": True},
+            200,
+            {"propria", "compartilhada", "finalizada"},
+        ),
+    ],
+)
+def test_filtrar_atividades(
+    client,
+    atividades,
+    funcionarios,
+    token_acesso,
+    autenticado,
+    params,
+    status_esperado,
+    titulos_esperados,
+):
+    headers = {}
+    if autenticado:
+        usuario = funcionarios[0]
+        token = token_acesso(usuario.funcionario_id, usuario.email)
+        headers["Authorization"] = f"Bearer {token}"
+
+    response = client.get("/atividades/", headers=headers, params=params)
+
+    assert response.status_code == status_esperado
+
+    if status_esperado == 200:
+        dados = response.json()
+        assert isinstance(dados, list)
+        titulos_obtidos = {item["titulo"] for item in dados}
+        assert titulos_obtidos == titulos_esperados
+
+        if dados:
+            item = dados[0]
+            assert set(item.keys()) == {
+                "atividade_id",
+                "titulo",
+                "descricao",
+                "data_inicio",
+                "data_prazo",
+                "data_realizado",
+                "etapa_id",
+                "processo_id",
+                "responsaveis",
+            }
