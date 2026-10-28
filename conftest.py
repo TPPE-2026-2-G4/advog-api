@@ -32,6 +32,12 @@ database.SessionLocal = TestingSessionLocal
 from main import app  # noqa: E402
 
 
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if hasattr(item, "callspec"):
+            item.add_marker(pytest.mark.parametrizado)
+
+
 @pytest.fixture(autouse=True)
 def mock_enviar_email_boas_vindas(monkeypatch):
     mock = AsyncMock()

@@ -4,6 +4,7 @@ help:
 	@echo " make up                               # Sobe os containers do Docker"
 	@echo " make local                            # Roda a aplicação localmente"
 	@echo " make test                             # Roda os testes com checagem de cobertura (>95%)"
+	@echo " make test-parametrizados              # Roda somente os testes parametrizados"
 	@echo " make lint                             # Roda o Ruff (lint + format) e o Mypy"
 	@echo " make down                             # Derruba os containers do Docker"
 
@@ -48,6 +49,11 @@ test:
 	@echo "\n\n🧪 Rodando testes com cobertura... \n"
 	uv run pytest --cov-report=html --cov-report=term-missing
 	@echo "\n\n✅ Testes concluídos com sucesso! \n"
+
+test-parametrizados:
+	@echo "\n\n🧪 Rodando somente os testes parametrizados... \n"
+	uv run pytest -m parametrizado --no-cov
+	@echo "\n\n✅ Testes parametrizados concluídos com sucesso! \n"
 
 lint:
 	@echo "\n\n🔍 Rodando lint e checagem de tipos... \n"
