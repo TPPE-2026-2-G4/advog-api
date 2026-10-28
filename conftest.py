@@ -102,6 +102,9 @@ def cargo_admin(db_session: Session) -> Cargo:
         descricao="Cargo de administrador com permissões completas",
         permissao={
             "gerenciar_equipe": True,
+            "criar_atividades": True,
+            "editar_atividades": True,
+            "excluir_atividades": True,
             "visualizar_financeiro": True,
             "visualizar_processos": True,
             "criar_processos": True,
