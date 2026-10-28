@@ -85,3 +85,61 @@ def atividades(db_session, etapas, funcionarios, processo):
         atividades[titulo] = atividade
     db_session.commit()
     return atividades
+
+
+@pytest.fixture
+def atividades_para_filtro(db_session, etapas, funcionarios, processo):
+    atividades_dados = [
+        {
+            "titulo": "Elaborar Petição Inicial",
+            "descricao": "Processo cível urgente",
+            "etapa": "Backlog",
+            "com_processo": True,
+            "data_inicio": datetime(2026, 10, 1),
+            "data_prazo": datetime(2026, 10, 15, 12, 0),
+            "indices_funcionarios": [0],
+        },
+        {
+            "titulo": "Revisão de Contrato",
+            "descricao": "Análise de cláusulas trabalhistas",
+            "etapa": "Em Execução",
+            "com_processo": False,
+            "data_inicio": datetime(2026, 10, 10),
+            "data_prazo": datetime(2026, 10, 31, 18, 0),
+            "indices_funcionarios": [1],
+        },
+        {
+            "titulo": "Audiência de Conciliação",
+            "descricao": "Acompanhamento do cliente",
+            "etapa": "Finalizado",
+            "com_processo": True,
+            "data_inicio": datetime(2026, 9, 1),
+            "data_prazo": datetime(2026, 9, 20, 10, 0),
+            "indices_funcionarios": [0, 1],
+        },
+    ]
+
+    lista_atividades = []
+    for dados in atividades_dados:
+        atividade = Atividade(
+            titulo=dados["titulo"],
+            descricao=dados["descricao"],
+            data_inicio=dados["data_inicio"],
+            data_prazo=dados["data_prazo"],
+            etapa_id=etapas[dados["etapa"]].etapa_id,
+            processo_id=processo.processo_id if dados["com_processo"] else None,
+        )
+        db_session.add(atividade)
+        db_session.flush()
+
+        db_session.add_all(
+            AtividadeFuncionario(
+                atividade_id=atividade.atividade_id,
+                funcionario_id=funcionarios[idx].funcionario_id,
+            )
+            for idx in dados["indices_funcionarios"]
+        )
+        lista_atividades.append(atividade)
+
+    db_session.commit()
+    return lista_atividades

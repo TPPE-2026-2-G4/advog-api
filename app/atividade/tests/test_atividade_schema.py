@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
 from pydantic import ValidationError
 
 from app.atividade.model import Atividade
 from app.atividade.schema import (
+    AtividadeFilter,
     AtividadeKanbanResponse,
     EtapaKanbanResponse,
     KanbanResponse,
@@ -81,3 +82,115 @@ def test_produtividade_exige_campos_do_contrato(campo):
     del dados[campo]
     with pytest.raises(ValidationError):
         ProdutividadeResponse.model_validate(dados)
+
+
+@pytest.mark.parametrize(
+    ("inputs", "esperados"),
+    [
+        (
+            {},
+            {
+                "apenas_minhas": False,
+                "atividade_id": None,
+                "titulo": None,
+                "descricao": None,
+                "etapa_id": None,
+                "processo_id": None,
+                "funcionario_id": None,
+                "prazo_inicio": None,
+                "prazo_fim": None,
+                "data_inicio_de": None,
+                "data_inicio_ate": None,
+                "realizada": None,
+                "atrasada": None,
+                "busca_textual": None,
+            },
+        ),
+        (
+            {
+                "atividade_id": 10,
+                "titulo": "Elaborar recurso",
+                "descricao": "Recurso de apelação",
+                "etapa_id": 2,
+                "processo_id": 5,
+                "funcionario_id": 7,
+                "prazo_inicio": date(2026, 10, 1),
+                "prazo_fim": date(2026, 10, 31),
+                "data_inicio_de": date(2026, 10, 1),
+                "data_inicio_ate": date(2026, 10, 15),
+                "realizada": False,
+                "atrasada": True,
+                "apenas_minhas": True,
+                "busca_textual": "recurso apelação",
+            },
+            {
+                "atividade_id": 10,
+                "titulo": "Elaborar recurso",
+                "descricao": "Recurso de apelação",
+                "etapa_id": 2,
+                "processo_id": 5,
+                "funcionario_id": 7,
+                "prazo_inicio": date(2026, 10, 1),
+                "prazo_fim": date(2026, 10, 31),
+                "data_inicio_de": date(2026, 10, 1),
+                "data_inicio_ate": date(2026, 10, 15),
+                "realizada": False,
+                "atrasada": True,
+                "apenas_minhas": True,
+                "busca_textual": "recurso apelação",
+            },
+        ),
+    ],
+)
+def test_atividade_filter_instanciacao_e_valores(inputs, esperados):
+    filtro = AtividadeFilter(**inputs)
+    for campo, valor_esperado in esperados.items():
+        assert getattr(filtro, campo) == valor_esperado
+
+
+@pytest.mark.parametrize(
+    ("dados_datas", "mensagem_erro"),
+    [
+        (
+            {"prazo_inicio": date(2026, 10, 31), "prazo_fim": date(2026, 10, 1)},
+            "prazo_inicio não pode ser posterior a prazo_fim",
+        ),
+        (
+            {"data_inicio_de": date(2026, 10, 20), "data_inicio_ate": date(2026, 10, 10)},
+            "data_inicio_de não pode ser posterior a data_inicio_ate",
+        ),
+    ],
+)
+def test_atividade_filter_valida_intervalos_de_datas_invalidos(dados_datas, mensagem_erro):
+    with pytest.raises(ValidationError) as exc_info:
+        AtividadeFilter(**dados_datas)
+
+    assert mensagem_erro in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    "dados_datas",
+    [
+        {"prazo_inicio": date(2026, 10, 1), "prazo_fim": date(2026, 10, 31)},
+        {"prazo_inicio": date(2026, 10, 1), "prazo_fim": date(2026, 10, 1)},
+        {"data_inicio_de": date(2026, 10, 10), "data_inicio_ate": date(2026, 10, 20)},
+        {"data_inicio_de": date(2026, 10, 10), "data_inicio_ate": date(2026, 10, 10)},
+    ],
+)
+def test_atividade_filter_valida_intervalos_de_datas_validos(dados_datas):
+    filtro = AtividadeFilter(**dados_datas)
+    for campo, valor in dados_datas.items():
+        assert getattr(filtro, campo) == valor
+
+
+@pytest.mark.parametrize(
+    ("campo", "tamanho"),
+    [
+        ("titulo", 101),
+        ("descricao", 256),
+    ],
+)
+def test_atividade_filter_limite_maximo_dos_campos(campo, tamanho):
+    dados = {campo: "a" * tamanho}
+    with pytest.raises(ValidationError):
+        AtividadeFilter(**dados)

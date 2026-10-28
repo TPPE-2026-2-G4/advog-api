@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.atividade.model import Atividade
+from app.atividade.schema import AtividadeFilter
 from app.atividade.service import AtividadeService
 from app.cargo.model import Cargo
 from app.etapa_kanban.model import EtapaKanban
@@ -88,3 +89,49 @@ def test_produtividade_retorna_equipe_vazia():
     service = AtividadeService(MagicMock())
     service.repository.buscar_produtividade_equipe = MagicMock(return_value=[])
     assert service.visualizar_produtividade_equipe() == []
+
+
+@pytest.mark.parametrize(
+    ("termo_busca", "qtd_esperada", "titulo_esperado"),
+    [
+        ("Elaborar Petição", 1, "Elaborar Petição Inicial"),
+        ("Revisão", 1, "Revisão de Contrato"),
+        ("InexistenteNoBanco", 0, None),
+    ],
+)
+def test_buscar_atividades_com_filtros(
+    db_session, atividades_para_filtro, termo_busca, qtd_esperada, titulo_esperado
+):
+    service = AtividadeService(db_session)
+
+    filtro = AtividadeFilter.model_validate({"titulo": termo_busca})
+    resultado = service.buscar_atividades(filtro)
+
+    assert len(resultado) == qtd_esperada
+    if qtd_esperada > 0:
+        assert resultado[0].titulo == titulo_esperado
+
+
+@pytest.mark.parametrize(
+    ("apenas_minhas", "funcionario_id_filtro", "funcionario_id_esperado"),
+    [
+        (True, 99, 42),
+        (False, 99, 99),
+    ],
+)
+def test_buscar_atividades_trata_funcionario_id_conforme_apenas_minhas(
+    apenas_minhas, funcionario_id_filtro, funcionario_id_esperado
+):
+    service = AtividadeService(MagicMock())
+    service.repository = MagicMock()
+    service.repository.buscar_por_filtros.return_value = []
+
+    usuario = Funcionario(funcionario_id=42)
+    filtro = AtividadeFilter.model_validate(
+        {"apenas_minhas": apenas_minhas, "funcionario_id": funcionario_id_filtro}
+    )
+
+    service.buscar_atividades(filtro, usuario=usuario)
+
+    _, kwargs = service.repository.buscar_por_filtros.call_args
+    assert kwargs["funcionario_id"] == funcionario_id_esperado

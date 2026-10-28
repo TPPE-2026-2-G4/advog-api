@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 from sqlalchemy import event, insert
 
 from app.atividade.model import Atividade
 from app.atividade.repository import AtividadeRepository
+from app.atividade.schema import AtividadeFilter
 from app.atividade.service import AtividadeService
 from app.atividade_funcionario.model import AtividadeFuncionario
 from app.cargo.model import Cargo
@@ -60,6 +61,95 @@ def test_buscar_responsaveis_somente_dos_cartoes_solicitados(
             for usuario in funcionarios
         ]
     assert resultado == esperado
+
+
+@pytest.mark.parametrize(
+    ("filtros_params", "titulos_esperados"),
+    [
+        ({}, ["Elaborar Petição Inicial", "Revisão de Contrato", "Audiência de Conciliação"]),
+        ({"busca_textual": "Petição"}, ["Elaborar Petição Inicial"]),
+        ({"busca_textual": "Análise"}, ["Revisão de Contrato"]),
+        ({"busca_textual": "Termo Inexistente"}, []),
+        ({"etapa_nome": "Backlog"}, ["Elaborar Petição Inicial"]),
+        ({"indice_funcionario": 1}, ["Revisão de Contrato", "Audiência de Conciliação"]),
+        ({"com_processo": True}, ["Elaborar Petição Inicial", "Audiência de Conciliação"]),
+        (
+            {"prazo_inicio": date(2026, 10, 1), "prazo_fim": date(2026, 10, 31)},
+            ["Elaborar Petição Inicial", "Revisão de Contrato"],
+        ),
+        (
+            {"data_inicio_de": date(2026, 9, 1), "data_inicio_ate": date(2026, 9, 30)},
+            ["Audiência de Conciliação"],
+        ),
+        ({"filtrar_por_id_de": "Elaborar Petição Inicial"}, ["Elaborar Petição Inicial"]),
+        ({"titulo": "Petição"}, ["Elaborar Petição Inicial"]),
+        ({"descricao": "Análise"}, ["Revisão de Contrato"]),
+        ({"realizada": True}, []),
+        (
+            {"realizada": False},
+            ["Elaborar Petição Inicial", "Revisão de Contrato", "Audiência de Conciliação"],
+        ),
+        ({"atrasada": True}, None),
+        ({"atrasada": False}, None),
+    ],
+)
+def test_buscar_por_filtros(
+    db_session,
+    atividades_para_filtro,
+    etapas,
+    funcionarios,
+    processo,
+    filtros_params,
+    titulos_esperados,
+):
+    filtros_kwargs = {}
+
+    if "filtrar_por_id_de" in filtros_params:
+        atividade = (
+            db_session.query(Atividade)
+            .filter(Atividade.titulo == filtros_params["filtrar_por_id_de"])
+            .first()
+        )
+        if atividade:
+            filtros_kwargs["atividade_id"] = atividade.atividade_id
+    if "titulo" in filtros_params:
+        filtros_kwargs["titulo"] = filtros_params["titulo"]
+    if "descricao" in filtros_params:
+        filtros_kwargs["descricao"] = filtros_params["descricao"]
+    if "busca_textual" in filtros_params:
+        filtros_kwargs["busca_textual"] = filtros_params["busca_textual"]
+    if "etapa_nome" in filtros_params:
+        filtros_kwargs["etapa_id"] = etapas[filtros_params["etapa_nome"]].etapa_id
+    if "indice_funcionario" in filtros_params:
+        filtros_kwargs["funcionario_id"] = funcionarios[
+            filtros_params["indice_funcionario"]
+        ].funcionario_id
+    if "com_processo" in filtros_params:
+        filtros_kwargs["processo_id"] = (
+            processo.processo_id if filtros_params["com_processo"] else None
+        )
+    if "prazo_inicio" in filtros_params:
+        filtros_kwargs["prazo_inicio"] = filtros_params["prazo_inicio"]
+    if "prazo_fim" in filtros_params:
+        filtros_kwargs["prazo_fim"] = filtros_params["prazo_fim"]
+    if "data_inicio_de" in filtros_params:
+        filtros_kwargs["data_inicio_de"] = filtros_params["data_inicio_de"]
+    if "data_inicio_ate" in filtros_params:
+        filtros_kwargs["data_inicio_ate"] = filtros_params["data_inicio_ate"]
+    if "realizada" in filtros_params:
+        filtros_kwargs["realizada"] = filtros_params["realizada"]
+    if "atrasada" in filtros_params:
+        filtros_kwargs["atrasada"] = filtros_params["atrasada"]
+
+    _ = AtividadeFilter.model_validate(filtros_kwargs)
+
+    resultado = AtividadeRepository(db_session).buscar_por_filtros(**filtros_kwargs)
+
+    titulos_obtidos = [atividade.titulo for atividade in resultado]
+    if titulos_esperados is not None:
+        assert sorted(titulos_obtidos) == sorted(titulos_esperados)
+    else:
+        assert isinstance(titulos_obtidos, list)
 
 
 @pytest.mark.parametrize("quantidade", [0, 1, 5])
