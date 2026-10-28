@@ -614,4 +614,3 @@ def test_buscar_por_filtros_com_busca_textual(db_session, processo):
     encontrados = repository.buscar_por_filtros(busca="Cliente Teste")
     assert len(encontrados) == 1
     assert encontrados[0].processo_id == processo.processo_id
-

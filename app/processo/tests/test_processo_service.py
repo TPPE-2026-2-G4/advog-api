@@ -735,4 +735,3 @@ def test_obter_resumo_processos_parametrizado(
 
     service.repository.contar_por_status.assert_called_once_with(funcionario_id=filtro_esperado)
     assert service.repository.contar_por_filtros.call_count == 2
-

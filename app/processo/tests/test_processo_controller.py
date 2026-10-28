@@ -1067,4 +1067,3 @@ def test_obter_resumo_processos_sem_autenticacao_e_sem_permissao(
 
     resp_403 = client.get("/processos/resumo", headers=auth_header(token))
     assert resp_403.status_code == 403
-
