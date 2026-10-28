@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.core.dependencies import exigir_permissao
+from app.core.dependencies import exigir_permissao, obter_funcionario_atual
 from app.core.relatorio import FormatoRelatorio, resposta_arquivo
 from app.funcionario.model import Funcionario
 from app.processo.schema import (
+    DocumentoProcessoResponse,
+    DocumentoUrlResponse,
     ProcessoCreate,
     ProcessoFilter,
     ProcessoPaginadoResponse,
@@ -154,5 +156,86 @@ def atualizar_processo(
 def deletar_processo(processo_id: int, service: ProcessoService = Depends(get_processo_service)):
     try:
         service.deletar_processo(processo_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.post(
+    "/{processo_id}/documentos",
+    response_model=DocumentoProcessoResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exigir_permissao("editar_processos"))],
+)
+def upload_documento(
+    processo_id: int,
+    file: UploadFile = File(...),
+    funcionario_atual: Funcionario = Depends(obter_funcionario_atual),
+    service: ProcessoService = Depends(get_processo_service),
+):
+    try:
+        return service.adicionar_documento(
+            processo_id=processo_id,
+            file=file,
+            funcionario_id=funcionario_atual.funcionario_id,
+            origem="manual",
+        )
+    except ValueError as error:
+        status_code = 404 if "Processo não encontrado" in str(error) else 400
+        raise HTTPException(status_code=status_code, detail=str(error)) from error
+
+
+@router.get(
+    "/{processo_id}/documentos",
+    response_model=list[DocumentoProcessoResponse],
+    dependencies=[Depends(exigir_permissao("visualizar_processos"))],
+)
+def listar_documentos(
+    processo_id: int,
+    service: ProcessoService = Depends(get_processo_service),
+):
+    try:
+        return service.listar_documentos(processo_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.get(
+    "/{processo_id}/documentos/{documento_id}/url",
+    response_model=DocumentoUrlResponse,
+    dependencies=[Depends(exigir_permissao("visualizar_processos"))],
+)
+def obter_url_documento(
+    processo_id: int,
+    documento_id: int,
+    expiracao_segundos: int = 1800,
+    service: ProcessoService = Depends(get_processo_service),
+):
+    try:
+        url = service.obter_url_documento(
+            processo_id=processo_id,
+            documento_id=documento_id,
+            expiracao_segundos=expiracao_segundos,
+        )
+        return DocumentoUrlResponse(
+            documento_id=documento_id,
+            url=url,
+            expira_em_segundos=expiracao_segundos,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.delete(
+    "/{processo_id}/documentos/{documento_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exigir_permissao("editar_processos"))],
+)
+def deletar_documento(
+    processo_id: int,
+    documento_id: int,
+    service: ProcessoService = Depends(get_processo_service),
+):
+    try:
+        service.remover_documento(processo_id=processo_id, documento_id=documento_id)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error

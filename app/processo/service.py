@@ -2,6 +2,8 @@ import logging
 from datetime import UTC, datetime, timedelta
 from math import ceil
 
+import filetype
+from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from app.config.database import SessionLocal
@@ -15,10 +17,12 @@ from app.core.relatorio import (
     TipoColuna,
     gerar_arquivo,
 )
+from app.core.storage import obter_url_publica, remover_arquivo, salvar_arquivo
 from app.funcionario.model import Funcionario
-from app.processo.model import Processo, StatusProcesso
+from app.processo.model import DocumentoProcesso, Processo, StatusProcesso
 from app.processo.repository import ProcessoRepository
 from app.processo.schema import (
+    DocumentoProcessoResponse,
     ProcessoCreate,
     ProcessoFilter,
     ProcessoPaginadoResponse,
@@ -30,6 +34,8 @@ from app.processo.schema import (
 logger = logging.getLogger(__name__)
 
 STATUS_FINALIZADOS = [StatusProcesso.CONCLUIDO, StatusProcesso.ARQUIVADO]
+TAMANHO_MAXIMO_DOCUMENTO = 25 * 1024 * 1024  # 25MB
+EXTENSOES_PERMITIDAS = {"pdf", "docx", "doc", "png", "jpg", "jpeg"}
 CARGOS_ADMINISTRADOR = ("administrador", "admin")
 
 
@@ -201,7 +207,110 @@ class ProcessoService:
 
         if processo is None:
             raise ValueError("Processo não encontrado")
+
+        documentos = self.repository.listar_documentos(processo_id)
+        for doc in documentos:
+            remover_arquivo(doc.chave_minio)
+
         self.repository.deletar(processo)
+
+    def adicionar_documento(
+        self,
+        processo_id: int,
+        file: UploadFile,
+        funcionario_id: int | None = None,
+        origem: str = "manual",
+    ) -> DocumentoProcessoResponse:
+        processo = self.repository.buscar_por_id(processo_id)
+        if processo is None:
+            raise ValueError("Processo não encontrado")
+
+        conteudo = file.file.read()
+        file.file.seek(0)
+        tamanho_bytes = len(conteudo)
+
+        if tamanho_bytes == 0:
+            raise ValueError("O arquivo enviado está vazio.")
+
+        if tamanho_bytes > TAMANHO_MAXIMO_DOCUMENTO:
+            raise ValueError("O arquivo excede o limite máximo permitido de 25MB.")
+
+        nome_original = file.filename or "documento"
+        extensao = nome_original.rsplit(".", 1)[-1].lower() if "." in nome_original else ""
+
+        if extensao not in EXTENSOES_PERMITIDAS:
+            raise ValueError(
+                f"Extensão de arquivo não permitida. Extensões aceitas: {', '.join(sorted(EXTENSOES_PERMITIDAS))}"
+            )
+
+        tipo_detectado = filetype.guess(conteudo)
+        if extensao in {"pdf", "png", "jpg", "jpeg"} and (
+            not tipo_detectado or tipo_detectado.extension not in {"pdf", "png", "jpg", "jpeg"}
+        ):
+            raise ValueError("O conteúdo do arquivo não corresponde a um formato válido.")
+
+        content_type = file.content_type or (
+            tipo_detectado.mime if tipo_detectado else "application/octet-stream"
+        )
+
+        chave_minio = salvar_arquivo(
+            conteudo=file.file,
+            extensao=extensao,
+            content_type=content_type,
+            pasta=f"processos/{processo_id}",
+        )
+
+        try:
+            documento = DocumentoProcesso(
+                processo_id=processo_id,
+                nome_original=nome_original,
+                chave_minio=chave_minio,
+                origem=origem,
+                tamanho_bytes=tamanho_bytes,
+                entrada_tipo=content_type,
+                funcionario_id=funcionario_id,
+                data_upload=datetime.utcnow(),
+            )
+            documento_salvo = self.repository.adicionar_documento(documento)
+            resposta = DocumentoProcessoResponse.model_validate(documento_salvo)
+            resposta.url = obter_url_publica(documento_salvo.chave_minio)
+            return resposta
+        except Exception:
+            remover_arquivo(chave_minio)
+            raise
+
+    def listar_documentos(self, processo_id: int) -> list[DocumentoProcessoResponse]:
+        processo = self.repository.buscar_por_id(processo_id)
+        if processo is None:
+            raise ValueError("Processo não encontrado")
+
+        documentos = self.repository.listar_documentos(processo_id)
+        respostas = []
+        for doc in documentos:
+            item = DocumentoProcessoResponse.model_validate(doc)
+            item.url = obter_url_publica(doc.chave_minio)
+            respostas.append(item)
+        return respostas
+
+    def obter_url_documento(
+        self, processo_id: int, documento_id: int, expiracao_segundos: int = 1800
+    ) -> str:
+        documento = self.repository.buscar_documento_por_id(documento_id)
+        if documento is None or documento.processo_id != processo_id:
+            raise ValueError("Documento não encontrado")
+
+        url = obter_url_publica(documento.chave_minio, expiracao_segundos=expiracao_segundos)
+        if not url:
+            raise ValueError("Falha ao gerar URL de acesso ao documento")
+        return url
+
+    def remover_documento(self, processo_id: int, documento_id: int) -> None:
+        documento = self.repository.buscar_documento_por_id(documento_id)
+        if documento is None or documento.processo_id != processo_id:
+            raise ValueError("Documento não encontrado")
+
+        self.repository.deletar_documento(documento)
+        remover_arquivo(documento.chave_minio)
 
     def buscar_processos_criticos(
         self,

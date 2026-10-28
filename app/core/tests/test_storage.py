@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 from botocore.exceptions import ClientError
 
-from app.config.storage import _obter_variavel_obrigatoria
+from app.config.storage import MINIO_PUBLIC_URL, _obter_variavel_obrigatoria
 from app.core.storage import (
     garantir_bucket,
     obter_url_publica,
@@ -33,6 +33,13 @@ def test_obter_url_publica_com_chave_valida():
     url = obter_url_publica("logotipos/logo.png")
     assert url is not None
     assert "logotipos/logo.png" in url
+    assert url.startswith(MINIO_PUBLIC_URL)
+
+
+@patch("app.core.storage.s3_public_client")
+def test_obter_url_publica_com_excecao_retorna_none(mock_s3_public):
+    mock_s3_public.generate_presigned_url.side_effect = Exception("Erro ao assinar")
+    assert obter_url_publica("logotipos/logo.png") is None
 
 
 @patch("app.core.storage.s3_client")
@@ -101,7 +108,7 @@ def test_remover_arquivo_com_erro_client_error_silenciado(mock_s3):
     remover_arquivo("logotipos/inexistente.png")
 
 
-@patch("app.core.storage.s3_client")
+@patch("app.core.storage.s3_public_client")
 def test_obter_url_publica_erro_retorna_none(mock_s3):
     mock_s3.generate_presigned_url.side_effect = Exception("S3 Indisponível")
     assert obter_url_publica("arquivo.png") is None
