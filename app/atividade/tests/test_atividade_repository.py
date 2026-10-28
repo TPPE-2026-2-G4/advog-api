@@ -179,7 +179,9 @@ def test_kanban_executa_tres_consultas_sem_escrita(db_session, etapas, funcionar
             ],
         )
     db_session.commit()
-    usuario = Funcionario(funcionario_id=funcionario_id, cargo=Cargo(permissao={}))
+    usuario = Funcionario(
+        atuacao_id=1, foto_perfil=1, funcionario_id=funcionario_id, cargo=Cargo(permissao={})
+    )
     comandos = []
 
     def registrar_comando(conn, cursor, statement, parameters, context, executemany):

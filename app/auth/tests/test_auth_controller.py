@@ -22,12 +22,25 @@ class TestLoginController:
         ],
     )
     def test_login_com_sucesso_retorna_token_e_dados(
-        self, client, cargo_padrao, token_primeiro_acesso, token_admin, nome, email, senha
+        self,
+        client,
+        cargo_padrao,
+        atuacao_padrao,
+        token_primeiro_acesso,
+        token_admin,
+        nome,
+        email,
+        senha,
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         criacao = client.post(
             "/funcionarios",
-            json={"nome": nome, "email": email, "cargo_id": cargo_padrao.cargo_id},
+            json={
+                "nome": nome,
+                "email": email,
+                "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
+            },
             headers=headers,
         )
         assert criacao.status_code == 201
@@ -56,7 +69,7 @@ class TestLoginController:
         assert response.json()["detail"] == "Email ou senha incorretos"
 
     def test_login_senha_incorreta_retorna_401(
-        self, client, cargo_padrao, token_primeiro_acesso, token_admin
+        self, client, cargo_padrao, atuacao_padrao, token_primeiro_acesso, token_admin
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         criacao = client.post(
@@ -65,6 +78,7 @@ class TestLoginController:
                 "nome": "Advogado Teste",
                 "email": "advogado@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
@@ -80,7 +94,9 @@ class TestLoginController:
         assert response.status_code == 401
         assert response.json()["detail"] == "Email ou senha incorretos"
 
-    def test_login_usuario_pendente_retorna_401(self, client, cargo_padrao, token_admin):
+    def test_login_usuario_pendente_retorna_401(
+        self, client, cargo_padrao, atuacao_padrao, token_admin
+    ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         client.post(
             "/funcionarios",
@@ -88,6 +104,7 @@ class TestLoginController:
                 "nome": "Pendente Teste",
                 "email": "pendente@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )
@@ -98,9 +115,11 @@ class TestLoginController:
         assert response.status_code == 401
 
     def test_login_usuario_com_senha_mas_pendente_retorna_403(
-        self, client, db_session, cargo_padrao
+        self, client, db_session, cargo_padrao, atuacao_padrao
     ):
         func = Funcionario(
+            atuacao_id=1,
+            foto_perfil=1,
             nome="Pendente Com Senha",
             email="pendente.senha@test.com",
             senha_hash=hash_senha("senha123"),
@@ -117,7 +136,7 @@ class TestLoginController:
         assert "primeiro acesso" in response.json()["detail"]
 
     def test_login_usuario_inativo_retorna_403(
-        self, client, cargo_padrao, token_primeiro_acesso, token_admin
+        self, client, cargo_padrao, atuacao_padrao, token_primeiro_acesso, token_admin
     ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         criacao = client.post(
@@ -126,6 +145,7 @@ class TestLoginController:
                 "nome": "Inativo Teste",
                 "email": "inativo@test.com",
                 "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
             },
             headers=headers,
         )

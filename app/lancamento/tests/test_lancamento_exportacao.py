@@ -19,11 +19,12 @@ def auth(token_admin):
 @pytest.fixture
 def lancamentos(db_session):
     categoria = CategoriaLancamento(nome_categoria="Honorários")
-    cliente = Cliente(nome="Maria da Silva", email="maria@teste.com")
+    cliente = Cliente(nome="Maria da Silva", email="maria@teste.com", telefone="61999999999")
     db_session.add_all([categoria, cliente])
     db_session.flush()
     itens = [
         Lancamento(
+            descricao="Descrição",
             titulo="Honorário A",
             tipo=TipoLancamento.ENTRADA,
             status=StatusLancamento.REALIZADO,
@@ -34,6 +35,8 @@ def lancamentos(db_session):
             cliente_id=cliente.cliente_id,
         ),
         Lancamento(
+            descricao="Descrição",
+            categoria_id=1,
             titulo="Aluguel",
             tipo=TipoLancamento.SAIDA,
             status=StatusLancamento.PENDENTE,

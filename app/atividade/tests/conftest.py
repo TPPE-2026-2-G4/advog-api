@@ -7,14 +7,12 @@ from app.atividade.model import Atividade
 from app.atividade_funcionario.model import AtividadeFuncionario
 from app.cliente.model import Cliente
 from app.etapa_kanban.model import EtapaKanban
-from app.etapa_kanban.seed import inicializar_etapas_kanban
 from app.funcionario.model import Funcionario, StatusFuncionario
 from app.processo.model import Processo
 
 
 @pytest.fixture
-def etapas(db_session):
-    inicializar_etapas_kanban(db_session)
+def etapas(db_session, etapas_kanban_padrao):
     db_session.add(EtapaKanban(nome="Aguardando cliente", ordem=2))
     db_session.flush()
     return {etapa.nome: etapa for etapa in db_session.scalars(select(EtapaKanban))}
@@ -24,6 +22,8 @@ def etapas(db_session):
 def funcionarios(db_session, cargo_padrao):
     usuarios = [
         Funcionario(
+            atuacao_id=1,
+            foto_perfil=1,
             nome=f"Funcionário {indice}",
             email=f"kanban{indice}@teste.com",
             senha_hash="hash que não deve ser exposto",
@@ -39,10 +39,16 @@ def funcionarios(db_session, cargo_padrao):
 
 @pytest.fixture
 def processo(db_session):
-    cliente = Cliente(nome="Cliente Kanban", email="cliente.kanban@teste.com")
+    cliente = Cliente(
+        nome="Cliente Kanban", email="cliente.kanban@teste.com", telefone="61999999999"
+    )
     db_session.add(cliente)
     db_session.flush()
     processo = Processo(
+        descricao="Descrição",
+        data_inicio=datetime(2026, 1, 1),
+        data_prazo=datetime(2026, 12, 31),
+        funcionario_id=1,
         cnj="00000000000000000000",
         titulo="Processo Kanban",
         tribunal="TJDFT",

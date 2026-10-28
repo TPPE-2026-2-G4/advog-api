@@ -22,6 +22,8 @@ def test_autenticar_com_sucesso():
 
     senha_plana = "senhaSegura123"
     funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         funcionario_id=1,
         nome="Advogado Teste",
         email="advogado@test.com",
@@ -54,6 +56,8 @@ def test_autenticar_funcionario_sem_senha_hash_lanca_erro():
     service.repository = MagicMock(spec=FuncionarioRepository)
 
     funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         funcionario_id=1,
         nome="Pendente Teste",
         email="pendente@test.com",
@@ -72,6 +76,8 @@ def test_autenticar_senha_incorreta_lanca_erro():
     service.repository = MagicMock(spec=FuncionarioRepository)
 
     funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         funcionario_id=1,
         nome="Advogado Teste",
         email="advogado@test.com",
@@ -91,6 +97,8 @@ def test_autenticar_funcionario_status_pendente_lanca_erro():
 
     senha_plana = "senha123"
     funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         funcionario_id=1,
         nome="Funcionario Pendente",
         email="pendente@test.com",
@@ -110,6 +118,8 @@ def test_autenticar_funcionario_status_inativo_lanca_erro():
 
     senha_plana = "senha123"
     funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         funcionario_id=1,
         nome="Funcionario Inativo",
         email="inativo@test.com",

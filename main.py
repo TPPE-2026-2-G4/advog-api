@@ -3,9 +3,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-load_dotenv(
-    ".env.local", override=True
-)  # overrides p/ rodar localmente fora do Docker (ver .env.local.example)
+load_dotenv(".env.local", override=True)
 
 import logging  # noqa: E402
 from contextlib import asynccontextmanager  # noqa: E402
@@ -27,37 +25,17 @@ from app.auth.controller import router as auth_router  # noqa: E402
 from app.cargo.controller import router as cargo_router  # noqa: E402
 from app.categoria_lancamento.controller import router as categoria_lancamento_router  # noqa: E402
 from app.cliente.controller import router as cliente_router  # noqa: E402
-from app.config.database import Base, SessionLocal, engine  # noqa: E402
+from app.cliente_arquivo.model import ClienteArquivo  # noqa: E402, F401
+from app.config.database import Base, engine  # noqa: E402
 from app.config.limiter import limiter  # noqa: E402
 from app.dashboard.controller import router as dashboard_router  # noqa: E402
-from app.etapa_kanban.seed import inicializar_etapas_kanban  # noqa: E402
 from app.funcionario.controller import router as funcionario_router  # noqa: E402
 from app.institucional.controller import router as institucional_router  # noqa: E402
-from app.institucional.model import Institucional  # noqa: E402
 from app.lancamento.controller import router as lancamento_router  # noqa: E402
 from app.processo.controller import router as processo_router  # noqa: E402
 from app.processo.service import ProcessoService  # noqa: E402
-from app.solicitacao.controller import router as solicitacao_router  # noqa: E402
 
 Base.metadata.create_all(bind=engine)
-
-
-def _seed_dados_iniciais() -> None:
-    from sqlalchemy import insert
-
-    db = SessionLocal()
-    try:
-        institucional = db.get(Institucional, 1)
-        if institucional is None:
-            stmt = insert(Institucional).values(institucional_id=1)
-            db.execute(stmt)
-        inicializar_etapas_kanban(db)
-        db.commit()
-    finally:
-        db.close()
-
-
-_seed_dados_iniciais()
 
 
 logger = logging.getLogger("advog-api")
@@ -112,7 +90,6 @@ app.include_router(lancamento_router)
 app.include_router(categoria_lancamento_router)
 app.include_router(cliente_router)
 app.include_router(processo_router)
-app.include_router(solicitacao_router)
 app.include_router(dashboard_router)
 
 

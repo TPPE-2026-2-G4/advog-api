@@ -6,10 +6,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.arquivo.model import Arquivo
+from app.arquivo.repository import ArquivoRepository
+from app.atuacao.model import Atuacao
 from app.cargo.model import Cargo
 from app.config import database
 from app.config.database import Base, get_db
 from app.core.seguranca import criar_token_acesso, criar_token_primeiro_acesso
+from app.etapa_kanban.model import EtapaKanban
+from app.institucional.model import Institucional
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
@@ -25,6 +30,12 @@ database.engine = engine
 database.SessionLocal = TestingSessionLocal
 
 from main import app  # noqa: E402
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if hasattr(item, "callspec"):
+            item.add_marker(pytest.mark.parametrizado)
 
 
 @pytest.fixture(autouse=True)
@@ -81,6 +92,56 @@ def token_acesso():
 
 
 @pytest.fixture()
+def arquivo_padrao(db_session: Session) -> Arquivo:
+    arquivo = ArquivoRepository(db_session).obter_padrao()
+    db_session.commit()
+    db_session.refresh(arquivo)
+
+    return arquivo
+
+
+@pytest.fixture()
+def institucional_padrao(db_session: Session, arquivo_padrao: Arquivo) -> Institucional:
+    institucional = Institucional(
+        institucional_id=1,
+        nome_escritorio="Escritório Modelo",
+        imagem_logotipo=arquivo_padrao.arquivo_id,
+        banner_hero=arquivo_padrao.arquivo_id,
+        imagem_sobre_escritorio=arquivo_padrao.arquivo_id,
+    )
+
+    db_session.add(institucional)
+    db_session.commit()
+    db_session.refresh(institucional)
+
+    return institucional
+
+
+@pytest.fixture()
+def etapas_kanban_padrao(db_session: Session) -> list[EtapaKanban]:
+    etapas = [
+        EtapaKanban(nome=nome, ordem=ordem)
+        for ordem, nome in enumerate(("Backlog", "Em Execução", "Revisão", "Finalizado"), start=1)
+    ]
+
+    db_session.add_all(etapas)
+    db_session.flush()
+
+    return etapas
+
+
+@pytest.fixture()
+def atuacao_padrao(db_session: Session) -> Atuacao:
+    atuacao = Atuacao(nome="Direito Civil", descricao="Área de testes")
+
+    db_session.add(atuacao)
+    db_session.commit()
+    db_session.refresh(atuacao)
+
+    return atuacao
+
+
+@pytest.fixture()
 def cargo_padrao(db_session: Session) -> Cargo:
     cargo = Cargo(
         nome_cargo="Advogado Padrão",
@@ -128,6 +189,8 @@ def funcionario_admin(
     from app.funcionario.model import Funcionario, StatusFuncionario
 
     funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Admin Teste",
         email="admin.fixture@test.com",
         status=StatusFuncionario.ATIVO,
@@ -180,6 +243,8 @@ def funcionario_processos(
     from app.funcionario.model import Funcionario, StatusFuncionario
 
     funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Administrador de Processos",
         email="processos.fixture@test.com",
         status=StatusFuncionario.ATIVO,
@@ -209,6 +274,8 @@ def funcionario_sem_permissao(db_session: Session, cargo_padrao: Cargo):
     from app.funcionario.model import Funcionario, StatusFuncionario
 
     funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Sem Permissão",
         email="sem.permissao.fixture@test.com",
         status=StatusFuncionario.ATIVO,

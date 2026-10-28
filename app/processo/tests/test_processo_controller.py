@@ -33,6 +33,8 @@ def criar_funcionario(
     email: str,
 ) -> Funcionario:
     funcionario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
         nome="Funcionário de Teste",
         email=email,
         status=StatusFuncionario.ATIVO,
@@ -67,7 +69,7 @@ def criar_cliente(db: Session) -> Cliente:
 def criar_processo(
     db: Session,
     cliente_id: int,
-    funcionario_id: int | None = None,
+    funcionario_id: int = 1,
     cnj: str = "11111111111111111111",
 ) -> Processo:
     processo = Processo(
@@ -379,31 +381,33 @@ def test_criar_processo_sem_cliente(
     assert response.status_code == 422
 
 
-def test_criar_processo_sem_funcionario(
+@pytest.mark.parametrize("campo", ["descricao", "data_inicio", "data_prazo", "funcionario_id"])
+def test_criar_processo_sem_campo_obrigatorio_retorna_422(
     client,
     usuario_processos,
     cliente_processo,
+    funcionario_responsavel,
+    campo,
 ):
     _, token = usuario_processos
 
     payload = {
         "cnj": "44444444444444444444",
-        "titulo": "Processo Sem Responsável",
+        "titulo": "Processo Incompleto",
+        "descricao": "Descrição",
         "status": "Ativo",
         "tribunal": "TJSP",
         "area": "Civil",
+        "data_inicio": "2026-03-01T00:00:00",
+        "data_prazo": "2026-12-31T00:00:00",
         "cliente_id": cliente_processo.cliente_id,
-        "funcionario_id": None,
+        "funcionario_id": funcionario_responsavel.funcionario_id,
     }
+    del payload[campo]
 
-    response = client.post(
-        "/processos/",
-        json=payload,
-        headers=auth_header(token),
-    )
+    response = client.post("/processos/", json=payload, headers=auth_header(token))
 
-    assert response.status_code == 201
-    assert response.json()["funcionario_id"] is None
+    assert response.status_code == 422
 
 
 def test_criar_processo_com_cnj_duplicado(
@@ -423,10 +427,14 @@ def test_criar_processo_com_cnj_duplicado(
     payload = {
         "cnj": "55555555555555555555",
         "titulo": "Processo Duplicado",
+        "descricao": "Descrição",
         "status": "Ativo",
         "tribunal": "TJSP",
         "area": "Civil",
+        "data_inicio": "2026-03-01T00:00:00",
+        "data_prazo": "2026-12-31T00:00:00",
         "cliente_id": cliente_processo.cliente_id,
+        "funcionario_id": 1,
     }
 
     response = client.post(
@@ -632,6 +640,7 @@ def test_listar_processos_criticos_parametrizado(
     _, token = usuario_processos
 
     proc = Processo(
+        data_prazo=datetime(2026, 12, 31),
         cnj="88888888888888888888",
         titulo="Processo Crítico Controller",
         descricao="Desc",
@@ -1015,12 +1024,14 @@ def test_obter_resumo_processos_controller_parametrizado(
             "30000000000000000005",
             StatusProcesso.ARQUIVADO,
             outro_advogado.funcionario_id,
-            None,
+            datetime.combine(hoje - timedelta(days=1), datetime.min.time()),
         ),
     ]
     for cnj, status_proc, func_id, data_prazo in processos_seed:
         db_session.add(
             Processo(
+                descricao="Descrição",
+                data_inicio=datetime(2026, 1, 1),
                 cnj=cnj,
                 titulo=f"Proc Resumo {cnj}",
                 status=status_proc,
@@ -1067,3 +1078,19 @@ def test_obter_resumo_processos_sem_autenticacao_e_sem_permissao(
 
     resp_403 = client.get("/processos/resumo", headers=auth_header(token))
     assert resp_403.status_code == 403
+
+
+@pytest.mark.parametrize("campo", ["descricao", "data_inicio", "data_prazo", "funcionario_id"])
+def test_atualizar_processo_campo_obrigatorio_nulo_retorna_422(
+    client, db_session, usuario_processos, cliente_processo, funcionario_responsavel, campo
+):
+    _, token = usuario_processos
+    processo = criar_processo(
+        db_session, cliente_processo.cliente_id, funcionario_responsavel.funcionario_id
+    )
+
+    response = client.patch(
+        f"/processos/{processo.processo_id}", json={campo: None}, headers=auth_header(token)
+    )
+
+    assert response.status_code == 422

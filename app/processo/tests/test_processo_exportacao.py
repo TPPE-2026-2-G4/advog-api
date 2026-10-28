@@ -17,11 +17,14 @@ def auth(token_admin):
 
 @pytest.fixture
 def processos(db_session):
-    cliente = Cliente(nome="Maria da Silva", email="maria@teste.com")
+    cliente = Cliente(nome="Maria da Silva", email="maria@teste.com", telefone="61999999999")
     db_session.add(cliente)
     db_session.flush()
     itens = [
         Processo(
+            descricao="Descrição",
+            data_inicio=datetime(2026, 1, 1),
+            funcionario_id=1,
             cnj=f"000000000000000000{indice:02d}",
             titulo=titulo,
             tribunal="TJDFT",

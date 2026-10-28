@@ -46,6 +46,7 @@ tag_format = "v$version"
 pythonpath = ["."]
 addopts = "--cov=app --cov-report=term-missing"
 asyncio_mode = "auto"
+markers = ["parametrizado: teste gerado por @pytest.mark.parametrize (aplicado automaticamente)"]
 
 [tool.coverage.run]
 source = ["app"]

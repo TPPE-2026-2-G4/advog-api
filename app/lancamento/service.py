@@ -266,7 +266,14 @@ class LancamentoService:
         lancamento = self.buscar_por_id(lancamento_id)
         campos = dados.model_dump(exclude_unset=True)
 
-        for obrigatorio in ("titulo", "tipo", "data_vencimento", "valor"):
+        for obrigatorio in (
+            "titulo",
+            "descricao",
+            "tipo",
+            "data_vencimento",
+            "valor",
+            "categoria_id",
+        ):
             if obrigatorio in campos and campos[obrigatorio] is None:
                 raise ValueError(f"O campo '{obrigatorio}' não pode ser nulo")
         self._validar_referencias(campos.get("categoria_id"), campos.get("cliente_id"))

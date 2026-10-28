@@ -7,6 +7,15 @@ from app.core.seguranca import criar_token_acesso
 from app.funcionario.model import Funcionario, StatusFuncionario
 
 
+def _criar_atuacao_base(db_session: Session) -> int:
+    atuacao = db_session.query(Atuacao).filter_by(nome="Atuação Base").first()
+    if atuacao is None:
+        atuacao = Atuacao(nome="Atuação Base", descricao="Vinculada aos funcionários de teste")
+        db_session.add(atuacao)
+        db_session.commit()
+    return atuacao.atuacao_id
+
+
 @pytest.fixture()
 def token_admin_sistema(db_session: Session) -> str:
     cargo = Cargo(
@@ -17,6 +26,8 @@ def token_admin_sistema(db_session: Session) -> str:
     db_session.commit()
 
     admin = Funcionario(
+        atuacao_id=_criar_atuacao_base(db_session),
+        foto_perfil=1,
         nome="Admin Sistema",
         email="admin.sistema@teste.com",
         cargo_id=cargo.cargo_id,
@@ -38,6 +49,8 @@ def token_sem_permissao(db_session: Session) -> str:
     db_session.commit()
 
     user = Funcionario(
+        atuacao_id=_criar_atuacao_base(db_session),
+        foto_perfil=1,
         nome="Estagiário",
         email="estagiario@teste.com",
         cargo_id=cargo.cargo_id,
@@ -125,7 +138,7 @@ def test_listar_e_buscar_por_id(client, headers_admin):
 
     r_lista = client.get("/atuacoes")
     assert r_lista.status_code == 200
-    assert len(r_lista.json()) == 1
+    assert [a["nome"] for a in r_lista.json()] == ["Atuação Base", "Direito Previdenciário"]
 
     r_detalhe = client.get(f"/atuacoes/{atuacao_id}")
     assert r_detalhe.status_code == 200
@@ -251,6 +264,15 @@ def test_deletar_atuacao(client, headers_admin):
     assert (
         client.delete(f"/atuacoes/{criado['atuacao_id']}", headers=headers_admin).status_code == 404
     )
+
+
+def test_nao_deleta_atuacao_vinculada_a_funcionario(client, headers_admin, db_session):
+    atuacao_id = db_session.query(Atuacao).filter_by(nome="Atuação Base").one().atuacao_id
+
+    resposta = client.delete(f"/atuacoes/{atuacao_id}", headers=headers_admin)
+
+    assert resposta.status_code == 400
+    assert resposta.json()["detail"] == "Área de atuação está vinculada a funcionários"
 
 
 @pytest.mark.parametrize(

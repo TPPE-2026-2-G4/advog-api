@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from typing import Any, cast
 
 from pydantic import (
@@ -24,17 +25,14 @@ def _vazio_para_none(texto: str | None) -> str | None:
 class InstitucionalBase(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    nome_escritorio: str = Field(..., min_length=2, max_length=150, alias="nomeEscritorio")
+    nome_escritorio: str = Field(..., min_length=2, max_length=100, alias="nomeEscritorio")
     descricao: str | None = Field(default=None, max_length=255)
     sobre_escritorio: str | None = Field(default=None, alias="sobreEscritorio")
-    imagem_sobre: str | None = Field(default=None, alias="imagemSobre")
     email: EmailStr | None = None
     telefone: str | None = Field(default=None, max_length=20)
     endereco: str | None = None
     cor_primaria: str = Field(..., alias="corPrimaria")
     cor_secundaria: str = Field(..., alias="corSecundaria")
-    logotipo: str | None = None
-    banner_hero: str | None = Field(default=None, alias="bannerHero")
 
     @field_validator("email", mode="before")
     @classmethod
@@ -53,11 +51,10 @@ class InstitucionalUpdate(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     nome_escritorio: str | None = Field(
-        default=None, min_length=2, max_length=150, alias="nomeEscritorio"
+        default=None, min_length=2, max_length=100, alias="nomeEscritorio"
     )
     descricao: str | None = Field(default=None, max_length=255)
     sobre_escritorio: str | None = Field(default=None, alias="sobreEscritorio")
-    imagem_sobre: str | None = Field(default=None, alias="imagemSobre")
     email: EmailStr | None = None
     telefone: str | None = Field(default=None, max_length=20)
     endereco: str | None = None
@@ -81,6 +78,14 @@ class InstitucionalResponse(InstitucionalBase):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: int = Field(validation_alias="institucional_id", serialization_alias="id")
+    logotipo: str | None = Field(default=None, validation_alias="link_logotipo")
+    banner_hero: str | None = Field(
+        default=None, validation_alias="link_banner", serialization_alias="bannerHero"
+    )
+    imagem_sobre: str | None = Field(
+        default=None, validation_alias="link_imagem_sobre", serialization_alias="imagemSobre"
+    )
+    atualizado_em: datetime | None = Field(default=None, serialization_alias="atualizadoEm")
 
     @field_serializer("logotipo", "banner_hero", "imagem_sobre")
     def _serializar_url_midia(self, caminho_midia: str | None) -> str | None:

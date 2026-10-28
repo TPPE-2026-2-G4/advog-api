@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.atuacao.model import Atuacao
+from app.funcionario.model import Funcionario
 
 
 class AtuacaoRepository:
@@ -23,6 +24,9 @@ class AtuacaoRepository:
 
     def buscar_por_nome(self, nome: str) -> Atuacao | None:
         return self.db.query(Atuacao).filter_by(nome=nome).first()
+
+    def possui_funcionarios(self, atuacao_id: int) -> bool:
+        return self.db.query(Funcionario).filter_by(atuacao_id=atuacao_id).first() is not None
 
     def criar(self, atuacao: Atuacao) -> Atuacao:
         self.db.add(atuacao)

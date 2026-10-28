@@ -57,4 +57,6 @@ class AtuacaoService:
 
     def deletar_atuacao(self, atuacao_id: int) -> Atuacao:
         atuacao = self.buscar_por_id(atuacao_id)
+        if self.repository.possui_funcionarios(atuacao_id):
+            raise ValueError("Área de atuação está vinculada a funcionários")
         return self.repository.deletar(atuacao)

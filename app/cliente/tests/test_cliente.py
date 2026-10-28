@@ -1,10 +1,12 @@
 from datetime import datetime
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.cliente.model import Cliente
 from app.cliente.repository import ClienteRepository
 from app.config.database import Base, SessionLocal, engine
+from app.config.limiter import limiter
 from app.core.dependencies import obter_funcionario_atual
 from main import app
 
@@ -285,3 +287,91 @@ def test_atualizar_cliente_inexistente():
 def test_excluir_cliente_inexistente():
     response = client.delete("/clientes/999999")
     assert response.status_code == 404
+
+
+def test_criar_cliente_sem_telefone_retorna_422():
+    payload = {
+        "nome": "Sem Telefone",
+        "email": "sem.telefone@teste.com",
+        "ultima_interacao": "2026-03-01T00:00:00",
+        "etapa_id": 1,
+    }
+
+    assert client.post("/clientes/", json=payload).status_code == 422
+
+
+def test_clientes_com_mesmo_email_sao_permitidos():
+    payload = {
+        "nome": "Cliente Repetido",
+        "telefone": "(44) 94444-4444",
+        "email": "repetido@teste.com",
+        "descricao": "Primeira solicitação",
+        "ultima_interacao": "2026-03-01T00:00:00",
+        "etapa_id": 1,
+    }
+
+    primeiro = client.post("/clientes/", json=payload)
+    segundo = client.post("/clientes/", json={**payload, "descricao": "Segunda solicitação"})
+
+    assert primeiro.status_code == segundo.status_code == 201
+    assert primeiro.json()["cliente_id"] != segundo.json()["cliente_id"]
+
+
+@pytest.fixture(autouse=True)
+def reiniciar_limitador():
+    limiter.reset()
+    yield
+    limiter.reset()
+
+
+def _solicitacao(**campos) -> dict:
+    return {
+        "nome": "Fernanda Lima",
+        "email": "fernanda@email.com",
+        "telefone": "(61) 98888-5555",
+        "descricao": "Gostaria de agendar uma consulta sobre causa trabalhista.",
+        **campos,
+    }
+
+
+def test_criar_cliente_nao_exige_autenticacao_e_usa_valores_padrao():
+    app.dependency_overrides.pop(obter_funcionario_atual)
+
+    response = client.post("/clientes/", json=_solicitacao())
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["etapa_id"] == 1
+    assert data["responsavel_id"] is None
+    assert data["ultima_interacao"] is not None
+    assert data["descricao"] == "Gostaria de agendar uma consulta sobre causa trabalhista."
+
+
+def test_demais_rotas_de_cliente_continuam_exigindo_autenticacao():
+    app.dependency_overrides.pop(obter_funcionario_atual)
+
+    assert client.get("/clientes/").status_code == 401
+    assert client.get("/clientes/1").status_code == 401
+    assert client.put("/clientes/1", json={}).status_code == 401
+    assert client.delete("/clientes/1").status_code == 401
+
+
+def test_criar_cliente_limita_requisicoes_por_minuto():
+    respostas = [client.post("/clientes/", json=_solicitacao()) for _ in range(6)]
+
+    assert [r.status_code for r in respostas] == [201, 201, 201, 201, 201, 429]
+
+
+@pytest.mark.parametrize(
+    "campos",
+    [
+        {"nome": ""},
+        {"nome": "N" * 101},
+        {"email": "email_sem_dominio"},
+        {"telefone": "1" * 17},
+        {"descricao": "D" * 2001},
+        {"documento": "1" * 21},
+    ],
+)
+def test_criar_cliente_rejeita_dados_invalidos(campos):
+    assert client.post("/clientes/", json=_solicitacao(**campos)).status_code == 422

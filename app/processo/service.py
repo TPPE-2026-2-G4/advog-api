@@ -6,6 +6,7 @@ import filetype
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
+from app.arquivo.model import Arquivo as ArquivoModel
 from app.config.database import SessionLocal
 from app.core.datajud_api import DatajudApiClient
 from app.core.relatorio import (
@@ -19,7 +20,7 @@ from app.core.relatorio import (
 )
 from app.core.storage import obter_url_publica, remover_arquivo, salvar_arquivo
 from app.funcionario.model import Funcionario
-from app.processo.model import DocumentoProcesso, Processo, StatusProcesso
+from app.processo.model import Processo, StatusProcesso
 from app.processo.repository import ProcessoRepository
 from app.processo.schema import (
     DocumentoProcessoResponse,
@@ -36,6 +37,7 @@ logger = logging.getLogger(__name__)
 STATUS_FINALIZADOS = [StatusProcesso.CONCLUIDO, StatusProcesso.ARQUIVADO]
 TAMANHO_MAXIMO_DOCUMENTO = 25 * 1024 * 1024  # 25MB
 EXTENSOES_PERMITIDAS = {"pdf", "docx", "doc", "png", "jpg", "jpeg"}
+CAMPOS_OBRIGATORIOS_ATUALIZACAO = ("descricao", "data_inicio", "data_prazo", "funcionario_id")
 CARGOS_ADMINISTRADOR = ("administrador", "admin")
 
 
@@ -192,6 +194,10 @@ class ProcessoService:
             raise ValueError("Processo não encontrado")
         dados_atualizacao = dados.model_dump(exclude_unset=True)
 
+        for obrigatorio in CAMPOS_OBRIGATORIOS_ATUALIZACAO:
+            if obrigatorio in dados_atualizacao and dados_atualizacao[obrigatorio] is None:
+                raise ValueError(f"O campo '{obrigatorio}' não pode ser nulo")
+
         if "cnj" in dados_atualizacao:
             processo_existente = self.repository.buscar_por_cnj(dados_atualizacao["cnj"])
 
@@ -208,11 +214,10 @@ class ProcessoService:
         if processo is None:
             raise ValueError("Processo não encontrado")
 
-        documentos = self.repository.listar_documentos(processo_id)
-        for doc in documentos:
-            remover_arquivo(doc.chave_minio)
-
+        chaves = [doc.bucket_link for doc in self.repository.listar_documentos(processo_id)]
         self.repository.deletar(processo)
+        for chave in chaves:
+            remover_arquivo(chave)
 
     def adicionar_documento(
         self,
@@ -261,56 +266,68 @@ class ProcessoService:
         )
 
         try:
-            documento = DocumentoProcesso(
-                processo_id=processo_id,
-                nome_original=nome_original,
-                chave_minio=chave_minio,
-                origem=origem,
+            arquivo = ArquivoModel(
+                nome_arquivo=nome_original,
+                tipo_mime=content_type,
                 tamanho_bytes=tamanho_bytes,
-                entrada_tipo=content_type,
+                bucket_link=chave_minio,
+                origem=origem,
                 funcionario_id=funcionario_id,
                 data_upload=datetime.utcnow(),
             )
-            documento_salvo = self.repository.adicionar_documento(documento)
-            resposta = DocumentoProcessoResponse.model_validate(documento_salvo)
-            resposta.url = obter_url_publica(documento_salvo.chave_minio)
-            return resposta
+            arquivo_salvo = self.repository.adicionar_documento(processo_id, arquivo)
+            return self._montar_resposta_documento(processo_id, arquivo_salvo)
         except Exception:
             remover_arquivo(chave_minio)
             raise
+
+    @staticmethod
+    def _montar_resposta_documento(
+        processo_id: int, arquivo: ArquivoModel
+    ) -> DocumentoProcessoResponse:
+        return DocumentoProcessoResponse(
+            documento_id=arquivo.arquivo_id,
+            processo_id=processo_id,
+            nome_original=arquivo.nome_arquivo,
+            chave_minio=arquivo.bucket_link,
+            origem=arquivo.origem,
+            tamanho_bytes=arquivo.tamanho_bytes,
+            entrada_tipo=arquivo.tipo_mime,
+            data_upload=arquivo.data_upload,
+            funcionario_id=arquivo.funcionario_id,
+            url=obter_url_publica(arquivo.bucket_link),
+        )
 
     def listar_documentos(self, processo_id: int) -> list[DocumentoProcessoResponse]:
         processo = self.repository.buscar_por_id(processo_id)
         if processo is None:
             raise ValueError("Processo não encontrado")
 
-        documentos = self.repository.listar_documentos(processo_id)
-        respostas = []
-        for doc in documentos:
-            item = DocumentoProcessoResponse.model_validate(doc)
-            item.url = obter_url_publica(doc.chave_minio)
-            respostas.append(item)
-        return respostas
+        return [
+            self._montar_resposta_documento(processo_id, doc)
+            for doc in self.repository.listar_documentos(processo_id)
+        ]
 
     def obter_url_documento(
         self, processo_id: int, documento_id: int, expiracao_segundos: int = 1800
     ) -> str:
-        documento = self.repository.buscar_documento_por_id(documento_id)
-        if documento is None or documento.processo_id != processo_id:
+        documento = self.repository.buscar_documento(processo_id, documento_id)
+        if documento is None:
             raise ValueError("Documento não encontrado")
 
-        url = obter_url_publica(documento.chave_minio, expiracao_segundos=expiracao_segundos)
+        url = obter_url_publica(documento.bucket_link, expiracao_segundos=expiracao_segundos)
         if not url:
             raise ValueError("Falha ao gerar URL de acesso ao documento")
         return url
 
     def remover_documento(self, processo_id: int, documento_id: int) -> None:
-        documento = self.repository.buscar_documento_por_id(documento_id)
-        if documento is None or documento.processo_id != processo_id:
+        documento = self.repository.buscar_documento(processo_id, documento_id)
+        if documento is None:
             raise ValueError("Documento não encontrado")
 
-        self.repository.deletar_documento(documento)
-        remover_arquivo(documento.chave_minio)
+        chave = documento.bucket_link
+        self.repository.deletar_documento(processo_id, documento)
+        remover_arquivo(chave)
 
     def buscar_processos_criticos(
         self,

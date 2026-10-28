@@ -5,15 +5,22 @@ import pytest
 from fastapi import UploadFile
 from PIL import Image
 
+from app.arquivo.repository import ArquivoRepository
 from app.institucional.model import Institucional
 from app.institucional.repository import InstitucionalRepository
 from app.institucional.service import InstitucionalService, UploadInvalidoError
+
+
+def _config_com(atributo: str, bucket_link: str) -> MagicMock:
+    return MagicMock(**{atributo: MagicMock(bucket_link=bucket_link)})
 
 
 @pytest.fixture
 def service_mocked():
     service = InstitucionalService.__new__(InstitucionalService)
     service.repository = MagicMock(spec=InstitucionalRepository)
+    service.arquivo_repository = MagicMock(spec=ArquivoRepository)
+    service.arquivo_repository.adicionar.return_value = MagicMock(arquivo_id=5)
     return service
 
 
@@ -123,8 +130,8 @@ class TestInstitucionalServiceUploadProcessamento:
     ):
         mock_salvar.return_value = "logotipos/novo.svg"
         mock_url.return_value = "http://localhost:9000/institucional/logotipos/novo.svg"
-        service_mocked.repository.buscar_configuracoes.return_value = MagicMock(
-            logotipo="logotipos/antigo.svg"
+        service_mocked.repository.buscar_configuracoes.return_value = _config_com(
+            "arquivo_logotipo", "logotipos/antigo.svg"
         )
 
         svg_valido = b'<svg width="100" height="100"><circle cx="50" cy="50" r="40"/></svg>'
@@ -136,13 +143,15 @@ class TestInstitucionalServiceUploadProcessamento:
         assert warning is None
         mock_remover.assert_called_once_with("logotipos/antigo.svg")
         service_mocked.repository.atualizar_configuracoes.assert_called_once_with(
-            {"logotipo": "logotipos/novo.svg"}
+            {"imagem_logotipo": 5}
         )
 
     def test_upload_svg_com_namespace_e_atributos_validos(self, service_mocked):
         svg_ns = b'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><circle cx="50" cy="50" r="40"/></svg>'
         file_mock = UploadFile(filename="logo.svg", file=io.BytesIO(svg_ns))
-        service_mocked.repository.buscar_configuracoes.return_value = MagicMock(logotipo=None)
+        service_mocked.repository.buscar_configuracoes.return_value = _config_com(
+            "arquivo_logotipo", ""
+        )
 
         with (
             patch(
@@ -167,7 +176,9 @@ class TestInstitucionalServiceUploadProcessamento:
     ):
         mock_salvar.return_value = "banners/123.png"
         mock_url.return_value = "http://localhost:9000/institucional/banners/123.png"
-        service_mocked.repository.buscar_configuracoes.return_value = MagicMock(banner_hero=None)
+        service_mocked.repository.buscar_configuracoes.return_value = _config_com(
+            "arquivo_banner", ""
+        )
 
         buffer_img = _gerar_imagem_bytes(800, 400, cor="red")
         file_mock = UploadFile(filename="banner.png", file=buffer_img)
@@ -185,7 +196,9 @@ class TestInstitucionalServiceUploadProcessamento:
     ):
         mock_salvar.return_value = "banners/corrompido.png"
         mock_url.return_value = "http://localhost:9000/banners/corrompido.png"
-        service_mocked.repository.buscar_configuracoes.return_value = MagicMock(banner_hero=None)
+        service_mocked.repository.buscar_configuracoes.return_value = _config_com(
+            "arquivo_banner", ""
+        )
 
         conteudo_corrompido = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + b"0" * 100
         file_mock = UploadFile(filename="banner.png", file=io.BytesIO(conteudo_corrompido))
@@ -203,7 +216,9 @@ class TestInstitucionalServiceUploadProcessamento:
     ):
         mock_salvar.return_value = "sobre/123.png"
         mock_url.return_value = "http://localhost:9000/institucional/sobre/123.png"
-        service_mocked.repository.buscar_configuracoes.return_value = MagicMock(imagem_sobre=None)
+        service_mocked.repository.buscar_configuracoes.return_value = _config_com(
+            "arquivo_sobre", ""
+        )
 
         buffer_img = _gerar_imagem_bytes(400, 300, cor="blue")
         file_mock = UploadFile(filename="sobre.png", file=buffer_img)
@@ -222,8 +237,8 @@ class TestInstitucionalServiceUploadProcessamento:
     ):
         mock_salvar.return_value = "sobre/novo.png"
         mock_url.return_value = "http://localhost:9000/institucional/sobre/novo.png"
-        service_mocked.repository.buscar_configuracoes.return_value = MagicMock(
-            imagem_sobre="sobre/antigo.png"
+        service_mocked.repository.buscar_configuracoes.return_value = _config_com(
+            "arquivo_sobre", "sobre/antigo.png"
         )
 
         buffer_img = _gerar_imagem_bytes(800, 600, cor="green")
@@ -235,5 +250,5 @@ class TestInstitucionalServiceUploadProcessamento:
         assert warning is None
         mock_remover.assert_called_once_with("sobre/antigo.png")
         service_mocked.repository.atualizar_configuracoes.assert_called_once_with(
-            {"imagem_sobre": "sobre/novo.png"}
+            {"imagem_sobre_escritorio": 5}
         )

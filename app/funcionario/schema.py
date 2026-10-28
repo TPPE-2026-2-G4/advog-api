@@ -11,6 +11,7 @@ class FuncionarioBase(BaseModel):
 
 class FuncionarioCreate(FuncionarioBase):
     cargo_id: int
+    atuacao_id: int
 
 
 class FuncionarioPrimeiroAcesso(BaseModel):
@@ -39,6 +40,8 @@ class FuncionarioUpdate(BaseModel):
 
 class FuncionarioResponse(FuncionarioBase):
     cargo_id: int
+    atuacao_id: int
+    foto_perfil: int
     cargo: CargoResponse | None = None
     exibicao_institucional: bool = Field(default=False, alias="exibicaoInstitucional")
     funcionario_id: int

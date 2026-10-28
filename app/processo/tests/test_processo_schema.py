@@ -93,21 +93,24 @@ def test_limite_maximo_dos_campos(campo, tamanho):
 
 @pytest.mark.parametrize(
     "campo",
-    [
-        "descricao",
-        "data_inicio",
-        "data_realizado",
-        "data_prazo",
-        "funcionario_id",
-    ],
+    ["descricao", "data_inicio", "data_prazo", "funcionario_id"],
 )
-def test_campos_opcionais_podem_ser_nulos(campo):
+def test_campos_obrigatorios_nao_aceitam_nulo_nem_ausencia(campo):
     dados = processo_valido()
     dados[campo] = None
+    with pytest.raises(ValidationError):
+        ProcessoCreate(**dados)
 
-    processo = ProcessoCreate(**dados)
+    dados.pop(campo)
+    with pytest.raises(ValidationError):
+        ProcessoCreate(**dados)
 
-    assert getattr(processo, campo) is None
+
+def test_data_realizado_pode_ser_nula():
+    dados = processo_valido()
+    dados["data_realizado"] = None
+
+    assert ProcessoCreate(**dados).data_realizado is None
 
 
 def test_cliente_id_e_obrigatorio():

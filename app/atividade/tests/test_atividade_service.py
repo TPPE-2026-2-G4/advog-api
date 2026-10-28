@@ -38,7 +38,9 @@ def test_kanban_determina_escopo_e_agrupa_cartoes(permissoes, escopo, funcionari
         )
     ]
     service.repository.buscar_responsaveis.return_value = [(3, 7, "Responsável")]
-    funcionario = Funcionario(funcionario_id=7, cargo=Cargo(permissao=permissoes))
+    funcionario = Funcionario(
+        atuacao_id=1, foto_perfil=1, funcionario_id=7, cargo=Cargo(permissao=permissoes)
+    )
 
     resultado = service.visualizar_kanban(funcionario)
 
@@ -126,7 +128,7 @@ def test_buscar_atividades_trata_funcionario_id_conforme_apenas_minhas(
     service.repository = MagicMock()
     service.repository.buscar_por_filtros.return_value = []
 
-    usuario = Funcionario(funcionario_id=42)
+    usuario = Funcionario(atuacao_id=1, foto_perfil=1, funcionario_id=42)
     filtro = AtividadeFilter.model_validate(
         {"apenas_minhas": apenas_minhas, "funcionario_id": funcionario_id_filtro}
     )
