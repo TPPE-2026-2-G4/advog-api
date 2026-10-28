@@ -6,6 +6,9 @@ class PermissaoBase(BaseModel):
     editar_processos: bool = False
     excluir_processos: bool = False
     visualizar_processos: bool = False
+    criar_atividades: bool = False
+    editar_atividades: bool = False
+    excluir_atividades: bool = False
     gerenciar_financeiro: bool = False
     visualizar_financeiro: bool = False
     gerenciar_equipe: bool = False

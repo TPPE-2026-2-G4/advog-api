@@ -3,6 +3,8 @@ from pydantic import ValidationError
 
 from app.processo.model import StatusProcesso
 from app.processo.schema import (
+    DocumentoProcessoResponse,
+    DocumentoUrlResponse,
     ProcessoCreate,
     ProcessoFilter,
     ProcessoResponse,
@@ -166,6 +168,40 @@ def test_processo_response():
 
     assert response.processo_id == 1
     assert response.funcionario_id == 1
+
+
+def test_documento_processo_response():
+    agora = "2026-01-01T12:00:00"
+    dados = {
+        "documento_id": 10,
+        "processo_id": 1,
+        "nome_original": "peticao.pdf",
+        "chave_minio": "processos/1/abc.pdf",
+        "origem": "manual",
+        "tamanho_bytes": 1024,
+        "entrada_tipo": "application/pdf",
+        "data_upload": agora,
+        "funcionario_id": 2,
+        "url": "http://minio/peticao.pdf",
+    }
+    response = DocumentoProcessoResponse(**dados)
+    assert response.documento_id == 10
+    assert response.processo_id == 1
+    assert response.nome_original == "peticao.pdf"
+    assert response.chave_minio == "processos/1/abc.pdf"
+    assert response.origem == "manual"
+    assert response.entrada_tipo == "application/pdf"
+    assert response.url == "http://minio/peticao.pdf"
+
+
+def test_documento_url_response():
+    response = DocumentoUrlResponse(
+        documento_id=10,
+        url="http://minio/download",
+    )
+    assert response.documento_id == 10
+    assert response.url == "http://minio/download"
+    assert response.expira_em_segundos == 1800
 
 
 def test_processo_resumo_response_padrao_e_customizado():

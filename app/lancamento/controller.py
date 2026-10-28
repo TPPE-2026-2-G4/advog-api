@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
-from app.core.dependencies import obter_funcionario_atual
+from app.core.dependencies import exigir_permissao, obter_funcionario_atual
+from app.core.relatorio import FormatoRelatorio, resposta_arquivo
 from app.lancamento.schema import (
     LancamentoCreate,
     LancamentoFilter,
@@ -53,6 +54,33 @@ def listar_lancamentos_paginado(
         return LancamentoService(db).listar_lancamentos_paginado(filtros, page, page_size)
     except ValueError as e:
         raise _erro_http(e) from e
+
+
+@router.get(
+    "/exportar",
+    summary="Exportar lançamentos em CSV, Excel ou PDF",
+    description=(
+        "Aceita os mesmos filtros de `GET /lancamentos/` e inclui os totais de entradas, "
+        "saídas e saldo do conjunto filtrado."
+    ),
+    response_class=Response,
+    responses={
+        200: {"description": "Arquivo gerado", "content": {"application/octet-stream": {}}},
+        403: {"description": "Sem permissão para visualizar o financeiro"},
+        422: {"description": "Parâmetros inválidos ou exportação acima do limite de linhas"},
+    },
+    dependencies=[Depends(exigir_permissao("visualizar_financeiro"))],
+)
+def exportar_lancamentos(
+    formato: FormatoRelatorio = Query(description="csv, xlsx ou pdf"),
+    filtros: LancamentoFilter = Depends(),
+    db: Session = Depends(get_db),
+):
+    try:
+        arquivo = LancamentoService(db).exportar_lancamentos(filtros, formato)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)) from e
+    return resposta_arquivo(arquivo, "lancamentos")
 
 
 @router.get("/resumo", response_model=LancamentoResumo)
