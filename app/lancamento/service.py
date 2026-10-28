@@ -4,6 +4,15 @@ from math import ceil
 
 from sqlalchemy.orm import Session
 
+from app.core.relatorio import (
+    LIMITE_LINHAS,
+    Arquivo,
+    Coluna,
+    FormatoRelatorio,
+    Tabela,
+    TipoColuna,
+    gerar_arquivo,
+)
 from app.lancamento.model import Lancamento, StatusLancamento, TipoLancamento
 from app.lancamento.repository import LancamentoRepository
 from app.lancamento.schema import (
@@ -146,6 +155,55 @@ class LancamentoService:
             page_size=page_size,
             total_pages=max(1, ceil(total / page_size)),
         )
+
+    def exportar_lancamentos(self, filtros: LancamentoFilter, formato: FormatoRelatorio) -> Arquivo:
+        lancamentos = self.repository.buscar_para_exportacao(
+            LIMITE_LINHAS + 1, **self._preparar_filtros(filtros)
+        )
+        if len(lancamentos) > LIMITE_LINHAS:
+            raise ValueError(
+                f"A exportação excede {LIMITE_LINHAS} lançamentos; "
+                "refine os filtros e tente novamente"
+            )
+        clientes = self.repository.buscar_nomes_clientes(
+            {item.cliente_id for item in lancamentos if item.cliente_id is not None}
+        )
+        entradas = sum(i.valor for i in lancamentos if i.tipo == TipoLancamento.ENTRADA)
+        saidas = sum(i.valor for i in lancamentos if i.tipo == TipoLancamento.SAIDA)
+        tabela = Tabela(
+            titulo="Relatório de Lançamentos",
+            colunas=[
+                Coluna("Título"),
+                Coluna("Descrição"),
+                Coluna("Tipo"),
+                Coluna("Status"),
+                Coluna("Categoria"),
+                Coluna("Cliente"),
+                Coluna("Vencimento", TipoColuna.DATA),
+                Coluna("Pagamento", TipoColuna.DATA),
+                Coluna("Valor", TipoColuna.MOEDA),
+            ],
+            linhas=[
+                [
+                    item.titulo,
+                    item.descricao,
+                    "Entrada" if item.tipo == TipoLancamento.ENTRADA else "Saída",
+                    item.status.value,
+                    item.categoria_lancamento.nome_categoria if item.categoria_lancamento else None,
+                    clientes.get(item.cliente_id) if item.cliente_id is not None else None,
+                    item.data_vencimento,
+                    item.data_pagamento,
+                    item.valor,
+                ]
+                for item in lancamentos
+            ],
+            resumo=[
+                ("Total de entradas", float(entradas)),
+                ("Total de saídas", float(saidas)),
+                ("Saldo", float(entradas - saidas)),
+            ],
+        )
+        return gerar_arquivo(tabela, formato)
 
     def resumir_lancamentos(self, filtros: LancamentoFilter) -> LancamentoResumo:
         filtros_sql = self._preparar_filtros(filtros) | {"status": None}

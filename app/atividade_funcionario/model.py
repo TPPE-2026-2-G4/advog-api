@@ -5,11 +5,11 @@ from app.config.database import Base
 
 
 class AtividadeFuncionario(Base):
-    __tablename__ = "atividade_funcionario"
+    __tablename__ = "atividades_funcionarios"
 
     funcionario_id: Mapped[int] = mapped_column(
-        ForeignKey("funcionarios.funcionario_id"), primary_key=True
+        ForeignKey("funcionarios.funcionario_id", ondelete="CASCADE"), primary_key=True
     )
     atividade_id: Mapped[int] = mapped_column(
-        ForeignKey("atividade.atividade_id"), primary_key=True
+        ForeignKey("atividades.atividade_id", ondelete="CASCADE"), primary_key=True
     )

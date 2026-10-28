@@ -5,7 +5,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Query, Session
 
 from app.cliente.model import Cliente
-from app.processo.model import Processo, StatusProcesso
+from app.processo.model import DocumentoProcesso, Processo, StatusProcesso
 
 
 class ProcessoRepository:
@@ -156,6 +156,19 @@ class ProcessoRepository:
         )
         return itens, total
 
+    def buscar_para_exportacao(self, limite: int, **filtros) -> list[Processo]:
+        return (
+            self._montar_query(**filtros).order_by(Processo.processo_id.desc()).limit(limite).all()
+        )
+
+    def buscar_nomes_clientes(self, cliente_ids: set[int]) -> dict[int, str]:
+        if not cliente_ids:
+            return {}
+        consulta = self.db.query(Cliente.cliente_id, Cliente.nome).filter(
+            Cliente.cliente_id.in_(cliente_ids)
+        )
+        return {cliente_id: nome for cliente_id, nome in consulta.all()}
+
     def contar_por_status(
         self,
         funcionario_id: int | None = None,
@@ -197,4 +210,29 @@ class ProcessoRepository:
 
     def deletar(self, processo: Processo) -> None:
         self.db.delete(processo)
+        self.db.commit()
+
+    def adicionar_documento(self, documento: DocumentoProcesso) -> DocumentoProcesso:
+        self.db.add(documento)
+        self.db.commit()
+        self.db.refresh(documento)
+        return documento
+
+    def buscar_documento_por_id(self, documento_id: int) -> DocumentoProcesso | None:
+        return (
+            self.db.query(DocumentoProcesso)
+            .filter(DocumentoProcesso.documento_id == documento_id)
+            .first()
+        )
+
+    def listar_documentos(self, processo_id: int) -> list[DocumentoProcesso]:
+        return (
+            self.db.query(DocumentoProcesso)
+            .filter(DocumentoProcesso.processo_id == processo_id)
+            .order_by(DocumentoProcesso.data_upload.desc())
+            .all()
+        )
+
+    def deletar_documento(self, documento: DocumentoProcesso) -> None:
+        self.db.delete(documento)
         self.db.commit()

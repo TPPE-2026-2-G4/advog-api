@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timedelta
 
 from sqlalchemy import Row, func, update
-from sqlalchemy.orm import Query, Session
+from sqlalchemy.orm import Query, Session, joinedload
 
 from app.categoria_lancamento.model import CategoriaLancamento
 from app.cliente.model import Cliente
@@ -57,6 +57,23 @@ class LancamentoRepository:
     def buscar_por_filtros(self, **filtros) -> list[Lancamento]:
         query = self._filtrar(**filtros)
         return query.order_by(Lancamento.data_vencimento, Lancamento.lancamento_id).all()
+
+    def buscar_para_exportacao(self, limite: int, **filtros) -> list[Lancamento]:
+        return (
+            self._filtrar(**filtros)
+            .options(joinedload(Lancamento.categoria_lancamento))
+            .order_by(Lancamento.data_vencimento, Lancamento.lancamento_id)
+            .limit(limite)
+            .all()
+        )
+
+    def buscar_nomes_clientes(self, cliente_ids: set[int]) -> dict[int, str]:
+        if not cliente_ids:
+            return {}
+        consulta = self.db.query(Cliente.cliente_id, Cliente.nome).filter(
+            Cliente.cliente_id.in_(cliente_ids)
+        )
+        return {cliente_id: nome for cliente_id, nome in consulta.all()}
 
     def buscar_paginado(self, page: int, page_size: int, **filtros) -> tuple[list[Lancamento], int]:
         query = self._filtrar(**filtros)

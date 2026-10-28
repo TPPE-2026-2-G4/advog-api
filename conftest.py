@@ -102,6 +102,10 @@ def cargo_admin(db_session: Session) -> Cargo:
         descricao="Cargo de administrador com permissões completas",
         permissao={
             "gerenciar_equipe": True,
+            "criar_atividades": True,
+            "editar_atividades": True,
+            "excluir_atividades": True,
+            "visualizar_financeiro": True,
             "visualizar_processos": True,
             "criar_processos": True,
             "editar_processos": True,
@@ -198,3 +202,21 @@ def token_processos(
         funcionario_processos.funcionario_id,
         funcionario_processos.email,
     )
+
+
+@pytest.fixture()
+def funcionario_sem_permissao(db_session: Session, cargo_padrao: Cargo):
+    from app.funcionario.model import Funcionario, StatusFuncionario
+
+    funcionario = Funcionario(
+        nome="Sem Permissão",
+        email="sem.permissao.fixture@test.com",
+        status=StatusFuncionario.ATIVO,
+        cargo_id=cargo_padrao.cargo_id,
+    )
+
+    db_session.add(funcionario)
+    db_session.commit()
+    db_session.refresh(funcionario)
+
+    return funcionario
