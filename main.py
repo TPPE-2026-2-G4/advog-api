@@ -34,6 +34,7 @@ from app.institucional.controller import router as institucional_router  # noqa:
 from app.lancamento.controller import router as lancamento_router  # noqa: E402
 from app.processo.controller import router as processo_router  # noqa: E402
 from app.processo.service import ProcessoService  # noqa: E402
+from app.processo_movimentacao.model import ProcessoMovimentacao  # noqa: E402, F401
 
 Base.metadata.create_all(bind=engine)
 

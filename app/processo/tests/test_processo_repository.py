@@ -10,6 +10,7 @@ from app.funcionario.model import Funcionario, StatusFuncionario
 from app.processo.model import Processo, StatusProcesso
 from app.processo.repository import ProcessoRepository
 from app.processo_arquivo.model import ProcessoArquivo
+from app.processo_movimentacao.model import ProcessoMovimentacao, TipoMovimentacaoProcesso
 
 
 @pytest.fixture
@@ -683,3 +684,37 @@ def test_buscar_por_filtros_com_busca_textual(db_session, processo):
     encontrados = repository.buscar_por_filtros(busca="Cliente Teste")
     assert len(encontrados) == 1
     assert encontrados[0].processo_id == processo.processo_id
+
+
+def test_registrar_e_listar_movimentacoes_e_deletar_processo(
+    db_session: Session, processo: Processo
+):
+    repository = ProcessoRepository(db_session)
+
+    mov1 = repository.registrar_movimentacao(
+        ProcessoMovimentacao(
+            processo_id=processo.processo_id,
+            funcionario_id=processo.funcionario_id,
+            tipo_movimentacao=TipoMovimentacaoProcesso.CRIACAO_PROCESSO,
+            descricao="Processo criado.",
+        )
+    )
+    mov2 = repository.registrar_movimentacao(
+        ProcessoMovimentacao(
+            processo_id=processo.processo_id,
+            funcionario_id=None,
+            tipo_movimentacao=TipoMovimentacaoProcesso.UPLOAD_ARQUIVO,
+            descricao="Arquivo adicionado.",
+        )
+    )
+
+    assert mov1.movimentacao_id is not None
+    assert mov2.movimentacao_id is not None
+
+    movimentacoes = repository.listar_movimentacoes(processo.processo_id)
+    assert len(movimentacoes) == 2
+    assert movimentacoes[0].movimentacao_id == mov2.movimentacao_id
+    assert movimentacoes[1].movimentacao_id == mov1.movimentacao_id
+
+    repository.deletar(processo)
+    assert db_session.query(ProcessoMovimentacao).count() == 0
