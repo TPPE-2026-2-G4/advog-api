@@ -6,9 +6,11 @@ import pytest
 from fastapi import UploadFile
 
 from app.arquivo.model import Arquivo
+from app.config.storage import MINIO_BUCKET_PRIVADO
 from app.processo.model import Processo, StatusProcesso
 from app.processo.schema import ProcessoCreate, ProcessoFilter, ProcessoUpdate
 from app.processo.service import ProcessoService
+from app.processo_movimentacao.model import ProcessoMovimentacao, TipoMovimentacaoProcesso
 
 
 def criar_service():
@@ -237,6 +239,7 @@ def test_atualizar_processo():
 
     processo = MagicMock(spec=Processo)
     processo.processo_id = 1
+    processo.status = StatusProcesso.ATIVO
 
     dados = ProcessoUpdate(
         titulo="Novo título",
@@ -256,6 +259,25 @@ def test_atualizar_processo():
     assert processo.funcionario_id == 10
 
     service.repository.atualizar.assert_called_once_with(processo)
+    service.repository.registrar_movimentacao.assert_called_once()
+
+
+def test_atualizar_processo_sem_mudar_status_nao_registra_movimentacao():
+    service = criar_service()
+
+    processo = MagicMock(spec=Processo)
+    processo.processo_id = 1
+    processo.status = StatusProcesso.ATIVO
+
+    dados = ProcessoUpdate(titulo="Apenas correção de título")
+
+    service.repository.buscar_por_id.return_value = processo
+    service.repository.atualizar.return_value = processo
+
+    service.atualizar_processo(1, dados)
+
+    service.repository.atualizar.assert_called_once_with(processo)
+    service.repository.registrar_movimentacao.assert_not_called()
 
 
 @pytest.mark.parametrize("campo", ["descricao", "data_inicio", "data_prazo", "funcionario_id"])
@@ -339,7 +361,7 @@ def test_deletar_processo(mock_remover):
 
     service.deletar_processo(1)
 
-    mock_remover.assert_called_once_with("processos/1/doc.pdf")
+    mock_remover.assert_called_once_with("processos/1/doc.pdf", bucket=MINIO_BUCKET_PRIVADO)
     service.repository.deletar.assert_called_once_with(processo)
 
 
@@ -534,7 +556,7 @@ def test_adicionar_documento_erro_banco_chama_remover_arquivo(mock_remover, mock
     with pytest.raises(Exception, match="Erro no banco"):
         service.adicionar_documento(1, file_mock)
 
-    mock_remover.assert_called_once_with("processos/1/arquivo.pdf")
+    mock_remover.assert_called_once_with("processos/1/arquivo.pdf", bucket=MINIO_BUCKET_PRIVADO)
 
 
 def test_listar_documentos_processo_inexistente():
@@ -600,7 +622,9 @@ def test_obter_url_documento_sucesso(mock_obter_url):
     url = service.obter_url_documento(1, 10, expiracao_segundos=600)
 
     assert url == "http://minio/download-presigned"
-    mock_obter_url.assert_called_once_with("processos/1/a.pdf", expiracao_segundos=600)
+    mock_obter_url.assert_called_once_with(
+        "processos/1/a.pdf", expiracao_segundos=600, bucket=MINIO_BUCKET_PRIVADO
+    )
 
 
 def test_remover_documento_inexistente():
@@ -620,7 +644,7 @@ def test_remover_documento_sucesso(mock_remover):
     service.remover_documento(1, 10)
 
     service.repository.deletar_documento.assert_called_once_with(1, doc)
-    mock_remover.assert_called_once_with("processos/1/a.pdf")
+    mock_remover.assert_called_once_with("processos/1/a.pdf", bucket=MINIO_BUCKET_PRIVADO)
 
 
 @pytest.mark.parametrize(
@@ -742,3 +766,33 @@ def test_obter_resumo_processos_parametrizado(
 
     service.repository.contar_por_status.assert_called_once_with(funcionario_id=filtro_esperado)
     assert service.repository.contar_por_filtros.call_count == 2
+
+
+def test_listar_movimentacoes_processo_inexistente():
+    service = criar_service()
+    service.repository.buscar_por_id.return_value = None
+
+    with pytest.raises(ValueError, match="Processo não encontrado"):
+        service.listar_movimentacoes(999)
+
+
+def test_listar_movimentacoes_sucesso():
+    service = criar_service()
+    service.repository.buscar_por_id.return_value = MagicMock(spec=Processo)
+    mov = ProcessoMovimentacao(
+        movimentacao_id=1,
+        processo_id=10,
+        funcionario_id=2,
+        tipo_movimentacao=TipoMovimentacaoProcesso.CRIACAO_PROCESSO,
+        descricao="Processo criado.",
+        data_movimentacao=datetime(2026, 1, 1),
+    )
+    service.repository.listar_movimentacoes.return_value = [mov]
+
+    resultado = service.listar_movimentacoes(10)
+
+    assert len(resultado) == 1
+    assert resultado[0].movimentacao_id == 1
+    assert resultado[0].processo_id == 10
+    assert resultado[0].tipo_movimentacao == TipoMovimentacaoProcesso.CRIACAO_PROCESSO
+    service.repository.listar_movimentacoes.assert_called_once_with(10)

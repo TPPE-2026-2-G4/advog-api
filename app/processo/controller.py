@@ -10,6 +10,7 @@ from app.processo.schema import (
     DocumentoUrlResponse,
     ProcessoCreate,
     ProcessoFilter,
+    ProcessoMovimentacaoResponse,
     ProcessoPaginadoResponse,
     ProcessoResponse,
     ProcessoResumoResponse,
@@ -48,13 +49,14 @@ async def sincronizar_processos():
     "/",
     response_model=ProcessoResponse,
     status_code=201,
-    dependencies=[Depends(exigir_permissao("criar_processos"))],
 )
 def criar_processo(
-    processo: ProcessoCreate, service: ProcessoService = Depends(get_processo_service)
+    processo: ProcessoCreate,
+    funcionario_atual: Funcionario = Depends(exigir_permissao("criar_processos")),
+    service: ProcessoService = Depends(get_processo_service),
 ):
     try:
-        return service.criar_processo(processo)
+        return service.criar_processo(processo, funcionario_id=funcionario_atual.funcionario_id)
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
 
@@ -136,15 +138,17 @@ def listar_processos_criticos(
 @router.patch(
     "/{processo_id}",
     response_model=ProcessoResponse,
-    dependencies=[Depends(exigir_permissao("editar_processos"))],
 )
 def atualizar_processo(
     processo_id: int,
     dados: ProcessoUpdate,
+    funcionario_atual: Funcionario = Depends(exigir_permissao("editar_processos")),
     service: ProcessoService = Depends(get_processo_service),
 ):
     try:
-        return service.atualizar_processo(processo_id, dados)
+        return service.atualizar_processo(
+            processo_id, dados, funcionario_id=funcionario_atual.funcionario_id
+        )
     except ValueError as error:
         mensagem = str(error)
         if "CNJ já cadastrado" in mensagem:
@@ -234,14 +238,33 @@ def obter_url_documento(
 @router.delete(
     "/{processo_id}/documentos/{documento_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(exigir_permissao("editar_processos"))],
 )
 def deletar_documento(
     processo_id: int,
     documento_id: int,
+    funcionario_atual: Funcionario = Depends(exigir_permissao("editar_processos")),
     service: ProcessoService = Depends(get_processo_service),
 ):
     try:
-        service.remover_documento(processo_id=processo_id, documento_id=documento_id)
+        service.remover_documento(
+            processo_id=processo_id,
+            documento_id=documento_id,
+            funcionario_id=funcionario_atual.funcionario_id,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@router.get(
+    "/{processo_id}/movimentacoes",
+    response_model=list[ProcessoMovimentacaoResponse],
+    dependencies=[Depends(exigir_permissao("visualizar_processos"))],
+)
+def listar_movimentacoes(
+    processo_id: int,
+    service: ProcessoService = Depends(get_processo_service),
+):
+    try:
+        return service.listar_movimentacoes(processo_id)
     except ValueError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error

@@ -12,7 +12,8 @@ def _obter_variavel_obrigatoria(nome: str) -> str:
 
 
 MINIO_ENDPOINT = _obter_variavel_obrigatoria("MINIO_ENDPOINT")
-MINIO_BUCKET = _obter_variavel_obrigatoria("MINIO_BUCKET")
+MINIO_BUCKET_PUBLICO = _obter_variavel_obrigatoria("MINIO_BUCKET_PUBLICO")
+MINIO_BUCKET_PRIVADO = _obter_variavel_obrigatoria("MINIO_BUCKET_PRIVADO")
 MINIO_USE_SSL = os.getenv("MINIO_USE_SSL", "false").lower() == "true"
 MINIO_PUBLIC_URL = _obter_variavel_obrigatoria("MINIO_PUBLIC_URL")
 
