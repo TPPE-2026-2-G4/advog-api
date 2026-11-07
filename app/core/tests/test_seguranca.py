@@ -1,14 +1,18 @@
+import importlib
 from unittest.mock import patch
 
 import jwt
 import pytest
 
+from app.core import seguranca
 from app.core.seguranca import (
+    DEV_SECRET_KEY,
     JWT_ALGORITHM,
     JWT_SECRET,
     criar_token_primeiro_acesso,
     extrair_funcionario_id_do_token,
     hash_senha,
+    validar_secret_key,
     validar_token_primeiro_acesso,
     verificar_senha,
 )
@@ -86,3 +90,53 @@ def test_extrair_funcionario_id_do_token_sem_sub_lanca_erro():
     token = jwt.encode({"outro_campo": "valor"}, JWT_SECRET, algorithm=JWT_ALGORITHM)
     with pytest.raises(ValueError, match="Token inválido"):
         extrair_funcionario_id_do_token(token)
+
+
+def test_validar_secret_key_producao_ausente_lanca_erro():
+    with pytest.raises(RuntimeError, match="SECRET_KEY é obrigatória em ambiente de produção"):
+        validar_secret_key(None, "production")
+
+    with pytest.raises(RuntimeError, match="SECRET_KEY é obrigatória em ambiente de produção"):
+        validar_secret_key("   ", "production")
+
+
+def test_validar_secret_key_producao_valor_desenvolvimento_lanca_erro():
+    with pytest.raises(
+        RuntimeError,
+        match="SECRET_KEY não pode ser o valor padrão de desenvolvimento em ambiente de produção",
+    ):
+        validar_secret_key(DEV_SECRET_KEY, "production")
+
+    with pytest.raises(
+        RuntimeError,
+        match="SECRET_KEY não pode ser o valor padrão de desenvolvimento em ambiente de produção",
+    ):
+        validar_secret_key("dev", "production")
+
+
+def test_validar_secret_key_producao_valida_sucesso():
+    chave_segura = "minha-chave-producao-super-segura-e-longa-32"
+    assert validar_secret_key(chave_segura, "production") == chave_segura
+
+
+def test_validar_secret_key_desenvolvimento_fallback():
+    assert validar_secret_key(None, "development") == DEV_SECRET_KEY
+    assert validar_secret_key("", "development") == DEV_SECRET_KEY
+
+
+def test_validar_secret_key_desenvolvimento_customizada():
+    assert validar_secret_key("chave-dev", "development") == "chave-dev"
+
+
+def test_startup_aborta_se_secret_key_ausente_em_producao(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.delenv("JWT_SECRET", raising=False)
+
+    with pytest.raises(RuntimeError, match="SECRET_KEY é obrigatória"):
+        importlib.reload(seguranca)
+
+    # Restaura módulo com ambiente de teste
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.setenv("JWT_SECRET", "super_secret_jwt_key")
+    importlib.reload(seguranca)
