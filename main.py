@@ -30,6 +30,7 @@ from app.config.database import Base, engine  # noqa: E402
 from app.config.limiter import limiter  # noqa: E402
 from app.dashboard.controller import router as dashboard_router  # noqa: E402
 from app.funcionario.controller import router as funcionario_router  # noqa: E402
+from app.health.controller import router as health_router  # noqa: E402
 from app.institucional.controller import router as institucional_router  # noqa: E402
 from app.lancamento.controller import router as lancamento_router  # noqa: E402
 from app.processo.controller import router as processo_router  # noqa: E402
@@ -94,9 +95,16 @@ app.include_router(categoria_lancamento_router)
 app.include_router(cliente_router)
 app.include_router(processo_router)
 app.include_router(dashboard_router)
+app.include_router(health_router)
 
 
 @app.get("/")
 def root():
     return {"message": "Bem vindo a API de Gestão de Advocacia (FastAPI)"}
 
+
+if __name__ == "__main__":
+    import uvicorn
+
+    porta = int(os.getenv("PORT", "8000"))
+    uvicorn.run("main:app", host="0.0.0.0", port=porta, workers=1)
