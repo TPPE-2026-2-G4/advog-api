@@ -17,7 +17,9 @@ conf = ConnectionConfig(
     USE_CREDENTIALS=False,
 )
 
-LINK_PRIMEIRO_ACESSO = os.getenv("FRONTEND_URL", "http://localhost:3000") + "/primeiro-acesso"
+LINK_PRIMEIRO_ACESSO = (
+    os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/") + "/primeiro-acesso"
+)
 
 
 async def enviar_email_boas_vindas(email_destino: str, nome: str, funcionario_id: int):

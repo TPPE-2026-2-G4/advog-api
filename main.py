@@ -65,15 +65,18 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, cast(ExceptionHandler, _rate_limit_exceeded_handler))
 
-FRONTEND_URLS = [
-    origem.strip()
-    for origem in os.getenv("FRONTEND_URL", "http://localhost:3000").split(",")
-    if origem.strip()
-]
+cors_origins_env = os.getenv("CORS_ORIGINS")
+if cors_origins_env is not None:
+    CORS_ORIGINS = [origem.strip() for origem in cors_origins_env.split(",") if origem.strip()]
+else:
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    CORS_ORIGINS = [origem.strip() for origem in frontend_url.split(",") if origem.strip()]
+
+FRONTEND_URLS = CORS_ORIGINS
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=FRONTEND_URLS,
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -96,3 +99,4 @@ app.include_router(dashboard_router)
 @app.get("/")
 def root():
     return {"message": "Bem vindo a API de Gestão de Advocacia (FastAPI)"}
+

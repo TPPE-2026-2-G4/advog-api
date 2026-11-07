@@ -91,3 +91,10 @@ def test_banco_cria_todas_as_tabelas_do_dld(db_session):
 
     assert set(Base.metadata.tables) == TABELAS_DO_DLD
     assert tabelas_no_banco == TABELAS_DO_DLD
+
+
+def test_cors_origins_e_frontend_url_desacoplados():
+    from main import CORS_ORIGINS
+
+    assert isinstance(CORS_ORIGINS, list)
+    assert len(CORS_ORIGINS) > 0
