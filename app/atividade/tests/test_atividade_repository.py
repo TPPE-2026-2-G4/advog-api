@@ -1,4 +1,5 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import event, insert
@@ -150,6 +151,48 @@ def test_buscar_por_filtros(
         assert sorted(titulos_obtidos) == sorted(titulos_esperados)
     else:
         assert isinstance(titulos_obtidos, list)
+
+
+@pytest.mark.parametrize(
+    ("nome_etapa", "prazo_offset_dias", "esperada_atrasada"),
+    [
+        ("Backlog", -1, True),
+        ("Em Execução", -1, True),
+        ("Backlog", 0, False),
+        ("Em Execução", 1, False),
+        ("Finalizado", -1, False),
+        ("Finalizado", 0, False),
+    ],
+)
+def test_buscar_por_filtros_atrasada_usa_etapa_e_horario_sp(
+    db_session, etapas, nome_etapa, prazo_offset_dias, esperada_atrasada
+):
+    hoje_sp = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+    inicio_do_dia = datetime.combine(hoje_sp, time.min)
+    prazo = inicio_do_dia + timedelta(days=prazo_offset_dias)
+
+    atividade = Atividade(
+        titulo="Atividade Teste",
+        descricao="Desc",
+        data_inicio=prazo - timedelta(days=5),
+        data_prazo=prazo,
+        etapa_id=etapas[nome_etapa].etapa_id,
+    )
+    db_session.add(atividade)
+    db_session.commit()
+
+    resultado_atrasada = AtividadeRepository(db_session).buscar_por_filtros(atrasada=True)
+    resultado_nao_atrasada = AtividadeRepository(db_session).buscar_por_filtros(atrasada=False)
+
+    ids_atrasadas = [atividade.atividade_id for atividade in resultado_atrasada]
+    ids_nao_atrasadas = [atividade.atividade_id for atividade in resultado_nao_atrasada]
+
+    if esperada_atrasada:
+        assert atividade.atividade_id in ids_atrasadas
+        assert atividade.atividade_id not in ids_nao_atrasadas
+    else:
+        assert atividade.atividade_id not in ids_atrasadas
+        assert atividade.atividade_id in ids_nao_atrasadas
 
 
 @pytest.mark.parametrize("quantidade", [0, 1, 5])

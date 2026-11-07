@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Query, Session, aliased
@@ -153,14 +154,25 @@ class AtividadeRepository:
             query = query.filter(Atividade.data_realizado.isnot(None))
         elif realizada is False:
             query = query.filter(Atividade.data_realizado.is_(None))
-        if atrasada is True:
-            agora = datetime.now()
-            query = query.filter(Atividade.data_realizado.is_(None), Atividade.data_prazo < agora)
-        elif atrasada is False:
-            agora = datetime.now()
-            query = query.filter(
-                or_(Atividade.data_realizado.isnot(None), Atividade.data_prazo >= agora)
+        if atrasada is not None:
+            hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+            inicio_do_dia = datetime.combine(hoje, time.min)
+            etapa_finalizada = select(EtapaKanban.etapa_id).where(
+                EtapaKanban.etapa_id == Atividade.etapa_id,
+                EtapaKanban.nome == "Finalizado",
             )
+            if atrasada is True:
+                query = query.filter(
+                    ~etapa_finalizada.exists(),
+                    Atividade.data_prazo < inicio_do_dia,
+                )
+            else:
+                query = query.filter(
+                    or_(
+                        etapa_finalizada.exists(),
+                        Atividade.data_prazo >= inicio_do_dia,
+                    )
+                )
         if busca_textual:
             af_texto = aliased(AtividadeFuncionario, flat=True)
             func_texto = aliased(Funcionario, flat=True)

@@ -116,7 +116,6 @@ def test_buscar_atividades_com_filtros(
 
 
 def test_buscar_atividades_apenas_minhas_usa_funcionario_do_usuario():
-    """apenas_minhas=True (sem funcionario_id) usa o ID do usuário logado."""
     service = AtividadeService(MagicMock())
     service.repository = MagicMock()
     service.repository.buscar_por_filtros.return_value = []
@@ -130,8 +129,7 @@ def test_buscar_atividades_apenas_minhas_usa_funcionario_do_usuario():
     assert kwargs["funcionario_id"] == 42
 
 
-def test_buscar_atividades_funcionario_id_explicito_sem_apenas_minhas():
-    """funcionario_id explícito (sem apenas_minhas) é repassado ao repositório."""
+def test_buscar_atividades_restringe_funcionario_id_de_outro_usuario():
     service = AtividadeService(MagicMock())
     service.repository = MagicMock()
     service.repository.buscar_por_filtros.return_value = []
@@ -139,14 +137,12 @@ def test_buscar_atividades_funcionario_id_explicito_sem_apenas_minhas():
     usuario = Funcionario(atuacao_id=1, foto_perfil=1, funcionario_id=42)
     filtro = AtividadeFilter.model_validate({"funcionario_id": 99})
 
-    service.buscar_atividades(filtro, usuario=usuario)
+    assert service.buscar_atividades(filtro, usuario=usuario) == []
 
-    _, kwargs = service.repository.buscar_por_filtros.call_args
-    assert kwargs["funcionario_id"] == 99
+    service.repository.buscar_por_filtros.assert_not_called()
 
 
 def test_buscar_atividades_rejeita_apenas_minhas_com_funcionario_id():
-    """apenas_minhas=True + funcionario_id é rejeitado pelo schema (Passo 6)."""
     with pytest.raises(ValidationError):
         AtividadeFilter.model_validate({"apenas_minhas": True, "funcionario_id": 99})
 
