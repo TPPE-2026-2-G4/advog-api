@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.atividade.model import Atividade
-from app.atividade.schema import AtividadeFilter
+from app.atividade.schema import AtividadeFilter, ResponsavelKanbanResponse
 from app.atividade.service import AtividadeService
 from app.cargo.model import Cargo
 from app.etapa_kanban.model import EtapaKanban
@@ -137,3 +137,64 @@ def test_buscar_atividades_trata_funcionario_id_conforme_apenas_minhas(
 
     _, kwargs = service.repository.buscar_por_filtros.call_args
     assert kwargs["funcionario_id"] == funcionario_id_esperado
+
+
+@pytest.mark.parametrize(
+    ("atividades_retornadas", "responsaveis_retornados", "qtd_esperada"),
+    [
+        ([], [], 0),
+        (
+            [
+                Atividade(
+                    atividade_id=10,
+                    titulo="Atividade A",
+                    descricao="Desc",
+                    data_inicio=datetime(2026, 10, 1),
+                    data_prazo=datetime(2026, 10, 30),
+                    etapa_id=1,
+                    processo_id=None,
+                ),
+                Atividade(
+                    atividade_id=11,
+                    titulo="Atividade B",
+                    descricao="Desc",
+                    data_inicio=datetime(2026, 10, 1),
+                    data_prazo=datetime(2026, 10, 30),
+                    etapa_id=1,
+                    processo_id=None,
+                ),
+            ],
+            [(10, 7, "Fulano"), (11, 7, "Fulano"), (11, 8, "Ciclano")],
+            2,
+        ),
+    ],
+)
+def test_buscar_atividades_executa_consulta_e_mapeia_responsaveis(
+    atividades_retornadas, responsaveis_retornados, qtd_esperada
+):
+    service = AtividadeService(MagicMock())
+    service.repository = MagicMock()
+    service.repository.buscar_por_filtros.return_value = atividades_retornadas
+    service.repository.buscar_responsaveis.return_value = responsaveis_retornados
+
+    usuario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
+        funcionario_id=99,
+        cargo=Cargo(permissao={"gerenciar_equipe": True}),
+    )
+    filtro = AtividadeFilter.model_validate({})
+
+    resultado = service.buscar_atividades(filtro, usuario=usuario)
+
+    assert len(resultado) == qtd_esperada
+    if qtd_esperada == 0:
+        service.repository.buscar_responsaveis.assert_not_called()
+    else:
+        atv10 = next(r for r in resultado if r.atividade_id == 10)
+        assert atv10.responsaveis == [ResponsavelKanbanResponse(funcionario_id=7, nome="Fulano")]
+        atv11 = next(r for r in resultado if r.atividade_id == 11)
+        assert len(atv11.responsaveis) == 2
+        assert atv11.responsaveis[0].nome == "Fulano"
+        assert atv11.responsaveis[1].nome == "Ciclano"
+        service.repository.buscar_responsaveis.assert_called_once_with([10, 11])

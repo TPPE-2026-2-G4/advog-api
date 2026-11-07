@@ -269,3 +269,33 @@ def test_produtividade_funcionarios_sem_atividades(db_session, funcionarios):
 
 def test_produtividade_equipe_vazia(db_session):
     assert AtividadeRepository(db_session).buscar_produtividade_equipe(datetime(2026, 10, 22)) == []
+
+
+@pytest.mark.parametrize(
+    ("filtros", "titulos_esperados"),
+    [
+        (
+            {"busca_textual": "Petição", "indice_funcionario": 0},
+            ["Elaborar Petição Inicial"],
+        ),
+        (
+            {"busca_textual": "Análise", "indice_funcionario": 1},
+            ["Revisão de Contrato"],
+        ),
+        (
+            {"busca_textual": "Audiência"},
+            ["Audiência de Conciliação"],
+        ),
+    ],
+)
+def test_busca_textual_combinada_nao_causa_erro(
+    db_session, atividades_para_filtro, funcionarios, filtros, titulos_esperados
+):
+    kwargs = {}
+    if "busca_textual" in filtros:
+        kwargs["busca_textual"] = filtros["busca_textual"]
+    if "indice_funcionario" in filtros:
+        kwargs["funcionario_id"] = funcionarios[filtros["indice_funcionario"]].funcionario_id
+
+    resultado = AtividadeRepository(db_session).buscar_por_filtros(**kwargs)
+    assert [a.titulo for a in resultado] == titulos_esperados

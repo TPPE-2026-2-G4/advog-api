@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timedelta
 
 from sqlalchemy import case, func, or_, select
-from sqlalchemy.orm import Query, Session
+from sqlalchemy.orm import Query, Session, aliased
 
 from app.atividade.model import Atividade
 from app.atividade_funcionario.model import AtividadeFuncionario
@@ -162,22 +162,19 @@ class AtividadeRepository:
                 or_(Atividade.data_realizado.isnot(None), Atividade.data_prazo >= agora)
             )
         if busca_textual:
+            af_texto = aliased(AtividadeFuncionario, flat=True)
+            func_texto = aliased(Funcionario, flat=True)
             query = (
                 query.outerjoin(Processo, Processo.processo_id == Atividade.processo_id)
-                .outerjoin(
-                    AtividadeFuncionario,
-                    AtividadeFuncionario.atividade_id == Atividade.atividade_id,
-                )
-                .outerjoin(
-                    Funcionario, Funcionario.funcionario_id == AtividadeFuncionario.funcionario_id
-                )
+                .outerjoin(af_texto, af_texto.atividade_id == Atividade.atividade_id)
+                .outerjoin(func_texto, func_texto.funcionario_id == af_texto.funcionario_id)
                 .filter(
                     or_(
                         Atividade.titulo.ilike(f"%{busca_textual}%"),
                         Atividade.descricao.ilike(f"%{busca_textual}%"),
                         Processo.titulo.ilike(f"%{busca_textual}%"),
                         Processo.cnj.ilike(f"%{busca_textual}%"),
-                        Funcionario.nome.ilike(f"%{busca_textual}%"),
+                        func_texto.nome.ilike(f"%{busca_textual}%"),
                     )
                 )
                 .distinct()

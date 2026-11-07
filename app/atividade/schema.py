@@ -130,7 +130,7 @@ class AtividadeResponse(BaseModel):
         default_factory=list, validation_alias="funcionarios"
     )
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class AtividadeFilter(BaseModel):
