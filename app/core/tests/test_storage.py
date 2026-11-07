@@ -4,7 +4,12 @@ from unittest.mock import patch
 import pytest
 from botocore.exceptions import ClientError
 
-from app.config.storage import MINIO_PUBLIC_URL, _obter_variavel_obrigatoria
+from app.config.storage import (
+    MINIO_BUCKET_PRIVADO,
+    MINIO_BUCKET_PUBLICO,
+    MINIO_PUBLIC_URL,
+    _obter_variavel_obrigatoria,
+)
 from app.core.storage import (
     garantir_bucket,
     obter_url_publica,
@@ -33,6 +38,15 @@ def test_obter_url_publica_com_chave_valida():
     url = obter_url_publica("logotipos/logo.png")
     assert url is not None
     assert "logotipos/logo.png" in url
+    assert f"/{MINIO_BUCKET_PUBLICO}/" in url
+    assert url.startswith(MINIO_PUBLIC_URL)
+
+
+def test_obter_url_publica_com_bucket_privado():
+    url = obter_url_publica("processos/1/doc.pdf", bucket=MINIO_BUCKET_PRIVADO)
+    assert url is not None
+    assert "processos/1/doc.pdf" in url
+    assert f"/{MINIO_BUCKET_PRIVADO}/" in url
     assert url.startswith(MINIO_PUBLIC_URL)
 
 
@@ -70,11 +84,15 @@ def test_garantir_bucket_erro_diferente_lanca_excecao(mock_s3):
 @patch("app.core.storage.s3_client")
 def test_salvar_arquivo_sucesso(mock_s3):
     conteudo = io.BytesIO(b"conteudo teste")
-    chave = salvar_arquivo(conteudo, ".png", "image/png", pasta="testes")
+    chave = salvar_arquivo(
+        conteudo, ".png", "image/png", pasta="testes", bucket=MINIO_BUCKET_PRIVADO
+    )
 
     assert chave.startswith("testes/")
     assert chave.endswith(".png")
+    mock_s3.head_bucket.assert_called_once_with(Bucket=MINIO_BUCKET_PRIVADO)
     mock_s3.upload_fileobj.assert_called_once()
+    assert mock_s3.upload_fileobj.call_args.args[1] == MINIO_BUCKET_PRIVADO
 
 
 @patch("app.core.storage.s3_client")
@@ -89,8 +107,10 @@ def test_salvar_arquivo_sem_pasta(mock_s3):
 
 @patch("app.core.storage.s3_client")
 def test_remover_arquivo_sucesso(mock_s3):
-    remover_arquivo("logotipos/antigo.png")
-    mock_s3.delete_object.assert_called_once()
+    remover_arquivo("logotipos/antigo.png", bucket=MINIO_BUCKET_PRIVADO)
+    mock_s3.delete_object.assert_called_once_with(
+        Bucket=MINIO_BUCKET_PRIVADO, Key="logotipos/antigo.png"
+    )
 
 
 def test_remover_arquivo_chave_vazia_nao_chama_s3():

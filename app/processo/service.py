@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.arquivo.model import Arquivo as ArquivoModel
 from app.config.database import SessionLocal
+from app.config.storage import MINIO_BUCKET_PRIVADO
 from app.core.datajud_api import DatajudApiClient
 from app.core.relatorio import (
     LIMITE_LINHAS,
@@ -26,11 +27,13 @@ from app.processo.schema import (
     DocumentoProcessoResponse,
     ProcessoCreate,
     ProcessoFilter,
+    ProcessoMovimentacaoResponse,
     ProcessoPaginadoResponse,
     ProcessoResponse,
     ProcessoResumoResponse,
     ProcessoUpdate,
 )
+from app.processo_movimentacao.model import ProcessoMovimentacao, TipoMovimentacaoProcesso
 
 logger = logging.getLogger(__name__)
 
@@ -179,15 +182,51 @@ class ProcessoService:
         )
         return gerar_arquivo(tabela, formato)
 
-    def criar_processo(self, dados: ProcessoCreate) -> Processo:
+    def registrar_movimentacao(
+        self,
+        processo_id: int,
+        tipo_movimentacao: str,
+        descricao: str,
+        funcionario_id: int | None = None,
+    ) -> ProcessoMovimentacao:
+        movimentacao = ProcessoMovimentacao(
+            processo_id=processo_id,
+            funcionario_id=funcionario_id,
+            tipo_movimentacao=str(tipo_movimentacao),
+            descricao=descricao,
+        )
+        return self.repository.registrar_movimentacao(movimentacao)
+
+    def listar_movimentacoes(self, processo_id: int) -> list[ProcessoMovimentacaoResponse]:
+        processo = self.repository.buscar_por_id(processo_id)
+        if processo is None:
+            raise ValueError("Processo não encontrado")
+        return [
+            ProcessoMovimentacaoResponse.model_validate(mov)
+            for mov in self.repository.listar_movimentacoes(processo_id)
+        ]
+
+    def criar_processo(self, dados: ProcessoCreate, funcionario_id: int | None = None) -> Processo:
         processo_existente = self.repository.buscar_por_cnj(dados.cnj)
 
         if processo_existente:
             raise ValueError("Processo já cadastrado")
         processo_model = Processo(**dados.model_dump())
-        return self.repository.criar(processo_model)
+        processo_criado = self.repository.criar(processo_model)
+        self.registrar_movimentacao(
+            processo_id=processo_criado.processo_id,
+            tipo_movimentacao=TipoMovimentacaoProcesso.CRIACAO_PROCESSO,
+            descricao=f"Processo '{dados.titulo}' (CNJ {dados.cnj}) criado.",
+            funcionario_id=funcionario_id if funcionario_id is not None else dados.funcionario_id,
+        )
+        return processo_criado
 
-    def atualizar_processo(self, processo_id: int, dados: ProcessoUpdate) -> Processo:
+    def atualizar_processo(
+        self,
+        processo_id: int,
+        dados: ProcessoUpdate,
+        funcionario_id: int | None = None,
+    ) -> Processo:
         processo = self.repository.buscar_por_id(processo_id)
 
         if processo is None:
@@ -204,9 +243,28 @@ class ProcessoService:
             if processo_existente is not None and processo_existente.processo_id != processo_id:
                 raise ValueError("CNJ já cadastrado")
 
+        status_anterior = processo.status
+        novo_status = dados_atualizacao.get("status")
+
         for key, value in dados_atualizacao.items():
             setattr(processo, key, value)
-        return self.repository.atualizar(processo)
+        processo_atualizado = self.repository.atualizar(processo)
+        if novo_status is not None and novo_status != status_anterior:
+            valor_anterior = (
+                status_anterior.value
+                if isinstance(status_anterior, StatusProcesso)
+                else str(status_anterior)
+            )
+            valor_novo = (
+                novo_status.value if isinstance(novo_status, StatusProcesso) else str(novo_status)
+            )
+            self.registrar_movimentacao(
+                processo_id=processo_id,
+                tipo_movimentacao=TipoMovimentacaoProcesso.ATUALIZACAO_PROCESSO,
+                descricao=f"Status do processo alterado de '{valor_anterior}' para '{valor_novo}'.",
+                funcionario_id=funcionario_id,
+            )
+        return processo_atualizado
 
     def deletar_processo(self, processo_id: int) -> None:
         processo = self.repository.buscar_por_id(processo_id)
@@ -217,7 +275,7 @@ class ProcessoService:
         chaves = [doc.bucket_link for doc in self.repository.listar_documentos(processo_id)]
         self.repository.deletar(processo)
         for chave in chaves:
-            remover_arquivo(chave)
+            remover_arquivo(chave, bucket=MINIO_BUCKET_PRIVADO)
 
     def adicionar_documento(
         self,
@@ -263,6 +321,7 @@ class ProcessoService:
             extensao=extensao,
             content_type=content_type,
             pasta=f"processos/{processo_id}",
+            bucket=MINIO_BUCKET_PRIVADO,
         )
 
         try:
@@ -276,9 +335,15 @@ class ProcessoService:
                 data_upload=datetime.utcnow(),
             )
             arquivo_salvo = self.repository.adicionar_documento(processo_id, arquivo)
+            self.registrar_movimentacao(
+                processo_id=processo_id,
+                tipo_movimentacao=TipoMovimentacaoProcesso.UPLOAD_ARQUIVO,
+                descricao=f"Arquivo '{nome_original}' adicionado ao processo.",
+                funcionario_id=funcionario_id,
+            )
             return self._montar_resposta_documento(processo_id, arquivo_salvo)
         except Exception:
-            remover_arquivo(chave_minio)
+            remover_arquivo(chave_minio, bucket=MINIO_BUCKET_PRIVADO)
             raise
 
     @staticmethod
@@ -295,7 +360,7 @@ class ProcessoService:
             entrada_tipo=arquivo.tipo_mime,
             data_upload=arquivo.data_upload,
             funcionario_id=arquivo.funcionario_id,
-            url=obter_url_publica(arquivo.bucket_link),
+            url=obter_url_publica(arquivo.bucket_link, bucket=MINIO_BUCKET_PRIVADO),
         )
 
     def listar_documentos(self, processo_id: int) -> list[DocumentoProcessoResponse]:
@@ -315,19 +380,35 @@ class ProcessoService:
         if documento is None:
             raise ValueError("Documento não encontrado")
 
-        url = obter_url_publica(documento.bucket_link, expiracao_segundos=expiracao_segundos)
+        url = obter_url_publica(
+            documento.bucket_link,
+            expiracao_segundos=expiracao_segundos,
+            bucket=MINIO_BUCKET_PRIVADO,
+        )
         if not url:
             raise ValueError("Falha ao gerar URL de acesso ao documento")
         return url
 
-    def remover_documento(self, processo_id: int, documento_id: int) -> None:
+    def remover_documento(
+        self,
+        processo_id: int,
+        documento_id: int,
+        funcionario_id: int | None = None,
+    ) -> None:
         documento = self.repository.buscar_documento(processo_id, documento_id)
         if documento is None:
             raise ValueError("Documento não encontrado")
 
         chave = documento.bucket_link
+        nome_arquivo = documento.nome_arquivo
         self.repository.deletar_documento(processo_id, documento)
-        remover_arquivo(chave)
+        remover_arquivo(chave, bucket=MINIO_BUCKET_PRIVADO)
+        self.registrar_movimentacao(
+            processo_id=processo_id,
+            tipo_movimentacao=TipoMovimentacaoProcesso.EXCLUSAO_ARQUIVO,
+            descricao=f"Arquivo '{nome_arquivo}' removido do processo.",
+            funcionario_id=funcionario_id,
+        )
 
     def buscar_processos_criticos(
         self,
@@ -357,6 +438,7 @@ class ProcessoService:
 
                 data = await api_client.fetch_processo(processo.cnj)
                 if data:
+                    status_anterior = processo.status
                     if "status" in data and data["status"]:
                         raw_status = data["status"]
                         status_map = {
@@ -374,6 +456,19 @@ class ProcessoService:
                         processo.data_realizado = data["data_realizado"]
                     if "tribunal" in data and data["tribunal"]:
                         processo.tribunal = data["tribunal"]
+
+                    if processo.status != status_anterior:
+                        db.add(
+                            ProcessoMovimentacao(
+                                processo_id=processo.processo_id,
+                                funcionario_id=None,
+                                tipo_movimentacao=TipoMovimentacaoProcesso.SINCRONIZACAO_TRIBUNAL,
+                                descricao=(
+                                    f"Status sincronizado via Datajud de "
+                                    f"'{status_anterior.value}' para '{processo.status.value}'."
+                                ),
+                            )
+                        )
 
                     updates_count += 1
 

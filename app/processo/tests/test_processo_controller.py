@@ -1094,3 +1094,92 @@ def test_atualizar_processo_campo_obrigatorio_nulo_retorna_422(
     )
 
     assert response.status_code == 422
+
+
+@patch("app.processo.service.salvar_arquivo")
+@patch("app.processo.service.remover_arquivo")
+@patch("app.processo.service.obter_url_publica")
+def test_fluxo_movimentacoes_processo_e_documentos(
+    mock_url,
+    mock_remover,
+    mock_salvar,
+    client,
+    db_session,
+    usuario_processos,
+    cliente_processo,
+    funcionario_responsavel,
+):
+    _, token = usuario_processos
+    mock_salvar.return_value = "processos/1/doc.pdf"
+    mock_url.return_value = "http://minio/doc.pdf"
+
+    # 1. Criar processo
+    resp_create = client.post(
+        "/processos/",
+        json={
+            "cnj": "44444333332222211111",
+            "titulo": "Processo Histórico",
+            "descricao": "Descrição",
+            "status": "Ativo",
+            "tribunal": "TJDFT",
+            "area": "Civil",
+            "data_inicio": "2026-01-01T00:00:00",
+            "data_prazo": "2026-12-31T00:00:00",
+            "cliente_id": cliente_processo.cliente_id,
+            "funcionario_id": funcionario_responsavel.funcionario_id,
+        },
+        headers=auth_header(token),
+    )
+    assert resp_create.status_code == 201
+    proc_id = resp_create.json()["processo_id"]
+
+    # 2. Atualizar apenas título (não deve gerar movimentação)
+    resp_patch_titulo = client.patch(
+        f"/processos/{proc_id}",
+        json={"titulo": "Processo Histórico Atualizado"},
+        headers=auth_header(token),
+    )
+    assert resp_patch_titulo.status_code == 200
+
+    # 3. Atualizar status (deve gerar movimentação ATUALIZACAO_PROCESSO)
+    resp_patch_status = client.patch(
+        f"/processos/{proc_id}",
+        json={"status": "Concluído"},
+        headers=auth_header(token),
+    )
+    assert resp_patch_status.status_code == 200
+
+    # 4. Upload de documento
+    resp_up = client.post(
+        f"/processos/{proc_id}/documentos",
+        headers=auth_header(token),
+        files={"file": ("peticao.pdf", b"%PDF-1.4\n%content", "application/pdf")},
+    )
+    assert resp_up.status_code == 201
+    doc_id = resp_up.json()["documento_id"]
+
+    # 4. Deletar documento
+    resp_del = client.delete(
+        f"/processos/{proc_id}/documentos/{doc_id}",
+        headers=auth_header(token),
+    )
+    assert resp_del.status_code == 204
+
+    # 5. Consultar movimentações
+    resp_mov = client.get(f"/processos/{proc_id}/movimentacoes", headers=auth_header(token))
+    assert resp_mov.status_code == 200
+    movimentacoes = resp_mov.json()
+    tipos = [m["tipo_movimentacao"] for m in movimentacoes]
+    assert tipos == [
+        "EXCLUSAO_ARQUIVO",
+        "UPLOAD_ARQUIVO",
+        "ATUALIZACAO_PROCESSO",
+        "CRIACAO_PROCESSO",
+    ]
+
+
+def test_listar_movimentacoes_processo_inexistente_retorna_404(client, usuario_processos):
+    _, token = usuario_processos
+    resp = client.get("/processos/999999/movimentacoes", headers=auth_header(token))
+    assert resp.status_code == 404
+    assert "Processo não encontrado" in resp.json()["detail"]

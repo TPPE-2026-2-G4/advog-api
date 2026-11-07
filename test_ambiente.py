@@ -23,6 +23,7 @@ TABELAS_DO_DLD = {
     "lancamentos",
     "processos",
     "processos_arquivos",
+    "processos_movimentacoes",
 }
 
 
@@ -57,7 +58,8 @@ def test_dependencia_esta_instalada(modulo):
     [
         "MINIO_ENDPOINT",
         "MINIO_PUBLIC_URL",
-        "MINIO_BUCKET",
+        "MINIO_BUCKET_PUBLICO",
+        "MINIO_BUCKET_PRIVADO",
         "MINIO_ROOT_USER",
         "MINIO_ROOT_PASSWORD",
     ],
