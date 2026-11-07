@@ -7,8 +7,10 @@ from app.core.seguranca import (
     JWT_ALGORITHM,
     JWT_SECRET,
     criar_token_primeiro_acesso,
+    criar_token_recuperacao,
     extrair_funcionario_id_do_token,
     hash_senha,
+    hash_token_recuperacao,
     validar_token_primeiro_acesso,
     verificar_senha,
 )
@@ -40,6 +42,14 @@ def test_verificar_senha_retorna_false_para_senha_incorreta():
     senha_hash = hash_senha(senha)
 
     assert verificar_senha("senha_incorreta", senha_hash) is False
+
+
+def test_criar_token_recuperacao_retorna_token_e_hash_verificavel():
+    token, token_hash = criar_token_recuperacao()
+
+    assert token
+    assert token_hash == hash_token_recuperacao(token)
+    assert token_hash != token
 
 
 def test_validar_token_primeiro_acesso_sucesso():
