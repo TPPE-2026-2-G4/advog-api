@@ -65,6 +65,17 @@ class DocumentoUrlResponse(BaseModel):
     expira_em_segundos: int = 1800
 
 
+class ProcessoMovimentacaoResponse(BaseModel):
+    movimentacao_id: int
+    processo_id: int
+    funcionario_id: int | None = None
+    tipo_movimentacao: str
+    descricao: str
+    data_movimentacao: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SincronizacaoResponse(BaseModel):
     atualizados: int
     mensagem: str

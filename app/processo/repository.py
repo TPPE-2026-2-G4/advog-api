@@ -8,6 +8,7 @@ from app.arquivo.model import Arquivo
 from app.cliente.model import Cliente
 from app.processo.model import Processo, StatusProcesso
 from app.processo_arquivo.model import ProcessoArquivo
+from app.processo_movimentacao.model import ProcessoMovimentacao
 
 
 class ProcessoRepository:
@@ -216,6 +217,9 @@ class ProcessoRepository:
         self.db.query(ProcessoArquivo).filter(
             ProcessoArquivo.processo_id == processo.processo_id
         ).delete()
+        self.db.query(ProcessoMovimentacao).filter(
+            ProcessoMovimentacao.processo_id == processo.processo_id
+        ).delete()
         self.db.delete(processo)
         self.db.commit()
 
@@ -251,3 +255,20 @@ class ProcessoRepository:
         ).delete()
         self.db.delete(arquivo)
         self.db.commit()
+
+    def registrar_movimentacao(self, movimentacao: ProcessoMovimentacao) -> ProcessoMovimentacao:
+        self.db.add(movimentacao)
+        self.db.commit()
+        self.db.refresh(movimentacao)
+        return movimentacao
+
+    def listar_movimentacoes(self, processo_id: int) -> list[ProcessoMovimentacao]:
+        return (
+            self.db.query(ProcessoMovimentacao)
+            .filter(ProcessoMovimentacao.processo_id == processo_id)
+            .order_by(
+                ProcessoMovimentacao.data_movimentacao.desc(),
+                ProcessoMovimentacao.movimentacao_id.desc(),
+            )
+            .all()
+        )

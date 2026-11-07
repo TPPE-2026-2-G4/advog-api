@@ -25,6 +25,7 @@ from app.processo.schema import (
 )
 from app.processo.service import ProcessoService
 from app.processo_arquivo.model import ProcessoArquivo
+from app.processo_movimentacao.model import ProcessoMovimentacao, TipoMovimentacaoProcesso
 
 
 def criar_cargo(
@@ -1906,6 +1907,42 @@ def test_repository_buscar_por_filtros_com_busca_textual(db_session, processo):
     assert encontrados[0].processo_id == processo.processo_id
 
 
+def test_repository_registrar_listar_movimentacoes_e_deletar_processo(
+    db_session: Session, processo: Processo
+):
+    repository = ProcessoRepository(db_session)
+
+    movimentacao_criacao = repository.registrar_movimentacao(
+        ProcessoMovimentacao(
+            processo_id=processo.processo_id,
+            funcionario_id=processo.funcionario_id,
+            tipo_movimentacao=TipoMovimentacaoProcesso.CRIACAO_PROCESSO,
+            descricao="Processo criado.",
+        )
+    )
+    movimentacao_upload = repository.registrar_movimentacao(
+        ProcessoMovimentacao(
+            processo_id=processo.processo_id,
+            funcionario_id=None,
+            tipo_movimentacao=TipoMovimentacaoProcesso.UPLOAD_ARQUIVO,
+            descricao="Arquivo adicionado.",
+        )
+    )
+
+    movimentacoes = repository.listar_movimentacoes(processo.processo_id)
+
+    assert movimentacao_criacao.movimentacao_id is not None
+    assert movimentacao_upload.movimentacao_id is not None
+    assert [mov.movimentacao_id for mov in movimentacoes] == [
+        movimentacao_upload.movimentacao_id,
+        movimentacao_criacao.movimentacao_id,
+    ]
+
+    repository.deletar(processo)
+
+    assert db_session.query(ProcessoMovimentacao).count() == 0
+
+
 def processo_valido() -> dict:
     return {
         "cnj": "11111111111111111111",
@@ -2375,6 +2412,24 @@ def test_service_atualizar_processo():
     service.repository.atualizar.assert_called_once_with(processo)
 
 
+def test_service_atualizar_processo_sem_mudar_status_nao_registra_movimentacao():
+    service = criar_service()
+
+    processo = MagicMock(spec=Processo)
+    processo.processo_id = 1
+    processo.status = StatusProcesso.ATIVO
+
+    dados = ProcessoUpdate(titulo="Apenas correção de título")
+
+    service.repository.buscar_por_id.return_value = processo
+    service.repository.atualizar.return_value = processo
+
+    service.atualizar_processo(1, dados)
+
+    service.repository.atualizar.assert_called_once_with(processo)
+    service.repository.registrar_movimentacao.assert_not_called()
+
+
 @pytest.mark.parametrize("campo", ["descricao", "data_inicio", "data_prazo", "funcionario_id"])
 def test_service_atualizar_processo_campo_obrigatorio_nulo_lanca_erro(campo):
     service = criar_service()
@@ -2456,7 +2511,7 @@ def test_service_deletar_processo(mock_remover):
 
     service.deletar_processo(1)
 
-    mock_remover.assert_called_once_with("processos/1/doc.pdf")
+    mock_remover.assert_called_once_with("processos/1/doc.pdf", bucket="privado")
     service.repository.deletar.assert_called_once_with(processo)
 
 
@@ -2651,7 +2706,7 @@ def test_service_adicionar_documento_erro_banco_chama_remover_arquivo(mock_remov
     with pytest.raises(Exception, match="Erro no banco"):
         service.adicionar_documento(1, file_mock)
 
-    mock_remover.assert_called_once_with("processos/1/arquivo.pdf")
+    mock_remover.assert_called_once_with("processos/1/arquivo.pdf", bucket="privado")
 
 
 def test_service_listar_documentos_processo_inexistente():
@@ -2717,7 +2772,9 @@ def test_service_obter_url_documento_sucesso(mock_obter_url):
     url = service.obter_url_documento(1, 10, expiracao_segundos=600)
 
     assert url == "http://minio/download-presigned"
-    mock_obter_url.assert_called_once_with("processos/1/a.pdf", expiracao_segundos=600)
+    mock_obter_url.assert_called_once_with(
+        "processos/1/a.pdf", expiracao_segundos=600, bucket="privado"
+    )
 
 
 def test_service_remover_documento_inexistente():
@@ -2737,7 +2794,7 @@ def test_service_remover_documento_sucesso(mock_remover):
     service.remover_documento(1, 10)
 
     service.repository.deletar_documento.assert_called_once_with(1, doc)
-    mock_remover.assert_called_once_with("processos/1/a.pdf")
+    mock_remover.assert_called_once_with("processos/1/a.pdf", bucket="privado")
 
 
 @pytest.mark.parametrize(
@@ -2859,6 +2916,124 @@ def test_service_obter_resumo_processos_parametrizado(
 
     service.repository.contar_por_status.assert_called_once_with(funcionario_id=filtro_esperado)
     assert service.repository.contar_por_filtros.call_count == 2
+
+
+def test_service_listar_movimentacoes_processo_inexistente():
+    service = criar_service()
+    service.repository.buscar_por_id.return_value = None
+
+    with pytest.raises(ValueError, match="Processo não encontrado"):
+        service.listar_movimentacoes(999)
+
+
+def test_service_listar_movimentacoes_sucesso():
+    service = criar_service()
+    service.repository.buscar_por_id.return_value = MagicMock(spec=Processo)
+    movimentacao = ProcessoMovimentacao(
+        movimentacao_id=1,
+        processo_id=10,
+        funcionario_id=2,
+        tipo_movimentacao=TipoMovimentacaoProcesso.CRIACAO_PROCESSO,
+        descricao="Processo criado.",
+        data_movimentacao=datetime(2026, 1, 1),
+    )
+    service.repository.listar_movimentacoes.return_value = [movimentacao]
+
+    resultado = service.listar_movimentacoes(10)
+
+    assert len(resultado) == 1
+    assert resultado[0].movimentacao_id == 1
+    assert resultado[0].processo_id == 10
+    assert resultado[0].tipo_movimentacao == TipoMovimentacaoProcesso.CRIACAO_PROCESSO
+    service.repository.listar_movimentacoes.assert_called_once_with(10)
+
+
+@patch("app.processo.service.salvar_arquivo")
+@patch("app.processo.service.remover_arquivo")
+@patch("app.processo.service.obter_url_publica")
+def test_controller_fluxo_movimentacoes_processo_e_documentos(
+    mock_url,
+    mock_remover,
+    mock_salvar,
+    client,
+    db_session,
+    usuario_processos,
+    cliente_processo,
+    funcionario_responsavel,
+):
+    _, token = usuario_processos
+    mock_salvar.return_value = "processos/1/doc.pdf"
+    mock_url.return_value = "http://minio/doc.pdf"
+    headers = auth_header(token)
+
+    resposta_criacao = client.post(
+        "/processos/",
+        json={
+            "cnj": "44444333332222211111",
+            "titulo": "Processo Histórico",
+            "descricao": "Descrição",
+            "status": "Ativo",
+            "tribunal": "TJDFT",
+            "area": "Civil",
+            "data_inicio": "2026-01-01T00:00:00",
+            "data_prazo": "2026-12-31T00:00:00",
+            "cliente_id": cliente_processo.cliente_id,
+            "funcionario_id": funcionario_responsavel.funcionario_id,
+        },
+        headers=headers,
+    )
+    assert resposta_criacao.status_code == 201
+    processo_id = resposta_criacao.json()["processo_id"]
+
+    resposta_atualizacao = client.patch(
+        f"/processos/{processo_id}",
+        json={"status": "Concluído"},
+        headers=headers,
+    )
+    assert resposta_atualizacao.status_code == 200
+
+    resposta_upload = client.post(
+        f"/processos/{processo_id}/documentos",
+        headers=headers,
+        files={"file": ("peticao.pdf", b"%PDF-1.4\n%content", "application/pdf")},
+    )
+    assert resposta_upload.status_code == 201
+    documento_id = resposta_upload.json()["documento_id"]
+
+    resposta_remocao = client.delete(
+        f"/processos/{processo_id}/documentos/{documento_id}",
+        headers=headers,
+    )
+    assert resposta_remocao.status_code == 204
+
+    resposta_movimentacoes = client.get(
+        f"/processos/{processo_id}/movimentacoes",
+        headers=headers,
+    )
+
+    assert resposta_movimentacoes.status_code == 200
+    assert [
+        movimentacao["tipo_movimentacao"] for movimentacao in resposta_movimentacoes.json()
+    ] == [
+        "EXCLUSAO_ARQUIVO",
+        "UPLOAD_ARQUIVO",
+        "ATUALIZACAO_PROCESSO",
+        "CRIACAO_PROCESSO",
+    ]
+
+
+def test_controller_listar_movimentacoes_processo_inexistente_retorna_404(
+    client, usuario_processos
+):
+    _, token = usuario_processos
+
+    resposta = client.get(
+        "/processos/999999/movimentacoes",
+        headers=auth_header(token),
+    )
+
+    assert resposta.status_code == 404
+    assert "Processo não encontrado" in resposta.json()["detail"]
 
 
 @pytest.fixture
