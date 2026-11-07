@@ -15,6 +15,7 @@ from app.cargo.model import Cargo  # noqa: E402
 from app.cargo.schema import PermissaoBase  # noqa: E402
 from app.cliente.model import Cliente  # noqa: E402, F401
 from app.config.database import Base, SessionLocal, engine  # noqa: E402
+from app.config.storage import MINIO_BUCKET_PRIVADO, MINIO_BUCKET_PUBLICO  # noqa: E402
 from app.core.seguranca import hash_senha  # noqa: E402
 from app.core.storage import garantir_bucket, salvar_arquivo  # noqa: E402
 from app.etapa_cliente.model import EtapaCliente  # noqa: E402
@@ -22,6 +23,7 @@ from app.etapa_kanban.model import EtapaKanban  # noqa: E402
 from app.funcionario.model import Funcionario, StatusFuncionario  # noqa: E402
 from app.institucional.model import Institucional  # noqa: E402
 from app.processo.model import Processo  # noqa: E402, F401
+from app.processo_movimentacao.model import ProcessoMovimentacao  # noqa: E402, F401
 
 ETAPAS_CLIENTE = (
     "Novo contato",
@@ -110,15 +112,21 @@ def seed() -> None:
         else:
             print(f"Usuário administrador já existe: {email}")
 
+        garantir_bucket(MINIO_BUCKET_PUBLICO)
+        garantir_bucket(MINIO_BUCKET_PRIVADO)
+
         institucional = db.query(Institucional).first()
         if institucional is None:
             arquivo_imagem_sobre = arquivo_padrao
             caminho_imagem = Path(__file__).parent / "assets" / "default_sobre.jpg"
             if caminho_imagem.exists():
-                garantir_bucket()
                 with open(caminho_imagem, "rb") as f:
                     chave_imagem_sobre = salvar_arquivo(
-                        conteudo=f, extensao="jpg", content_type="image/jpeg", pasta="sobre"
+                        conteudo=f,
+                        extensao="jpg",
+                        content_type="image/jpeg",
+                        pasta="sobre",
+                        bucket=MINIO_BUCKET_PUBLICO,
                     )
                 arquivo_imagem_sobre = Arquivo(
                     nome_arquivo=caminho_imagem.name,

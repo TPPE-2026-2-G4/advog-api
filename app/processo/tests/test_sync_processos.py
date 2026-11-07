@@ -7,6 +7,7 @@ from app.cliente.model import Cliente
 from app.config.database import Base, SessionLocal, engine
 from app.processo.model import Processo, StatusProcesso
 from app.processo.service import ProcessoService
+from app.processo_movimentacao.model import ProcessoMovimentacao, TipoMovimentacaoProcesso
 
 
 @pytest.fixture
@@ -27,6 +28,7 @@ def db_session():
     yield db, cliente
 
     db.rollback()
+    db.query(ProcessoMovimentacao).delete()
     db.query(Processo).delete()
     db.query(Cliente).delete()
     db.commit()
@@ -88,6 +90,12 @@ async def test_sincronizar_processos_com_api(mock_fetch, db_session):
 
     db.refresh(p2)
     assert p2.status == StatusProcesso.ATIVO
+
+    movimentacoes = db.query(ProcessoMovimentacao).filter_by(processo_id=p1.processo_id).all()
+    assert len(movimentacoes) == 1
+    assert movimentacoes[0].tipo_movimentacao == TipoMovimentacaoProcesso.SINCRONIZACAO_TRIBUNAL
+    assert movimentacoes[0].funcionario_id is None
+    assert "Concluído" in movimentacoes[0].descricao
 
 
 @pytest.mark.asyncio
