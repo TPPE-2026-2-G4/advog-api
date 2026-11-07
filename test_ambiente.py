@@ -23,6 +23,7 @@ TABELAS_DO_DLD = {
     "lancamentos",
     "processos",
     "processos_arquivos",
+    "tokens_recuperacao_senha",
 }
 
 
