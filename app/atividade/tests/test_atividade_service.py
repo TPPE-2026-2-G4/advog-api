@@ -6,10 +6,52 @@ from pydantic import ValidationError
 
 from app.atividade.model import Atividade
 from app.atividade.schema import AtividadeFilter, ResponsavelKanbanResponse
-from app.atividade.service import AtividadeService
+from app.atividade.service import AtividadeNaoEncontradaError, AtividadeService
 from app.cargo.model import Cargo
 from app.etapa_kanban.model import EtapaKanban
 from app.funcionario.model import Funcionario
+
+
+@pytest.mark.parametrize(
+    ("usuario_id", "responsaveis_ids", "espera_erro"),
+    [
+        (7, [7], False),
+        (7, [8], True),
+    ],
+)
+def test_buscar_atividade_responsavel(usuario_id, responsaveis_ids, espera_erro):
+    service = AtividadeService(MagicMock())
+    service.repository = MagicMock()
+    service.repository.buscar_por_id.return_value = Atividade(
+        atividade_id=10,
+        titulo="Atividade",
+        descricao="Descrição",
+        data_inicio=datetime(2026, 10, 1),
+        data_prazo=datetime(2026, 10, 30),
+        etapa_id=1,
+        funcionarios=[
+            Funcionario(
+                atuacao_id=1,
+                foto_perfil=1,
+                funcionario_id=responsavel_id,
+                nome=f"Responsável {responsavel_id}",
+            )
+            for responsavel_id in responsaveis_ids
+        ],
+    )
+    usuario = Funcionario(
+        atuacao_id=1,
+        foto_perfil=1,
+        funcionario_id=usuario_id,
+        cargo=Cargo(permissao={}),
+    )
+
+    if espera_erro:
+        with pytest.raises(AtividadeNaoEncontradaError, match="Atividade não encontrada"):
+            service.buscar_atividade(10, usuario=usuario)
+    else:
+        resultado = service.buscar_atividade(10, usuario=usuario)
+        assert resultado.atividade_id == 10
 
 
 @pytest.mark.parametrize(

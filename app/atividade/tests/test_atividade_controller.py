@@ -231,7 +231,7 @@ def test_produtividade_requer_permissao(client, funcionarios, token_acesso, aute
             True,
             {},
             200,
-            {"propria", "terceiros", "compartilhada", "sem_responsavel", "finalizada"},
+            {"propria", "compartilhada", "finalizada"},
         ),
         (
             True,
