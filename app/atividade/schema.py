@@ -1,7 +1,7 @@
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ResponsavelKanbanResponse(BaseModel):
@@ -133,6 +133,18 @@ class AtividadeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
+def _validar_data_segura(v: date | None) -> date | None:
+    if v is not None and v >= date.max:
+        raise ValueError(
+            "Data não pode ser o último dia representável pelo sistema"
+            "(9999-12-31); use no máximo 9999-12-30"
+        )
+    return v
+
+
+DataFimSegura = Annotated[date | None, AfterValidator(_validar_data_segura)]
+
+
 class AtividadeFilter(BaseModel):
     atividade_id: int | None = Field(None, description="Filtrar por ID da atividade")
     titulo: str | None = Field(None, max_length=100, description="Filtrar por título da atividade")
@@ -143,9 +155,9 @@ class AtividadeFilter(BaseModel):
         None, description="Filtrar por ID do funcionário responsável"
     )
     prazo_inicio: date | None = Field(None, description="Prazo a partir de (inclusive)")
-    prazo_fim: date | None = Field(None, description="Prazo até (inclusive)")
+    prazo_fim: DataFimSegura = Field(None, description="Prazo até (inclusive)")
     data_inicio_de: date | None = Field(None, description="Data de início a partir de (inclusive)")
-    data_inicio_ate: date | None = Field(None, description="Data de início até (inclusive)")
+    data_inicio_ate: DataFimSegura = Field(None, description="Data de início até (inclusive)")
     realizada: bool | None = Field(None, description="Filtrar por status de conclusão")
     atrasada: bool | None = Field(None, description="Filtrar por atividades atrasadas")
     apenas_minhas: bool = Field(False, description="Filtrar apenas atividades do usuário logado")
@@ -163,4 +175,7 @@ class AtividadeFilter(BaseModel):
             and self.data_inicio_de > self.data_inicio_ate
         ):
             raise ValueError("data_inicio_de não pode ser posterior a data_inicio_ate")
+
+        if self.apenas_minhas and self.funcionario_id is not None:
+            raise ValueError("apenas_minhas e funcionario_id não podem ser usados simultaneamente")
         return self

@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pytest
 from pydantic import ValidationError
@@ -120,7 +120,7 @@ def test_produtividade_exige_campos_do_contrato(campo):
                 "data_inicio_ate": date(2026, 10, 15),
                 "realizada": False,
                 "atrasada": True,
-                "apenas_minhas": True,
+                "apenas_minhas": False,
                 "busca_textual": "recurso apelação",
             },
             {
@@ -136,7 +136,7 @@ def test_produtividade_exige_campos_do_contrato(campo):
                 "data_inicio_ate": date(2026, 10, 15),
                 "realizada": False,
                 "atrasada": True,
-                "apenas_minhas": True,
+                "apenas_minhas": False,
                 "busca_textual": "recurso apelação",
             },
         ),
@@ -194,3 +194,51 @@ def test_atividade_filter_limite_maximo_dos_campos(campo, tamanho):
     dados = {campo: "a" * tamanho}
     with pytest.raises(ValidationError):
         AtividadeFilter(**dados)
+
+
+@pytest.mark.parametrize("campo", ["prazo_fim", "data_inicio_ate"])
+def test_atividade_filter_rejeita_date_max_que_causaria_overflow(campo: str):
+    with pytest.raises(ValidationError):
+        AtividadeFilter.model_validate({campo: date.max})
+
+
+@pytest.mark.parametrize("campo", ["prazo_fim", "data_inicio_ate"])
+def test_atividade_filter_aceita_um_dia_antes_de_date_max(campo: str):
+    data_segura = date.max - timedelta(days=1)
+    filtro = AtividadeFilter.model_validate({campo: data_segura})
+    assert getattr(filtro, campo) == data_segura
+
+
+@pytest.mark.parametrize(
+    ("campo", "data"),
+    [
+        ("prazo_fim", date(9999, 1, 31)),
+        ("prazo_fim", date(9999, 11, 30)),
+        ("data_inicio_ate", date(9999, 2, 28)),
+    ],
+)
+def test_atividade_filter_aceita_fins_de_mes_em_9999(campo: str, data: date):
+    filtro = AtividadeFilter.model_validate({campo: data})
+    assert getattr(filtro, campo) == data
+
+
+def test_atividade_filter_rejeita_apenas_minhas_com_funcionario_id():
+    with pytest.raises(ValidationError) as exc_info:
+        AtividadeFilter.model_validate({"apenas_minhas": True, "funcionario_id": 99})
+    assert "apenas_minhas e funcionario_id não podem ser usados simultaneamente" in str(
+        exc_info.value
+    )
+
+
+@pytest.mark.parametrize(
+    "dados",
+    [
+        {"apenas_minhas": True},
+        {"funcionario_id": 99},
+        {"apenas_minhas": False, "funcionario_id": 99},
+    ],
+)
+def test_atividade_filter_aceita_combinacoes_validas_de_escopo(dados):
+    filtro = AtividadeFilter(**dados)
+    for campo, valor in dados.items():
+        assert getattr(filtro, campo) == valor
