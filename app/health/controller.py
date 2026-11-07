@@ -5,7 +5,7 @@ from fastapi import APIRouter, Response, status
 from sqlalchemy import text
 
 from app.config import database
-from app.config.storage import MINIO_BUCKET, s3_client
+from app.config.storage import MINIO_BUCKET_PRIVADO, s3_client
 
 router = APIRouter(tags=["Health"])
 
@@ -18,7 +18,7 @@ def verificar_banco_conexao() -> None:
 
 
 def verificar_storage_conexao() -> None:
-    s3_client.head_bucket(Bucket=MINIO_BUCKET)
+    s3_client.head_bucket(Bucket=MINIO_BUCKET_PRIVADO)
 
 
 @router.get(
