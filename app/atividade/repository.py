@@ -150,17 +150,20 @@ class AtividadeRepository:
         if data_inicio_ate is not None:
             limite = datetime.combine(data_inicio_ate + timedelta(days=1), time.min)
             query = query.filter(Atividade.data_inicio < limite)
+
+        etapa_finalizada = select(EtapaKanban.etapa_id).where(
+            EtapaKanban.etapa_id == Atividade.etapa_id,
+            EtapaKanban.nome == "Finalizado",
+        )
+
         if realizada is True:
-            query = query.filter(Atividade.data_realizado.isnot(None))
+            query = query.filter(etapa_finalizada.exists())
         elif realizada is False:
-            query = query.filter(Atividade.data_realizado.is_(None))
+            query = query.filter(~etapa_finalizada.exists())
         if atrasada is not None:
             hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
             inicio_do_dia = datetime.combine(hoje, time.min)
-            etapa_finalizada = select(EtapaKanban.etapa_id).where(
-                EtapaKanban.etapa_id == Atividade.etapa_id,
-                EtapaKanban.nome == "Finalizado",
-            )
+
             if atrasada is True:
                 query = query.filter(
                     ~etapa_finalizada.exists(),
@@ -173,6 +176,7 @@ class AtividadeRepository:
                         Atividade.data_prazo >= inicio_do_dia,
                     )
                 )
+
         if busca_textual:
             af_texto = aliased(AtividadeFuncionario, flat=True)
             func_texto = aliased(Funcionario, flat=True)

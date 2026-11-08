@@ -691,13 +691,8 @@ def test_buscar_responsaveis_somente_dos_cartoes_solicitados(
         ({"filtrar_por_id_de": "Elaborar Petição Inicial"}, ["Elaborar Petição Inicial"]),
         ({"titulo": "Petição"}, ["Elaborar Petição Inicial"]),
         ({"descricao": "Análise"}, ["Revisão de Contrato"]),
-        ({"realizada": True}, []),
-        (
-            {"realizada": False},
-            ["Elaborar Petição Inicial", "Revisão de Contrato", "Audiência de Conciliação"],
-        ),
-        ({"atrasada": True}, None),
-        ({"atrasada": False}, None),
+        ({"realizada": True}, ["Audiência de Conciliação"]),
+        ({"realizada": False}, ["Elaborar Petição Inicial", "Revisão de Contrato"]),
     ],
 )
 def test_buscar_por_filtros(
@@ -760,28 +755,30 @@ def test_buscar_por_filtros(
 
 
 @pytest.mark.parametrize(
-    ("nome_etapa", "prazo_offset_dias", "esperada_atrasada"),
+    ("nome_etapa", "prazo_offset_dias", "esperada_atrasada", "esperada_realizada"),
     [
-        ("Backlog", -1, True),
-        ("Em Execução", -1, True),
-        ("Backlog", 0, False),
-        ("Em Execução", 1, False),
-        ("Finalizado", -1, False),
-        ("Finalizado", 0, False),
+        ("Backlog", -1, True, False),
+        ("Em Execução", -1, True, False),
+        ("Backlog", 0, False, False),
+        ("Em Execução", 1, False, False),
+        ("Finalizado", -1, False, True),
+        ("Finalizado", 1, False, True),
     ],
 )
-def test_buscar_por_filtros_atrasada_usa_etapa_e_horario_sp(
-    db_session, etapas, nome_etapa, prazo_offset_dias, esperada_atrasada
+def test_buscar_por_filtros_realizada_e_atrasada_usam_etapa_e_fuso_sp(
+    db_session, etapas, nome_etapa, prazo_offset_dias, esperada_atrasada, esperada_realizada
 ):
+
     hoje_sp = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
     inicio_do_dia = datetime.combine(hoje_sp, time.min)
     prazo = inicio_do_dia + timedelta(days=prazo_offset_dias)
 
     atividade = Atividade(
-        titulo="Atividade Teste",
+        titulo=f"Atividade Teste {nome_etapa} {prazo_offset_dias}",
         descricao="Desc",
         data_inicio=prazo - timedelta(days=5),
         data_prazo=prazo,
+        data_realizado=None,
         etapa_id=etapas[nome_etapa].etapa_id,
     )
     db_session.add(atividade)
@@ -789,9 +786,13 @@ def test_buscar_por_filtros_atrasada_usa_etapa_e_horario_sp(
 
     resultado_atrasada = AtividadeRepository(db_session).buscar_por_filtros(atrasada=True)
     resultado_nao_atrasada = AtividadeRepository(db_session).buscar_por_filtros(atrasada=False)
+    resultado_realizada = AtividadeRepository(db_session).buscar_por_filtros(realizada=True)
+    resultado_nao_realizada = AtividadeRepository(db_session).buscar_por_filtros(realizada=False)
 
-    ids_atrasadas = [atividade.atividade_id for atividade in resultado_atrasada]
-    ids_nao_atrasadas = [atividade.atividade_id for atividade in resultado_nao_atrasada]
+    ids_atrasadas = [a.atividade_id for a in resultado_atrasada]
+    ids_nao_atrasadas = [a.atividade_id for a in resultado_nao_atrasada]
+    ids_realizadas = [a.atividade_id for a in resultado_realizada]
+    ids_nao_realizadas = [a.atividade_id for a in resultado_nao_realizada]
 
     if esperada_atrasada:
         assert atividade.atividade_id in ids_atrasadas
@@ -799,6 +800,12 @@ def test_buscar_por_filtros_atrasada_usa_etapa_e_horario_sp(
     else:
         assert atividade.atividade_id not in ids_atrasadas
         assert atividade.atividade_id in ids_nao_atrasadas
+    if esperada_realizada:
+        assert atividade.atividade_id in ids_realizadas
+        assert atividade.atividade_id not in ids_nao_realizadas
+    else:
+        assert atividade.atividade_id not in ids_realizadas
+        assert atividade.atividade_id in ids_nao_realizadas
 
 
 @pytest.mark.parametrize("quantidade", [0, 1, 5])
