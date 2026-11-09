@@ -5,6 +5,8 @@
 !.env.local.example
 dist/
 coverage/
+advog_api.egg-info/
+*.egg-info/
 __pycache__/
 .venv/
 venv/
