@@ -1,4 +1,6 @@
+import hashlib
 import os
+import secrets
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -55,6 +57,15 @@ def hash_senha(senha: str) -> str:
 
 def verificar_senha(senha: str, senha_hash: str) -> bool:
     return pwd_context.verify(senha, senha_hash)
+
+
+def criar_token_recuperacao() -> tuple[str, str]:
+    token = secrets.token_urlsafe(32)
+    return token, hashlib.sha256(token.encode()).hexdigest()
+
+
+def hash_token_recuperacao(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def criar_token_acesso(dados: dict, tempo_expiracao_minutos: int = JWT_EXPIRATION_MINUTES) -> str:

@@ -31,8 +31,20 @@ class AtividadeService:
     def __init__(self, db: Session):
         self.repository = AtividadeRepository(db)
 
-    def buscar_atividade(self, atividade_id: int) -> AtividadeResponse:
-        return AtividadeResponse.model_validate(self._obter(atividade_id))
+    def buscar_atividade(
+        self, atividade_id: int, usuario: Funcionario | None = None
+    ) -> AtividadeResponse:
+        atividade = self._obter(atividade_id)
+
+        if usuario is not None:
+            permissoes = usuario.cargo.permissao or {} if usuario.cargo else {}
+            pode_ver_tudo = permissoes.get("gerenciar_equipe", False)
+            if not pode_ver_tudo:
+                ids_responsaveis = [f.funcionario_id for f in atividade.funcionarios]
+                if usuario.funcionario_id not in ids_responsaveis:
+                    raise AtividadeNaoEncontradaError("Atividade não encontrada")
+
+        return AtividadeResponse.model_validate(atividade)
 
     def criar_atividade(self, dados: AtividadeCreate) -> AtividadeResponse:
         campos = dados.model_dump(exclude={"responsaveis_ids"})
@@ -128,9 +140,22 @@ class AtividadeService:
     def buscar_atividades(
         self, filters: AtividadeFilter, usuario: Funcionario | None = None
     ) -> list[AtividadeResponse]:
-        funcionario_id = (
-            usuario.funcionario_id if filters.apenas_minhas and usuario else filters.funcionario_id
-        )
+        permissoes = usuario.cargo.permissao or {} if usuario and usuario.cargo else {}
+        pode_ver_tudo = permissoes.get("gerenciar_equipe", False)
+        funcionario_id: int | None
+
+        if filters.apenas_minhas and usuario:
+            funcionario_id = usuario.funcionario_id
+        elif pode_ver_tudo:
+            funcionario_id = filters.funcionario_id
+        else:
+            if (
+                usuario
+                and filters.funcionario_id is not None
+                and filters.funcionario_id != usuario.funcionario_id
+            ):
+                return []
+            funcionario_id = usuario.funcionario_id if usuario else None
 
         atividades = self.repository.buscar_por_filtros(
             atividade_id=filters.atividade_id,
