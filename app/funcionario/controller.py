@@ -1,6 +1,6 @@
 from typing import cast
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
@@ -12,6 +12,8 @@ from app.funcionario.schema import (
     FuncionarioCreate,
     FuncionarioMudarCargo,
     FuncionarioMudarExibicao,
+    FuncionarioPerfilResponse,
+    FuncionarioPerfilUpdate,
     FuncionarioPrimeiroAcesso,
     FuncionarioResponse,
     FuncionarioUpdate,
@@ -50,6 +52,37 @@ def buscar_todos_funcionarios(db: Session = Depends(get_db)):
     service = FuncionarioService(db)
     funcionarios = service.buscar_todos()
     return funcionarios
+
+
+@router.get("/perfil", response_model=FuncionarioPerfilResponse)
+def obter_meu_perfil(
+    funcionario_atual: Funcionario = Depends(obter_funcionario_atual),
+):
+    return funcionario_atual
+
+
+@router.patch("/perfil", response_model=FuncionarioPerfilResponse)
+def editar_meu_perfil(
+    dados: FuncionarioPerfilUpdate,
+    funcionario_atual: Funcionario = Depends(obter_funcionario_atual),
+    db: Session = Depends(get_db),
+):
+    try:
+        return FuncionarioService(db).editar_perfil(funcionario_atual.funcionario_id, dados)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+
+@router.put("/perfil/foto", response_model=FuncionarioPerfilResponse)
+def atualizar_minha_foto(
+    file: UploadFile = File(...),
+    funcionario_atual: Funcionario = Depends(obter_funcionario_atual),
+    db: Session = Depends(get_db),
+):
+    try:
+        return FuncionarioService(db).atualizar_foto_perfil(funcionario_atual.funcionario_id, file)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.patch("/primeiro-acesso", response_model=FuncionarioResponse)
