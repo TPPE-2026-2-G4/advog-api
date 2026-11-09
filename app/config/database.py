@@ -4,6 +4,8 @@ from typing import Any
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+from app.config.ambiente import obter_environment
+
 
 def validar_database_url(url: str | None, environment: str) -> str:
     env = (environment or "").strip().lower()
@@ -22,7 +24,7 @@ def validar_database_url(url: str | None, environment: str) -> str:
     return url_limpa
 
 
-ENVIRONMENT = os.getenv("ENVIRONMENT", "").strip().lower()
+ENVIRONMENT = obter_environment()
 DATABASE_URL = validar_database_url(os.getenv("DATABASE_URL"), ENVIRONMENT)
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}

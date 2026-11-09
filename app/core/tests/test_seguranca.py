@@ -124,6 +124,13 @@ def test_validar_secret_key_producao_valor_desenvolvimento_lanca_erro():
         validar_secret_key("dev", "production")
 
 
+def test_validar_secret_key_producao_curta_lanca_erro():
+    with pytest.raises(RuntimeError, match="deve ter pelo menos 32 caracteres"):
+        validar_secret_key("a" * 31, "production")
+
+    assert validar_secret_key("a" * 32, "production") == "a" * 32
+
+
 def test_validar_secret_key_producao_valida_sucesso():
     chave_segura = "minha-chave-producao-super-segura-e-longa-32"
     assert validar_secret_key(chave_segura, "production") == chave_segura
