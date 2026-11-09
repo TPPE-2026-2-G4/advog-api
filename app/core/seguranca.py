@@ -6,6 +6,8 @@ from datetime import UTC, datetime, timedelta
 import jwt
 from passlib.context import CryptContext
 
+from app.config.ambiente import obter_environment
+
 DEV_SECRET_KEY = "advog-jwt-secret-key-development-minimum-32-chars-long"
 DEV_SECRET_KEYS = {
     DEV_SECRET_KEY,
@@ -14,6 +16,9 @@ DEV_SECRET_KEYS = {
     "secret",
     "changeme",
 }
+
+
+SECRET_KEY_TAMANHO_MINIMO = 32
 
 
 def validar_secret_key(chave: str | None, environment: str) -> str:
@@ -25,6 +30,11 @@ def validar_secret_key(chave: str | None, environment: str) -> str:
             raise RuntimeError(
                 "SECRET_KEY não pode ser o valor padrão de desenvolvimento em ambiente de produção."
             )
+        if len(chave.strip()) < SECRET_KEY_TAMANHO_MINIMO:
+            raise RuntimeError(
+                f"SECRET_KEY deve ter pelo menos {SECRET_KEY_TAMANHO_MINIMO} caracteres "
+                "em ambiente de produção."
+            )
         return chave.strip()
 
     if not chave or not chave.strip():
@@ -32,7 +42,7 @@ def validar_secret_key(chave: str | None, environment: str) -> str:
     return chave.strip()
 
 
-ENVIRONMENT = os.getenv("ENVIRONMENT", "").strip().lower()
+ENVIRONMENT = obter_environment()
 SECRET_KEY = validar_secret_key(os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET"), ENVIRONMENT)
 JWT_SECRET = SECRET_KEY
 JWT_ALGORITHM = "HS256"

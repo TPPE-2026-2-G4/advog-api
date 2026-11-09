@@ -19,6 +19,7 @@ services:
       advog-minio:
         condition: service_started
     environment:
+      PORT: 8000
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@advog-db:5432/${POSTGRES_DB}
   advog-db:
     image: postgres:16-alpine
@@ -56,8 +57,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY}
     volumes:
       - minio-data:/data
 

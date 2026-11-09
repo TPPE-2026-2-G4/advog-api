@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.arquivo.model import Arquivo as ArquivoModel
 from app.config.database import SessionLocal
-from app.config.storage import MINIO_BUCKET_PRIVADO
+from app.config.storage import S3_BUCKET_PRIVADO
 from app.core.datajud_api import DatajudApiClient
 from app.core.relatorio import (
     LIMITE_LINHAS,
@@ -275,7 +275,7 @@ class ProcessoService:
         chaves = [doc.bucket_link for doc in self.repository.listar_documentos(processo_id)]
         self.repository.deletar(processo)
         for chave in chaves:
-            remover_arquivo(chave, bucket=MINIO_BUCKET_PRIVADO)
+            remover_arquivo(chave, bucket=S3_BUCKET_PRIVADO)
 
     def adicionar_documento(
         self,
@@ -321,7 +321,7 @@ class ProcessoService:
             extensao=extensao,
             content_type=content_type,
             pasta=f"processos/{processo_id}",
-            bucket=MINIO_BUCKET_PRIVADO,
+            bucket=S3_BUCKET_PRIVADO,
         )
 
         try:
@@ -343,7 +343,7 @@ class ProcessoService:
             )
             return self._montar_resposta_documento(processo_id, arquivo_salvo)
         except Exception:
-            remover_arquivo(chave_minio, bucket=MINIO_BUCKET_PRIVADO)
+            remover_arquivo(chave_minio, bucket=S3_BUCKET_PRIVADO)
             raise
 
     @staticmethod
@@ -360,7 +360,7 @@ class ProcessoService:
             entrada_tipo=arquivo.tipo_mime,
             data_upload=arquivo.data_upload,
             funcionario_id=arquivo.funcionario_id,
-            url=obter_url_publica(arquivo.bucket_link, bucket=MINIO_BUCKET_PRIVADO),
+            url=obter_url_publica(arquivo.bucket_link, bucket=S3_BUCKET_PRIVADO),
         )
 
     def listar_documentos(self, processo_id: int) -> list[DocumentoProcessoResponse]:
@@ -383,7 +383,7 @@ class ProcessoService:
         url = obter_url_publica(
             documento.bucket_link,
             expiracao_segundos=expiracao_segundos,
-            bucket=MINIO_BUCKET_PRIVADO,
+            bucket=S3_BUCKET_PRIVADO,
         )
         if not url:
             raise ValueError("Falha ao gerar URL de acesso ao documento")
@@ -402,7 +402,7 @@ class ProcessoService:
         chave = documento.bucket_link
         nome_arquivo = documento.nome_arquivo
         self.repository.deletar_documento(processo_id, documento)
-        remover_arquivo(chave, bucket=MINIO_BUCKET_PRIVADO)
+        remover_arquivo(chave, bucket=S3_BUCKET_PRIVADO)
         self.registrar_movimentacao(
             processo_id=processo_id,
             tipo_movimentacao=TipoMovimentacaoProcesso.EXCLUSAO_ARQUIVO,

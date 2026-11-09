@@ -57,12 +57,12 @@ def test_dependencia_esta_instalada(modulo):
 @pytest.mark.parametrize(
     "variavel",
     [
-        "MINIO_ENDPOINT",
-        "MINIO_PUBLIC_URL",
-        "MINIO_BUCKET_PUBLICO",
-        "MINIO_BUCKET_PRIVADO",
-        "MINIO_ROOT_USER",
-        "MINIO_ROOT_PASSWORD",
+        "S3_ENDPOINT",
+        "S3_PUBLIC_URL",
+        "S3_BUCKET_PUBLICO",
+        "S3_BUCKET_PRIVADO",
+        "S3_ACCESS_KEY_ID",
+        "S3_SECRET_ACCESS_KEY",
     ],
 )
 def test_variavel_de_ambiente_obrigatoria_esta_definida(variavel):
