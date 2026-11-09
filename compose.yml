@@ -19,6 +19,7 @@ services:
       advog-minio:
         condition: service_started
     environment:
+      PORT: 8000
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@advog-db:5432/${POSTGRES_DB}
   advog-db:
     image: postgres:16-alpine

@@ -27,7 +27,13 @@ def validar_database_url(url: str | None, environment: str) -> str:
 ENVIRONMENT = obter_environment()
 DATABASE_URL = validar_database_url(os.getenv("DATABASE_URL"), ENVIRONMENT)
 
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+CONEXAO_TIMEOUT_SEGUNDOS = 10
+
+connect_args: dict[str, Any] = (
+    {"check_same_thread": False}
+    if DATABASE_URL.startswith("sqlite")
+    else {"connect_timeout": CONEXAO_TIMEOUT_SEGUNDOS}
+)
 
 engine_kwargs: dict[str, Any] = {
     "pool_pre_ping": True,
