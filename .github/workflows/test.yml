@@ -13,14 +13,14 @@ jobs:
       SMTP_PORT: 1025
       SMTP_USER: advog
       SMTP_PASSWORD: advog
-      SMTP_FROM: nao-responda@escritorio.com.br
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-      MINIO_ENDPOINT: http://localhost:9000
-      MINIO_PUBLIC_URL: http://localhost:9000
-      MINIO_BUCKET_PUBLICO: publico
-      MINIO_BUCKET_PRIVADO: privado
-      MINIO_USE_SSL: "false"
+      EMAIL_FROM: nao-responda@escritorio.com.br
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin
+      S3_ENDPOINT: http://localhost:9000
+      S3_PUBLIC_URL: http://localhost:9000
+      S3_BUCKET_PUBLICO: publico
+      S3_BUCKET_PRIVADO: privado
+      S3_USE_SSL: "false"
     steps:
       - uses: actions/checkout@v4
 

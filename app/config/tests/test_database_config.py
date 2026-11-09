@@ -25,13 +25,13 @@ def test_validar_database_url_producao_sqlite_lanca_erro():
 
 
 def test_validar_database_url_producao_valida_sucesso():
-    url_postgres = "postgresql://user:pass@ep-cool-fog-123.neon.tech/advog_prod?sslmode=require"
+    url_postgres = "postgresql://postgres.abc:pass@aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require"
     resultado = validar_database_url(url_postgres, "production")
     assert resultado == url_postgres
 
 
 def test_validar_database_url_converte_postgres_para_postgresql():
-    url_legada = "postgres://user:pass@ep-cool-fog-123.neon.tech/advog_prod?sslmode=require"
+    url_legada = "postgres://postgres.abc:pass@aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require"
     resultado = validar_database_url(url_legada, "production")
     assert resultado.startswith("postgresql://")
 
@@ -58,7 +58,7 @@ def test_get_db_yields_e_fecha_sessao():
 
 
 def test_banco_reconecta_automaticamente_apos_desconexao_simulada(tmp_path):
-    # Cria uma engine com pool_pre_ping e parâmetros Neon em banco SQLite local
+    # Cria uma engine com pool_pre_ping e parâmetros de pool em banco SQLite local
     caminho_db = tmp_path / "test_reconexao.db"
     url = f"sqlite:///{caminho_db}"
     engine = create_engine(url, pool_pre_ping=True, pool_recycle=300, pool_timeout=30)
@@ -68,7 +68,7 @@ def test_banco_reconecta_automaticamente_apos_desconexao_simulada(tmp_path):
         res1 = conn.execute(text("SELECT 1")).scalar()
         assert res1 == 1
 
-    # Simula perda de conexão (como hibernação do Neon) fechando o DBAPI subjacente
+    # Simula perda de conexão (como queda de conexão pelo pooler) fechando o DBAPI subjacente
     conn_morta = engine.connect()
     raw_conn = conn_morta.connection.dbapi_connection
     raw_conn.close()

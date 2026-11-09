@@ -5,9 +5,9 @@ import pytest
 from botocore.exceptions import ClientError
 
 from app.config.storage import (
-    MINIO_BUCKET_PRIVADO,
-    MINIO_BUCKET_PUBLICO,
-    MINIO_PUBLIC_URL,
+    S3_BUCKET_PRIVADO,
+    S3_BUCKET_PUBLICO,
+    S3_PUBLIC_URL,
     _obter_variavel_obrigatoria,
 )
 from app.core.storage import (
@@ -38,16 +38,16 @@ def test_obter_url_publica_com_chave_valida():
     url = obter_url_publica("logotipos/logo.png")
     assert url is not None
     assert "logotipos/logo.png" in url
-    assert f"/{MINIO_BUCKET_PUBLICO}/" in url
-    assert url.startswith(MINIO_PUBLIC_URL)
+    assert f"/{S3_BUCKET_PUBLICO}/" in url
+    assert url.startswith(S3_PUBLIC_URL)
 
 
 def test_obter_url_publica_com_bucket_privado():
-    url = obter_url_publica("processos/1/doc.pdf", bucket=MINIO_BUCKET_PRIVADO)
+    url = obter_url_publica("processos/1/doc.pdf", bucket=S3_BUCKET_PRIVADO)
     assert url is not None
     assert "processos/1/doc.pdf" in url
-    assert f"/{MINIO_BUCKET_PRIVADO}/" in url
-    assert url.startswith(MINIO_PUBLIC_URL)
+    assert f"/{S3_BUCKET_PRIVADO}/" in url
+    assert url.startswith(S3_PUBLIC_URL)
 
 
 @patch("app.core.storage.s3_public_client")
@@ -84,15 +84,13 @@ def test_garantir_bucket_erro_diferente_lanca_excecao(mock_s3):
 @patch("app.core.storage.s3_client")
 def test_salvar_arquivo_sucesso(mock_s3):
     conteudo = io.BytesIO(b"conteudo teste")
-    chave = salvar_arquivo(
-        conteudo, ".png", "image/png", pasta="testes", bucket=MINIO_BUCKET_PRIVADO
-    )
+    chave = salvar_arquivo(conteudo, ".png", "image/png", pasta="testes", bucket=S3_BUCKET_PRIVADO)
 
     assert chave.startswith("testes/")
     assert chave.endswith(".png")
-    mock_s3.head_bucket.assert_called_once_with(Bucket=MINIO_BUCKET_PRIVADO)
+    mock_s3.head_bucket.assert_called_once_with(Bucket=S3_BUCKET_PRIVADO)
     mock_s3.upload_fileobj.assert_called_once()
-    assert mock_s3.upload_fileobj.call_args.args[1] == MINIO_BUCKET_PRIVADO
+    assert mock_s3.upload_fileobj.call_args.args[1] == S3_BUCKET_PRIVADO
 
 
 @patch("app.core.storage.s3_client")
@@ -107,9 +105,9 @@ def test_salvar_arquivo_sem_pasta(mock_s3):
 
 @patch("app.core.storage.s3_client")
 def test_remover_arquivo_sucesso(mock_s3):
-    remover_arquivo("logotipos/antigo.png", bucket=MINIO_BUCKET_PRIVADO)
+    remover_arquivo("logotipos/antigo.png", bucket=S3_BUCKET_PRIVADO)
     mock_s3.delete_object.assert_called_once_with(
-        Bucket=MINIO_BUCKET_PRIVADO, Key="logotipos/antigo.png"
+        Bucket=S3_BUCKET_PRIVADO, Key="logotipos/antigo.png"
     )
 
 

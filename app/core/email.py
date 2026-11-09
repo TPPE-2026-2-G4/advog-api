@@ -1,16 +1,26 @@
+import logging
 import os
 from html import escape
 from typing import cast
 
+import httpx
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 from pydantic import EmailStr, NameEmail, SecretStr
 
 from app.core.seguranca import criar_token_primeiro_acesso
 
+logger = logging.getLogger("advog-api")
+
+EMAIL_REMETENTE = os.getenv("EMAIL_FROM") or "nao-responda@escritorio.com.br"
+EMAIL_NOME_REMETENTE = os.getenv("EMAIL_FROM_NAME") or "Escritório de Advocacia"
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
+BREVO_TIMEOUT_SEGUNDOS = 10.0
+
 conf = ConnectionConfig(
     MAIL_USERNAME=os.getenv("SMTP_USER", ""),
     MAIL_PASSWORD=SecretStr(os.getenv("SMTP_PASSWORD", "")),
-    MAIL_FROM=cast(EmailStr, os.getenv("SMTP_FROM") or "nao-responda@escritorio.com.br"),
+    MAIL_FROM=cast(EmailStr, EMAIL_REMETENTE),
     MAIL_PORT=int(os.getenv("SMTP_PORT", "1025")),
     MAIL_SERVER=os.getenv("SMTP_HOST", "localhost"),
     MAIL_STARTTLS=False,
@@ -24,13 +34,43 @@ LINK_RECUPERACAO_SENHA = BASE_FRONTEND_URL + "/redefinir-senha"
 FONT_FAMILY = "Georgia, 'Times New Roman', serif"
 
 
+async def _enviar_via_brevo(email_destino: str, assunto: str, html: str) -> None:
+    async with httpx.AsyncClient(timeout=BREVO_TIMEOUT_SEGUNDOS) as client:
+        resposta = await client.post(
+            BREVO_API_URL,
+            headers={"api-key": BREVO_API_KEY, "accept": "application/json"},
+            json={
+                "sender": {"name": EMAIL_NOME_REMETENTE, "email": EMAIL_REMETENTE},
+                "to": [{"email": email_destino}],
+                "subject": assunto,
+                "htmlContent": html,
+            },
+        )
+    if resposta.status_code >= 400:
+        logger.error(
+            "Falha ao enviar e-mail pela Brevo: %s %s", resposta.status_code, resposta.text
+        )
+    resposta.raise_for_status()
+
+
+async def _enviar_email(email_destino: str, assunto: str, html: str) -> None:
+    if BREVO_API_KEY:
+        await _enviar_via_brevo(email_destino, assunto, html)
+        return
+
+    mensagem = MessageSchema(
+        subject=assunto,
+        recipients=[cast(NameEmail, email_destino)],
+        body=html,
+        subtype=MessageType.html,
+    )
+    await FastMail(conf).send_message(mensagem)
+
+
 async def enviar_email_boas_vindas(email_destino: str, nome: str, funcionario_id: int):
     token = criar_token_primeiro_acesso(funcionario_id)
     link_primeiro_acesso = f"{LINK_PRIMEIRO_ACESSO}?token={token}"
-    mensagem = MessageSchema(
-        subject="Bem-vindo(a) ao escritório",
-        recipients=[cast(NameEmail, email_destino)],
-        body=f"""
+    html = f"""
         <div style="background-color:#f4f2ed; padding:32px 16px; font-family:{FONT_FAMILY};">
           <table role="presentation" width="100%" style="max-width:520px; margin:0 auto; background-color:#ffffff; border:1px solid #e2ddd1;">
             <tr>
@@ -60,19 +100,13 @@ async def enviar_email_boas_vindas(email_destino: str, nome: str, funcionario_id
             </tr>
           </table>
         </div>
-        """,
-        subtype=MessageType.html,
-    )
-    fm = FastMail(conf)
-    await fm.send_message(mensagem)
+        """
+    await _enviar_email(email_destino, "Bem-vindo(a) ao escritório", html)
 
 
 async def enviar_email_recuperacao_senha(email_destino: str, nome: str, token: str):
     link = f"{LINK_RECUPERACAO_SENHA}?token={token}"
-    mensagem = MessageSchema(
-        subject="Redefinição de senha",
-        recipients=[cast(NameEmail, email_destino)],
-        body=f"""
+    html = f"""
         <div style="background-color:#f4f2ed; padding:32px 16px; font-family:{FONT_FAMILY};">
           <table role="presentation" width="100%" style="max-width:520px; margin:0 auto; background-color:#ffffff; border:1px solid #e2ddd1; font-family:{FONT_FAMILY};">
             <tr>
@@ -93,7 +127,5 @@ async def enviar_email_recuperacao_senha(email_destino: str, nome: str, token: s
             </tr>
           </table>
         </div>
-        """,
-        subtype=MessageType.html,
-    )
-    await FastMail(conf).send_message(mensagem)
+        """
+    await _enviar_email(email_destino, "Redefinição de senha", html)

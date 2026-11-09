@@ -11,31 +11,33 @@ def _obter_variavel_obrigatoria(nome: str) -> str:
     return valor
 
 
-MINIO_ENDPOINT = _obter_variavel_obrigatoria("MINIO_ENDPOINT")
-MINIO_BUCKET_PUBLICO = _obter_variavel_obrigatoria("MINIO_BUCKET_PUBLICO")
-MINIO_BUCKET_PRIVADO = _obter_variavel_obrigatoria("MINIO_BUCKET_PRIVADO")
-MINIO_USE_SSL = os.getenv("MINIO_USE_SSL", "false").lower() == "true"
-MINIO_PUBLIC_URL = _obter_variavel_obrigatoria("MINIO_PUBLIC_URL")
+S3_ENDPOINT = _obter_variavel_obrigatoria("S3_ENDPOINT")
+S3_BUCKET_PUBLICO = _obter_variavel_obrigatoria("S3_BUCKET_PUBLICO")
+S3_BUCKET_PRIVADO = _obter_variavel_obrigatoria("S3_BUCKET_PRIVADO")
+S3_USE_SSL = os.getenv("S3_USE_SSL", "false").lower() == "true"
+S3_PUBLIC_URL = _obter_variavel_obrigatoria("S3_PUBLIC_URL")
 
-MINIO_ROOT_USER = _obter_variavel_obrigatoria("MINIO_ROOT_USER")
-MINIO_ROOT_PASSWORD = _obter_variavel_obrigatoria("MINIO_ROOT_PASSWORD")
+S3_REGION = os.getenv("S3_REGION", "").strip() or "us-east-1"
+
+S3_ACCESS_KEY_ID = _obter_variavel_obrigatoria("S3_ACCESS_KEY_ID")
+S3_SECRET_ACCESS_KEY = _obter_variavel_obrigatoria("S3_SECRET_ACCESS_KEY")
 
 s3_client = boto3.client(
     "s3",
-    endpoint_url=MINIO_ENDPOINT,
-    aws_access_key_id=MINIO_ROOT_USER,
-    aws_secret_access_key=MINIO_ROOT_PASSWORD,
-    config=Config(signature_version="s3v4"),
-    use_ssl=MINIO_USE_SSL,
-    region_name="us-east-1",
+    endpoint_url=S3_ENDPOINT,
+    aws_access_key_id=S3_ACCESS_KEY_ID,
+    aws_secret_access_key=S3_SECRET_ACCESS_KEY,
+    config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+    use_ssl=S3_USE_SSL,
+    region_name=S3_REGION,
 )
 
 s3_public_client = boto3.client(
     "s3",
-    endpoint_url=MINIO_PUBLIC_URL,
-    aws_access_key_id=MINIO_ROOT_USER,
-    aws_secret_access_key=MINIO_ROOT_PASSWORD,
-    config=Config(signature_version="s3v4"),
-    use_ssl=MINIO_USE_SSL,
-    region_name="us-east-1",
+    endpoint_url=S3_PUBLIC_URL,
+    aws_access_key_id=S3_ACCESS_KEY_ID,
+    aws_secret_access_key=S3_SECRET_ACCESS_KEY,
+    config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+    use_ssl=S3_USE_SSL,
+    region_name=S3_REGION,
 )

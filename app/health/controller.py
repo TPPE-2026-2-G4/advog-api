@@ -5,7 +5,7 @@ from fastapi import APIRouter, Response, status
 from sqlalchemy import text
 
 from app.config import database
-from app.config.storage import MINIO_BUCKET_PRIVADO, s3_client
+from app.config.storage import S3_BUCKET_PRIVADO, s3_client
 
 router = APIRouter(tags=["Health"])
 
@@ -18,7 +18,7 @@ def verificar_banco_conexao() -> None:
 
 
 def verificar_storage_conexao() -> None:
-    s3_client.head_bucket(Bucket=MINIO_BUCKET_PRIVADO)
+    s3_client.head_bucket(Bucket=S3_BUCKET_PRIVADO)
 
 
 @router.get(
@@ -34,7 +34,7 @@ def health_liveness() -> dict[str, str]:
 @router.get(
     "/health/ready",
     summary="Readiness Check",
-    description="Verificação ativa de conexão com o banco Neon e storage com timeout de 3s.",
+    description="Verificação ativa de conexão com o banco de dados e storage com timeout de 3s.",
 )
 async def health_readiness(response: Response) -> dict[str, Any]:
     async def _checar_banco() -> str:

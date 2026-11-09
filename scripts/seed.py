@@ -15,7 +15,7 @@ from app.cargo.model import Cargo  # noqa: E402
 from app.cargo.schema import PermissaoBase  # noqa: E402
 from app.cliente.model import Cliente  # noqa: E402, F401
 from app.config.database import Base, SessionLocal, engine  # noqa: E402
-from app.config.storage import MINIO_BUCKET_PRIVADO, MINIO_BUCKET_PUBLICO  # noqa: E402
+from app.config.storage import S3_BUCKET_PRIVADO, S3_BUCKET_PUBLICO  # noqa: E402
 from app.core.seguranca import hash_senha  # noqa: E402
 from app.core.storage import garantir_bucket, salvar_arquivo  # noqa: E402
 from app.etapa_cliente.model import EtapaCliente  # noqa: E402
@@ -112,8 +112,8 @@ def seed() -> None:
         else:
             print(f"Usuário administrador já existe: {email}")
 
-        garantir_bucket(MINIO_BUCKET_PUBLICO)
-        garantir_bucket(MINIO_BUCKET_PRIVADO)
+        garantir_bucket(S3_BUCKET_PUBLICO)
+        garantir_bucket(S3_BUCKET_PRIVADO)
 
         institucional = db.query(Institucional).first()
         if institucional is None:
@@ -126,7 +126,7 @@ def seed() -> None:
                         extensao="jpg",
                         content_type="image/jpeg",
                         pasta="sobre",
-                        bucket=MINIO_BUCKET_PUBLICO,
+                        bucket=S3_BUCKET_PUBLICO,
                     )
                 arquivo_imagem_sobre = Arquivo(
                     nome_arquivo=caminho_imagem.name,
