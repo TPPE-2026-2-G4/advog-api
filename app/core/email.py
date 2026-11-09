@@ -18,8 +18,9 @@ conf = ConnectionConfig(
     USE_CREDENTIALS=False,
 )
 
-LINK_PRIMEIRO_ACESSO = os.getenv("FRONTEND_URL", "http://localhost:3000") + "/primeiro-acesso"
-LINK_RECUPERACAO_SENHA = os.getenv("FRONTEND_URL", "http://localhost:3000") + "/redefinir-senha"
+BASE_FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+LINK_PRIMEIRO_ACESSO = BASE_FRONTEND_URL + "/primeiro-acesso"
+LINK_RECUPERACAO_SENHA = BASE_FRONTEND_URL + "/redefinir-senha"
 FONT_FAMILY = "Georgia, 'Times New Roman', serif"
 
 

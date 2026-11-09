@@ -6,7 +6,35 @@ from datetime import UTC, datetime, timedelta
 import jwt
 from passlib.context import CryptContext
 
-JWT_SECRET = os.getenv("JWT_SECRET") or "advog-jwt-secret-key-development-minimum-32-chars-long"
+DEV_SECRET_KEY = "advog-jwt-secret-key-development-minimum-32-chars-long"
+DEV_SECRET_KEYS = {
+    DEV_SECRET_KEY,
+    "dev",
+    "development",
+    "secret",
+    "changeme",
+}
+
+
+def validar_secret_key(chave: str | None, environment: str) -> str:
+    env = (environment or "").strip().lower()
+    if env == "production":
+        if not chave or not chave.strip():
+            raise RuntimeError("SECRET_KEY é obrigatória em ambiente de produção.")
+        if chave.strip() in DEV_SECRET_KEYS:
+            raise RuntimeError(
+                "SECRET_KEY não pode ser o valor padrão de desenvolvimento em ambiente de produção."
+            )
+        return chave.strip()
+
+    if not chave or not chave.strip():
+        return DEV_SECRET_KEY
+    return chave.strip()
+
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "").strip().lower()
+SECRET_KEY = validar_secret_key(os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET"), ENVIRONMENT)
+JWT_SECRET = SECRET_KEY
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_MINUTES = 60
 
