@@ -87,7 +87,9 @@ class TestCriarFuncionarioController:
         assert response.status_code == 400
         assert response.json()["detail"] == "Área de atuação não encontrada"
 
-    def test_criar_funcionario_sem_atuacao_retorna_422(self, client, token_admin, cargo_padrao):
+    def test_criar_funcionario_sem_atuacao_retorna_perfil_sem_area(
+        self, client, token_admin, cargo_padrao
+    ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
             "/funcionarios",
@@ -98,7 +100,8 @@ class TestCriarFuncionarioController:
             },
             headers=headers,
         )
-        assert response.status_code == 422
+        assert response.status_code == 201
+        assert response.json()["atuacao_id"] is None
 
     def test_criar_funcionario_usa_foto_de_perfil_padrao(
         self, client, db_session, token_admin, cargo_padrao, atuacao_padrao
@@ -565,6 +568,22 @@ class TestEditarDadosController:
             )
             assert response.status_code == 400
             assert response.json()["detail"] == "Erro ao editar"
+
+
+class TestEditarMeuPerfilController:
+    def test_email_nao_pode_ser_alterado_pelo_perfil(
+        self, client, token_admin, funcionario_admin, db_session
+    ):
+        email_original = funcionario_admin.email
+        response = client.patch(
+            "/funcionarios/perfil",
+            json={"email": "novo.email@test.com"},
+            headers={"Authorization": f"Bearer {token_admin}"},
+        )
+
+        assert response.status_code == 422
+        db_session.refresh(funcionario_admin)
+        assert funcionario_admin.email == email_original
 
 
 class TestApagarFuncionarioController:

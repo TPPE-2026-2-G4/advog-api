@@ -101,6 +101,7 @@ class FuncionarioResponse(FuncionarioBase):
     cargo_id: int
     atuacao_id: int | None
     foto_perfil: int
+    foto_perfil_url: str | None = None
     cargo: CargoResponse | None = None
     exibicao_institucional: bool = Field(default=False, alias="exibicaoInstitucional")
     funcionario_id: int
@@ -112,4 +113,3 @@ class FuncionarioResponse(FuncionarioBase):
 
 class FuncionarioPerfilResponse(FuncionarioResponse):
     atuacao: AtuacaoResponse | None = None
-    foto_perfil_url: str | None = None
