@@ -22,6 +22,7 @@ from app.atividade_funcionario.controller import (  # noqa: E402
 )
 from app.atuacao.controller import router as atuacao_router  # noqa: E402
 from app.auth.controller import router as auth_router  # noqa: E402
+from app.auth.model import TokenRecuperacaoSenha  # noqa: E402, F401
 from app.cargo.controller import router as cargo_router  # noqa: E402
 from app.categoria_lancamento.controller import router as categoria_lancamento_router  # noqa: E402
 from app.cliente.controller import router as cliente_router  # noqa: E402

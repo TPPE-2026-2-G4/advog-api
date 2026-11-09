@@ -24,6 +24,7 @@ TABELAS_DO_DLD = {
     "processos",
     "processos_arquivos",
     "processos_movimentacoes",
+    "tokens_recuperacao_senha",
 }
 
 
