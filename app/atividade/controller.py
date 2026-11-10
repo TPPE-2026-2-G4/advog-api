@@ -8,12 +8,17 @@ from app.atividade.schema import (
     AtividadeFilter,
     AtividadeResponse,
     AtividadeUpdate,
+    EtapaKanbanCreate,
+    EtapaKanbanInfoResponse,
+    EtapaKanbanReorder,
+    EtapaKanbanUpdate,
     KanbanResponse,
     ProdutividadeResponse,
 )
 from app.atividade.service import (
     AtividadeNaoEncontradaError,
     AtividadeService,
+    EtapaKanbanNaoEncontradaError,
 )
 from app.config.database import get_db
 from app.core.dependencies import exigir_permissao, obter_funcionario_atual
@@ -49,7 +54,7 @@ RESPOSTAS_ESCRITA: dict[int | str, dict[str, Any]] = {
 
 
 def _traduzir_erro(erro: ValueError) -> HTTPException:
-    if isinstance(erro, AtividadeNaoEncontradaError):
+    if isinstance(erro, AtividadeNaoEncontradaError | EtapaKanbanNaoEncontradaError):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(erro))
     return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(erro))
 
@@ -96,6 +101,73 @@ def filtrar_atividades(
     service: AtividadeService = Depends(get_atividade_service),
 ) -> list[AtividadeResponse]:
     return service.buscar_atividades(filtros, usuario)
+
+
+@router.post(
+    "/etapas",
+    response_model=EtapaKanbanInfoResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Criar nova etapa do Kanban",
+    dependencies=[Depends(exigir_permissao("gerenciar_atividades"))],
+    responses=RESPOSTAS_ESCRITA,
+)
+def criar_etapa(
+    dados: EtapaKanbanCreate, service: AtividadeService = Depends(get_atividade_service)
+) -> EtapaKanbanInfoResponse:
+    try:
+        return service.criar_etapa(dados)
+    except ValueError as erro:
+        raise _traduzir_erro(erro) from erro
+
+
+@router.patch(
+    "/etapas/reordenar",
+    response_model=list[EtapaKanbanInfoResponse],
+    summary="Reordenar etapas do Kanban",
+    dependencies=[Depends(exigir_permissao("gerenciar_atividades"))],
+    responses=RESPOSTAS_ESCRITA,
+)
+def reordenar_etapas(
+    dados: EtapaKanbanReorder, service: AtividadeService = Depends(get_atividade_service)
+) -> list[EtapaKanbanInfoResponse]:
+    try:
+        return service.reordenar_etapas(dados)
+    except ValueError as erro:
+        raise _traduzir_erro(erro) from erro
+
+
+@router.patch(
+    "/etapas/{etapa_id}",
+    response_model=EtapaKanbanInfoResponse,
+    summary="Renomear etapa do Kanban",
+    dependencies=[Depends(exigir_permissao("gerenciar_atividades"))],
+    responses=RESPOSTAS_ESCRITA,
+)
+def renomear_etapa(
+    etapa_id: int,
+    dados: EtapaKanbanUpdate,
+    service: AtividadeService = Depends(get_atividade_service),
+) -> EtapaKanbanInfoResponse:
+    try:
+        return service.renomear_etapa(etapa_id, dados)
+    except ValueError as erro:
+        raise _traduzir_erro(erro) from erro
+
+
+@router.delete(
+    "/etapas/{etapa_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir etapa do Kanban",
+    dependencies=[Depends(exigir_permissao("gerenciar_atividades"))],
+    responses=RESPOSTAS_ESCRITA,
+)
+def deletar_etapa(
+    etapa_id: int, service: AtividadeService = Depends(get_atividade_service)
+) -> None:
+    try:
+        service.deletar_etapa(etapa_id)
+    except ValueError as erro:
+        raise _traduzir_erro(erro) from erro
 
 
 @router.get(

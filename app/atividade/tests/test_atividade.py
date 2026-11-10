@@ -1541,3 +1541,126 @@ def test_buscar_atividades_executa_consulta_e_mapeia_responsaveis(
         assert atv11.responsaveis[0].nome == "Fulano"
         assert atv11.responsaveis[1].nome == "Ciclano"
         service.repository.buscar_responsaveis.assert_called_once_with([10, 11])
+
+
+def test_criar_etapa_kanban(client, auth, etapas):
+    response = client.post(f"{ROTA}/etapas", json={"nome": "  Validação Jurídica  "}, headers=auth)
+
+    assert response.status_code == 201
+    dados = response.json()
+    assert dados["nome"] == "Validação Jurídica"
+    assert dados["ordem"] == max(e.ordem for e in etapas.values()) + 1
+    assert isinstance(dados["etapa_id"], int)
+
+
+@pytest.mark.parametrize("nome", ["", "   ", "Backlog", "backlog", "Finalizado", "REVISÃO"])
+def test_criar_etapa_rejeita_nome_vazio_ou_duplicado(client, auth, etapas, nome):
+    response = client.post(f"{ROTA}/etapas", json={"nome": nome}, headers=auth)
+
+    assert response.status_code == 422
+
+
+def test_renomear_etapa_kanban(client, auth, etapas):
+    etapa_id = etapas["Revisão"].etapa_id
+
+    response = client.patch(
+        f"{ROTA}/etapas/{etapa_id}", json={"nome": "Revisão Sênior"}, headers=auth
+    )
+
+    assert response.status_code == 200
+    assert response.json()["nome"] == "Revisão Sênior"
+
+
+@pytest.mark.parametrize("nome_protegido", ["Backlog", "Finalizado"])
+def test_renomear_etapa_protegida_bloqueado(client, auth, etapas, nome_protegido):
+    etapa_id = etapas[nome_protegido].etapa_id
+
+    response = client.patch(f"{ROTA}/etapas/{etapa_id}", json={"nome": "Outro Nome"}, headers=auth)
+
+    assert response.status_code == 422
+    assert "Backlog e Finalizado" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("novo_nome", ["", "   ", "Backlog", "Finalizado", "Em Execução"])
+def test_renomear_etapa_para_nome_invalido_ou_existente(client, auth, etapas, novo_nome):
+    etapa_id = etapas["Revisão"].etapa_id
+
+    response = client.patch(f"{ROTA}/etapas/{etapa_id}", json={"nome": novo_nome}, headers=auth)
+
+    assert response.status_code == 422
+
+
+def test_renomear_etapa_inexistente(client, auth):
+    response = client.patch(f"{ROTA}/etapas/99999", json={"nome": "Nova"}, headers=auth)
+
+    assert response.status_code == 404
+
+
+def test_excluir_etapa_sem_atividades(client, auth, etapas):
+    etapa_id = etapas["Aguardando cliente"].etapa_id
+
+    response = client.delete(f"{ROTA}/etapas/{etapa_id}", headers=auth)
+
+    assert response.status_code == 204
+    kanban = client.get(f"{ROTA}/kanban", headers=auth).json()
+    assert etapa_id not in [e["etapa_id"] for e in kanban["etapas"]]
+
+
+@pytest.mark.parametrize("nome_protegido", ["Backlog", "Finalizado"])
+def test_excluir_etapa_protegida_bloqueado(client, auth, etapas, nome_protegido):
+    etapa_id = etapas[nome_protegido].etapa_id
+
+    response = client.delete(f"{ROTA}/etapas/{etapa_id}", headers=auth)
+
+    assert response.status_code == 422
+    assert "Backlog e Finalizado" in response.json()["detail"]
+
+
+def test_excluir_etapa_com_atividades_bloqueado(client, auth, atividades, etapas):
+    etapa_id = etapas["Revisão"].etapa_id
+
+    response = client.delete(f"{ROTA}/etapas/{etapa_id}", headers=auth)
+
+    assert response.status_code == 422
+    assert "possui atividades vinculadas" in response.json()["detail"]
+
+
+def test_excluir_etapa_inexistente(client, auth):
+    assert client.delete(f"{ROTA}/etapas/99999", headers=auth).status_code == 404
+
+
+def test_reordenar_etapas_inclusive_backlog_e_finalizado(client, auth, etapas):
+    ordem_invertida = [
+        etapas["Finalizado"].etapa_id,
+        etapas["Revisão"].etapa_id,
+        etapas["Em Execução"].etapa_id,
+        etapas["Aguardando cliente"].etapa_id,
+        etapas["Backlog"].etapa_id,
+    ]
+
+    response = client.patch(
+        f"{ROTA}/etapas/reordenar", json={"etapa_ids": ordem_invertida}, headers=auth
+    )
+
+    assert response.status_code == 200
+    dados = response.json()
+    assert [e["etapa_id"] for e in dados] == ordem_invertida
+    assert [e["ordem"] for e in dados] == [1, 2, 3, 4, 5]
+
+    kanban = client.get(f"{ROTA}/kanban", headers=auth).json()
+    assert [e["etapa_id"] for e in kanban["etapas"]] == ordem_invertida
+
+
+@pytest.mark.parametrize(
+    "etapa_ids",
+    [
+        [],
+        [1, 1],
+        [1, 2],
+        [1, 2, 3, 4, 99999],
+    ],
+)
+def test_reordenar_etapas_rejeita_lista_invalida(client, auth, etapas, etapa_ids):
+    response = client.patch(f"{ROTA}/etapas/reordenar", json={"etapa_ids": etapa_ids}, headers=auth)
+
+    assert response.status_code == 422
