@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.funcionario.model import Funcionario, StatusFuncionario
@@ -24,7 +25,11 @@ class FuncionarioRepository:
         return self.db.get(Funcionario, funcionario_id)
 
     def buscar_por_email(self, email: str) -> Funcionario | None:
-        return self.db.query(Funcionario).filter_by(email=email).first()
+        return (
+            self.db.query(Funcionario)
+            .filter(func.lower(Funcionario.email) == email.lower())
+            .first()
+        )
 
     def criar(self, funcionario: Funcionario) -> Funcionario:
         self.db.add(funcionario)
