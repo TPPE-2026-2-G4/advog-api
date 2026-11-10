@@ -507,37 +507,49 @@ class TestMudarExibicaoInstitucionalController:
 
 
 class TestMudarReceberEmailsController:
-    def test_mudar_receber_emails_sucesso(self, client, cargo_padrao, atuacao_padrao, token_admin):
-        headers = {"Authorization": f"Bearer {token_admin}"}
-        res = client.post(
-            "/funcionarios",
-            json={
-                "nome": "Func Emails",
-                "email": "emails@test.com",
-                "cargo_id": cargo_padrao.cargo_id,
-                "atuacao_id": atuacao_padrao.atuacao_id,
-            },
-            headers=headers,
-        )
-        func_id = res.json()["funcionario_id"]
+    def test_mudar_receber_emails_do_proprio_usuario(
+        self, client, token_acesso, funcionario_sem_permissao
+    ):
+        usuario = funcionario_sem_permissao
+        headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
 
         response = client.patch(
-            f"/funcionarios/{func_id}/receber-emails",
+            f"/funcionarios/{usuario.funcionario_id}/receber-emails",
             json={"receber_emails": False},
             headers=headers,
         )
+
         assert response.status_code == 200
         assert response.json()["receber_emails"] is False
 
-    def test_mudar_receber_emails_funcionario_inexistente_retorna_400(self, client, token_admin):
-        headers = {"Authorization": f"Bearer {token_admin}"}
-        response = client.patch(
-            "/funcionarios/9999/receber-emails",
-            json={"receber_emails": False},
-            headers=headers,
+    def test_mudar_receber_emails_de_outro_funcionario_retorna_403(
+        self, client, db_session, cargo_padrao, atuacao_padrao, token_admin
+    ):
+        outro = Funcionario(
+            nome="Outro",
+            email="outro.emails@test.com",
+            foto_perfil=1,
+            cargo_id=cargo_padrao.cargo_id,
+            atuacao_id=atuacao_padrao.atuacao_id,
+            receber_emails=True,
         )
-        assert response.status_code == 400
-        assert response.json()["detail"] == "Funcionário não encontrado"
+        db_session.add(outro)
+        db_session.commit()
+
+        response = client.patch(
+            f"/funcionarios/{outro.funcionario_id}/receber-emails",
+            json={"receber_emails": False},
+            headers={"Authorization": f"Bearer {token_admin}"},
+        )
+
+        assert response.status_code == 403
+        db_session.refresh(outro)
+        assert outro.receber_emails is True
+
+    def test_mudar_receber_emails_exige_autenticacao(self, client):
+        response = client.patch("/funcionarios/1/receber-emails", json={"receber_emails": False})
+
+        assert response.status_code == 401
 
 
 class TestEditarDadosController:
