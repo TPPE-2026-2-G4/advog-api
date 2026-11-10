@@ -1,19 +1,28 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+PERMISSOES_IMPLICADAS: dict[str, str] = {
+    "gerenciar_processos": "visualizar_processos",
+    "gerenciar_financeiro": "visualizar_financeiro",
+    "gerenciar_equipe": "visualizar_equipe",
+}
 
 
 class PermissaoBase(BaseModel):
-    criar_processos: bool = False
-    editar_processos: bool = False
-    excluir_processos: bool = False
     visualizar_processos: bool = False
-    criar_atividades: bool = False
-    editar_atividades: bool = False
-    excluir_atividades: bool = False
-    gerenciar_financeiro: bool = False
+    gerenciar_processos: bool = False
+    gerenciar_atividades: bool = False
     visualizar_financeiro: bool = False
-    gerenciar_equipe: bool = False
+    gerenciar_financeiro: bool = False
     visualizar_equipe: bool = False
+    gerenciar_equipe: bool = False
     configuracoes_sistema: bool = False
+
+    @model_validator(mode="after")
+    def garantir_visualizacao_de_quem_gerencia(self) -> "PermissaoBase":
+        for gerenciar, visualizar in PERMISSOES_IMPLICADAS.items():
+            if getattr(self, gerenciar):
+                setattr(self, visualizar, True)
+        return self
 
 
 class CargoBase(BaseModel):

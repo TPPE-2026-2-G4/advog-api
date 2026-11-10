@@ -18,9 +18,7 @@ def cargo_db(db_session: Session) -> Cargo:
     cargo.descricao = "Descrição inicial"
     cargo.permissao = {
         "visualizar_processos": True,
-        "criar_processos": False,
-        "editar_processos": False,
-        "excluir_processos": False,
+        "gerenciar_processos": False,
         "visualizar_financeiro": False,
         "gerenciar_financeiro": False,
         "visualizar_equipe": False,
@@ -110,9 +108,7 @@ def test_controller_atualizar_cargo_retorna_dados_atualizados(client: TestClient
         "descricao": "Descrição atualizada",
         "permissao": {
             "visualizar_processos": True,
-            "criar_processos": True,
-            "editar_processos": True,
-            "excluir_processos": False,
+            "gerenciar_processos": True,
             "visualizar_financeiro": True,
             "gerenciar_financeiro": False,
             "visualizar_equipe": True,
@@ -127,7 +123,7 @@ def test_controller_atualizar_cargo_retorna_dados_atualizados(client: TestClient
     dados = response.json()
     assert dados["nome_cargo"] == "Advogado Senior"
     assert dados["descricao"] == "Descrição atualizada"
-    assert dados["permissao"]["criar_processos"] is True
+    assert dados["permissao"]["gerenciar_processos"] is True
     assert dados["permissao"]["visualizar_financeiro"] is True
 
 
@@ -358,3 +354,16 @@ def test_repository_buscar_todos_cargos(db_session):
 
     todos = repository.buscar_todos()
     assert len(todos) >= 2
+
+
+@pytest.mark.parametrize(
+    ("gerenciar", "visualizar"),
+    [
+        ("gerenciar_processos", "visualizar_processos"),
+        ("gerenciar_financeiro", "visualizar_financeiro"),
+        ("gerenciar_equipe", "visualizar_equipe"),
+    ],
+)
+def test_permissao_gerenciar_inclui_visualizar(gerenciar, visualizar):
+    assert PermissaoBase(**{gerenciar: True}).model_dump()[visualizar] is True
+    assert PermissaoBase(**{gerenciar: False}).model_dump()[visualizar] is False

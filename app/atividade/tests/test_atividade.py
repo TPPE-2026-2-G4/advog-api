@@ -586,37 +586,35 @@ def test_excluir_atividade_via_orm_remove_vinculos(db_session, atividades):
 
 
 @pytest.mark.parametrize(
-    ("permissao", "metodo", "rota", "corpo", "esperado"),
+    ("metodo", "rota", "corpo", "esperado"),
     [
-        ("criar_atividades", "POST", ROTA, "payload", 201),
-        ("editar_atividades", "PATCH", f"{ROTA}/ID", {"titulo": "x"}, 200),
-        ("excluir_atividades", "DELETE", f"{ROTA}/ID", None, 204),
+        ("POST", ROTA, "payload", 201),
+        ("PATCH", f"{ROTA}/ID", {"titulo": "x"}, 200),
+        ("DELETE", f"{ROTA}/ID", None, 204),
     ],
 )
-def test_cada_escrita_exige_somente_a_propria_permissao(
+def test_gerenciar_atividades_libera_criar_editar_e_excluir(
     client,
     db_session,
     funcionarios,
     atividades,
     payload,
     token_acesso,
-    permissao,
     metodo,
     rota,
     corpo,
     esperado,
 ):
     usuario = funcionarios[0]
-    todas = ("criar_atividades", "editar_atividades", "excluir_atividades")
     rota = rota.replace("ID", str(atividades["propria"].atividade_id))
     corpo = payload if corpo == "payload" else corpo
     headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
 
-    for liberada in (permissao, None):
-        usuario.cargo.permissao = {p: p == liberada for p in todas} | {"gerenciar_equipe": True}
+    for gerenciar in (True, False):
+        usuario.cargo.permissao = {"gerenciar_atividades": gerenciar, "gerenciar_equipe": True}
         db_session.commit()
         response = client.request(metodo, rota, json=corpo, headers=headers)
-        assert response.status_code == (esperado if liberada else 403)
+        assert response.status_code == (esperado if gerenciar else 403)
 
 
 def test_buscar_etapas_preserva_vazias_e_desempata_por_id(db_session, etapas):

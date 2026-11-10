@@ -136,9 +136,7 @@ def usuario_processos(db_session, token_acesso):
         db_session,
         {
             "visualizar_processos": True,
-            "criar_processos": True,
-            "editar_processos": True,
-            "excluir_processos": True,
+            "gerenciar_processos": True,
         },
     )
 
@@ -721,7 +719,7 @@ async def test_controller_sincronizar_processos_controller_sucesso(
 ):
     from unittest.mock import patch
 
-    cargo = criar_cargo(db_session, {"editar_processos": True})
+    cargo = criar_cargo(db_session, {"gerenciar_processos": True})
     usuario = criar_funcionario(db_session, cargo, "sync.admin@test.com")
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
@@ -744,7 +742,7 @@ async def test_controller_sincronizar_processos_controller_erro(
 ):
     from unittest.mock import patch
 
-    cargo = criar_cargo(db_session, {"editar_processos": True})
+    cargo = criar_cargo(db_session, {"gerenciar_processos": True})
     usuario = criar_funcionario(db_session, cargo, "sync.erro@test.com")
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
@@ -764,7 +762,7 @@ def test_controller_upload_documento_sem_token(client):
 
 
 def test_controller_upload_documento_sem_permissao(client, db_session, token_acesso):
-    cargo = criar_cargo(db_session, {"editar_processos": False})
+    cargo = criar_cargo(db_session, {"gerenciar_processos": False})
     usuario = criar_funcionario(db_session, cargo, "semperm.doc@test.com")
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
@@ -777,7 +775,7 @@ def test_controller_upload_documento_sem_permissao(client, db_session, token_ace
 def test_controller_upload_documento_sucesso(
     mock_url, mock_salvar, client, db_session, token_acesso, cliente_processo
 ):
-    cargo = criar_cargo(db_session, {"editar_processos": True, "visualizar_processos": True})
+    cargo = criar_cargo(db_session, {"gerenciar_processos": True, "visualizar_processos": True})
     usuario = criar_funcionario(db_session, cargo, "comperm.doc@test.com")
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
@@ -803,7 +801,7 @@ def test_controller_upload_documento_sucesso(
 
 
 def test_controller_upload_documento_processo_inexistente(client, db_session, token_acesso):
-    cargo = criar_cargo(db_session, {"editar_processos": True})
+    cargo = criar_cargo(db_session, {"gerenciar_processos": True})
     usuario = criar_funcionario(db_session, cargo, "proc.inex@test.com")
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
@@ -821,7 +819,7 @@ def test_controller_upload_documento_processo_inexistente(client, db_session, to
 def test_controller_upload_documento_arquivo_invalido(
     client, db_session, token_acesso, cliente_processo
 ):
-    cargo = criar_cargo(db_session, {"editar_processos": True})
+    cargo = criar_cargo(db_session, {"gerenciar_processos": True})
     usuario = criar_funcionario(db_session, cargo, "arquivo.inv@test.com")
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
@@ -861,7 +859,7 @@ def test_controller_listar_documentos_processo_inexistente(client, db_session, t
 def test_controller_listar_documentos_sucesso(
     mock_url, mock_salvar, client, db_session, token_acesso, cliente_processo
 ):
-    cargo = criar_cargo(db_session, {"editar_processos": True, "visualizar_processos": True})
+    cargo = criar_cargo(db_session, {"gerenciar_processos": True, "visualizar_processos": True})
     usuario = criar_funcionario(db_session, cargo, "list.ok@test.com")
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
@@ -899,7 +897,7 @@ def test_controller_obter_url_documento_controller_erro(client, db_session, toke
 def test_controller_obter_url_documento_controller_sucesso(
     mock_url, mock_salvar, client, db_session, token_acesso, cliente_processo
 ):
-    cargo = criar_cargo(db_session, {"editar_processos": True, "visualizar_processos": True})
+    cargo = criar_cargo(db_session, {"gerenciar_processos": True, "visualizar_processos": True})
     usuario = criar_funcionario(db_session, cargo, "url.ok@test.com")
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
@@ -926,7 +924,7 @@ def test_controller_obter_url_documento_controller_sucesso(
 
 
 def test_controller_deletar_documento_controller_erro(client, db_session, token_acesso):
-    cargo = criar_cargo(db_session, {"editar_processos": True})
+    cargo = criar_cargo(db_session, {"gerenciar_processos": True})
     usuario = criar_funcionario(db_session, cargo, "del.erro@test.com")
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
@@ -941,7 +939,7 @@ def test_controller_deletar_documento_controller_erro(client, db_session, token_
 def test_controller_deletar_documento_controller_sucesso(
     mock_url, mock_remover, mock_salvar, client, db_session, token_acesso, cliente_processo
 ):
-    cargo = criar_cargo(db_session, {"editar_processos": True, "visualizar_processos": True})
+    cargo = criar_cargo(db_session, {"gerenciar_processos": True, "visualizar_processos": True})
     usuario = criar_funcionario(db_session, cargo, "del.ok@test.com")
     token = token_acesso(usuario.funcionario_id, usuario.email)
 

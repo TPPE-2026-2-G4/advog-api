@@ -29,7 +29,7 @@ def get_processo_service(db: Session = Depends(get_db)) -> ProcessoService:
 @router.post(
     "/sincronizar",
     response_model=SincronizacaoResponse,
-    dependencies=[Depends(exigir_permissao("editar_processos"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_processos"))],
 )
 async def sincronizar_processos():
     try:
@@ -52,7 +52,7 @@ async def sincronizar_processos():
 )
 def criar_processo(
     processo: ProcessoCreate,
-    funcionario_atual: Funcionario = Depends(exigir_permissao("criar_processos")),
+    funcionario_atual: Funcionario = Depends(exigir_permissao("gerenciar_processos")),
     service: ProcessoService = Depends(get_processo_service),
 ):
     try:
@@ -142,7 +142,7 @@ def listar_processos_criticos(
 def atualizar_processo(
     processo_id: int,
     dados: ProcessoUpdate,
-    funcionario_atual: Funcionario = Depends(exigir_permissao("editar_processos")),
+    funcionario_atual: Funcionario = Depends(exigir_permissao("gerenciar_processos")),
     service: ProcessoService = Depends(get_processo_service),
 ):
     try:
@@ -161,7 +161,9 @@ def atualizar_processo(
 
 
 @router.delete(
-    "/{processo_id}", status_code=204, dependencies=[Depends(exigir_permissao("excluir_processos"))]
+    "/{processo_id}",
+    status_code=204,
+    dependencies=[Depends(exigir_permissao("gerenciar_processos"))],
 )
 def deletar_processo(processo_id: int, service: ProcessoService = Depends(get_processo_service)):
     try:
@@ -174,7 +176,7 @@ def deletar_processo(processo_id: int, service: ProcessoService = Depends(get_pr
     "/{processo_id}/documentos",
     response_model=DocumentoProcessoResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(exigir_permissao("editar_processos"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_processos"))],
 )
 def upload_documento(
     processo_id: int,
@@ -242,7 +244,7 @@ def obter_url_documento(
 def deletar_documento(
     processo_id: int,
     documento_id: int,
-    funcionario_atual: Funcionario = Depends(exigir_permissao("editar_processos")),
+    funcionario_atual: Funcionario = Depends(exigir_permissao("gerenciar_processos")),
     service: ProcessoService = Depends(get_processo_service),
 ):
     try:
