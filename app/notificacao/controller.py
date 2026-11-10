@@ -1,3 +1,4 @@
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -35,6 +36,16 @@ RESPOSTAS_NOTIFICACAO: dict[int | str, dict[str, Any]] = {
 }
 
 
+def _extrair_usuario_id(usuario: Funcionario) -> uuid.UUID:
+    identificador = getattr(usuario, "id", None) or getattr(usuario, "funcionario_id", None)
+    if isinstance(identificador, uuid.UUID):
+        return identificador
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Identificador de usuário inválido.",
+    )
+
+
 def _traduzir_erro(erro: ValueError) -> HTTPException:
     if isinstance(erro, NotificacaoNaoEncontradaError):
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(erro))
@@ -46,7 +57,7 @@ def _traduzir_erro(erro: ValueError) -> HTTPException:
 @router.get(
     "",
     response_model=list[NotificacaoRead],
-    summary="Listar notificações do funcionário autenticado",
+    summary="Listar notificações do usuário autenticado",
     responses=RESPOSTAS_NOTIFICACAO,
 )
 def listar_notificacoes(
@@ -57,8 +68,9 @@ def listar_notificacoes(
     usuario: Funcionario = Depends(obter_funcionario_atual),
     service: NotificacaoService = Depends(get_notificacao_service),
 ) -> list[NotificacaoRead]:
+    usuario_id = _extrair_usuario_id(usuario)
     return service.listar_notificacoes(
-        funcionario_id=usuario.funcionario_id,
+        usuario_id=usuario_id,
         apenas_nao_lidas=apenas_nao_lidas,
         tipo=tipo,
         limite=limite,
@@ -76,7 +88,8 @@ def obter_contagem_nao_lidas(
     usuario: Funcionario = Depends(obter_funcionario_atual),
     service: NotificacaoService = Depends(get_notificacao_service),
 ) -> ContagemNaoLidasResponse:
-    return service.obter_contagem_nao_lidas(usuario.funcionario_id)
+    usuario_id = _extrair_usuario_id(usuario)
+    return service.obter_contagem_nao_lidas(usuario_id)
 
 
 @router.post(
@@ -107,7 +120,8 @@ def marcar_todas_como_lidas(
     usuario: Funcionario = Depends(obter_funcionario_atual),
     service: NotificacaoService = Depends(get_notificacao_service),
 ) -> dict[str, int]:
-    total_alterado = service.marcar_todas_como_lidas(usuario.funcionario_id)
+    usuario_id = _extrair_usuario_id(usuario)
+    total_alterado = service.marcar_todas_como_lidas(usuario_id)
     return {"alteradas": total_alterado}
 
 
@@ -118,11 +132,12 @@ def marcar_todas_como_lidas(
     responses=RESPOSTAS_NOTIFICACAO,
 )
 def marcar_como_lida(
-    notificacao_id: int,
+    notificacao_id: uuid.UUID,
     usuario: Funcionario = Depends(obter_funcionario_atual),
     service: NotificacaoService = Depends(get_notificacao_service),
 ) -> NotificacaoRead:
+    usuario_id = _extrair_usuario_id(usuario)
     try:
-        return service.marcar_como_lida(notificacao_id, usuario.funcionario_id)
+        return service.marcar_como_lida(notificacao_id, usuario_id)
     except ValueError as erro:
         raise _traduzir_erro(erro) from erro

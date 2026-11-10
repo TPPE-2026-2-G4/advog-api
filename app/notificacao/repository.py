@@ -1,3 +1,4 @@
+import uuid
 from typing import cast
 
 from sqlalchemy import CursorResult, func, select, update
@@ -10,13 +11,13 @@ class NotificacaoRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def buscar_por_id(self, notificacao_id: int) -> Notificacao | None:
-        consulta = select(Notificacao).where(Notificacao.notificacao_id == notificacao_id)
+    def buscar_por_id(self, notificacao_id: uuid.UUID) -> Notificacao | None:
+        consulta = select(Notificacao).where(Notificacao.id == notificacao_id)
         return self.db.scalars(consulta).first()
 
-    def listar_por_funcionario(
+    def listar_por_usuario(
         self,
-        funcionario_id: int,
+        usuario_id: uuid.UUID,
         apenas_nao_lidas: bool = False,
         tipo: TipoNotificacao | None = None,
         limite: int = 50,
@@ -24,8 +25,8 @@ class NotificacaoRepository:
     ) -> list[Notificacao]:
         consulta = (
             select(Notificacao)
-            .where(Notificacao.funcionario_id == funcionario_id)
-            .order_by(Notificacao.created_at.desc())
+            .where(Notificacao.usuario_id == usuario_id)
+            .order_by(Notificacao.criado_em.desc())
         )
 
         if apenas_nao_lidas:
@@ -36,10 +37,10 @@ class NotificacaoRepository:
         consulta = consulta.offset(offset).limit(limite)
         return list(self.db.scalars(consulta))
 
-    def contar_nao_lidas(self, funcionario_id: int) -> int:
+    def contar_nao_lidas(self, usuario_id: uuid.UUID) -> int:
         consulta = (
-            select(func.count(Notificacao.notificacao_id))
-            .where(Notificacao.funcionario_id == funcionario_id)
+            select(func.count(Notificacao.id))
+            .where(Notificacao.usuario_id == usuario_id)
             .where(Notificacao.lida.is_(False))
         )
         return self.db.scalar(consulta) or 0
@@ -50,12 +51,12 @@ class NotificacaoRepository:
         self.db.refresh(notificacao)
         return notificacao
 
-    def marcar_como_lida(self, notificacao_id: int, funcionario_id: int) -> bool:
+    def marcar_como_lida(self, notificacao_id: uuid.UUID, usuario_id: uuid.UUID) -> bool:
         comando = (
             update(Notificacao)
             .where(
-                Notificacao.notificacao_id == notificacao_id,
-                Notificacao.funcionario_id == funcionario_id,
+                Notificacao.id == notificacao_id,
+                Notificacao.usuario_id == usuario_id,
             )
             .values(lida=True)
         )
@@ -63,11 +64,11 @@ class NotificacaoRepository:
         self.db.commit()
         return (resultado.rowcount or 0) > 0
 
-    def marcar_todas_como_lidas(self, funcionario_id: int) -> int:
+    def marcar_todas_como_lidas(self, usuario_id: uuid.UUID) -> int:
         comando = (
             update(Notificacao)
             .where(
-                Notificacao.funcionario_id == funcionario_id,
+                Notificacao.usuario_id == usuario_id,
                 Notificacao.lida.is_(False),
             )
             .values(lida=True)

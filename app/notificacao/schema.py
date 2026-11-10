@@ -35,12 +35,12 @@ class NotificacaoCreate(NotificacaoBase):
 
 
 class NotificacaoRead(NotificacaoBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     usuario_id: uuid.UUID
     lida: bool
     criado_em: datetime
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class NotificacaoPaginatedResponse(BaseModel):
