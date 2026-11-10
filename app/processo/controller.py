@@ -6,6 +6,7 @@ from app.core.dependencies import exigir_permissao, obter_funcionario_atual
 from app.core.relatorio import FormatoRelatorio, resposta_arquivo
 from app.funcionario.model import Funcionario
 from app.processo.schema import (
+    DatajudStatusResponse,
     DocumentoProcessoResponse,
     DocumentoUrlResponse,
     ProcessoCreate,
@@ -24,6 +25,14 @@ router = APIRouter(prefix="/processos", tags=["Processos"])
 
 def get_processo_service(db: Session = Depends(get_db)) -> ProcessoService:
     return ProcessoService(db)
+
+
+@router.get(
+    "/datajud/status",
+    response_model=DatajudStatusResponse,
+)
+async def verificar_status_datajud():
+    return await ProcessoService.verificar_status_datajud()
 
 
 @router.post(

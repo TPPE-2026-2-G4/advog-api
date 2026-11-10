@@ -24,6 +24,7 @@ from app.funcionario.model import Funcionario
 from app.processo.model import Processo, StatusProcesso
 from app.processo.repository import ProcessoRepository
 from app.processo.schema import (
+    DatajudStatusResponse,
     DocumentoProcessoResponse,
     ProcessoCreate,
     ProcessoFilter,
@@ -484,3 +485,19 @@ class ProcessoService:
             raise
         finally:
             db.close()
+
+    @classmethod
+    async def verificar_status_datajud(cls) -> DatajudStatusResponse:
+        api_client = DatajudApiClient()
+        online = await api_client.verificar_status()
+        if online:
+            return DatajudStatusResponse(
+                online=True,
+                status="online",
+                mensagem="Integração conectada · Sincronização automática ativa",
+            )
+        return DatajudStatusResponse(
+            online=False,
+            status="offline",
+            mensagem="Integração indisponível · Sincronização automática pausada",
+        )
