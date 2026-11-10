@@ -1,4 +1,5 @@
 from datetime import datetime
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,8 +14,14 @@ from main import app
 Base.metadata.create_all(bind=engine)
 
 
+def _funcionario_com(permissao: dict[str, bool]) -> SimpleNamespace:
+    return SimpleNamespace(
+        funcionario_id=1, email="test@test.com", cargo=SimpleNamespace(permissao=permissao)
+    )
+
+
 def override_obter_funcionario_atual():
-    return {"id": 1, "email": "test@test.com"}
+    return _funcionario_com({"gerenciar_clientes": True})
 
 
 client = TestClient(app)
@@ -375,3 +382,53 @@ def test_criar_cliente_limita_requisicoes_por_minuto():
 )
 def test_criar_cliente_rejeita_dados_invalidos(campos):
     assert client.post("/clientes/", json=_solicitacao(**campos)).status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("permissao", "leitura", "escrita"),
+    [
+        ({}, 403, 403),
+        ({"gerenciar_equipe": True, "gerenciar_site": True}, 403, 403),
+        ({"visualizar_clientes": True}, 200, 403),
+        ({"gerenciar_clientes": True}, 200, 200),
+    ],
+)
+def test_leitura_e_escrita_de_clientes_respeitam_permissoes(permissao, leitura, escrita):
+    app.dependency_overrides[obter_funcionario_atual] = lambda: _funcionario_com(permissao)
+    existente = client.get("/clientes/").json()[0]["cliente_id"] if leitura == 200 else 1
+
+    assert client.get("/clientes/").status_code == leitura
+    assert client.get(f"/clientes/{existente}").status_code == leitura
+    # com permissão, o 404/422 prova que a requisição passou pelo controle de acesso
+    assert client.delete("/clientes/999999").status_code == (404 if escrita == 200 else 403)
+    assert client.put("/clientes/999999", json={}).status_code == (422 if escrita == 200 else 403)
+
+
+def test_criar_cliente_continua_publico_mesmo_sem_permissoes():
+    app.dependency_overrides[obter_funcionario_atual] = lambda: _funcionario_com({})
+
+    assert client.post("/clientes/", json=_solicitacao()).status_code == 201
+
+
+@pytest.mark.parametrize(
+    ("permissao", "leitura"),
+    [
+        ({"visualizar_processos": True}, 200),
+        ({"gerenciar_processos": True}, 200),
+        ({"visualizar_atividades": True}, 403),
+        ({"visualizar_financeiro": True}, 403),
+    ],
+)
+def test_lista_de_clientes_atende_a_tela_de_processos(permissao, leitura):
+    app.dependency_overrides[obter_funcionario_atual] = lambda: _funcionario_com(permissao)
+
+    assert client.get("/clientes/").status_code == leitura
+
+
+def test_permissao_de_processos_nao_altera_nem_exclui_clientes():
+    app.dependency_overrides[obter_funcionario_atual] = lambda: _funcionario_com(
+        {"visualizar_processos": True, "gerenciar_processos": True}
+    )
+
+    assert client.put("/clientes/1", json={}).status_code == 403
+    assert client.delete("/clientes/1").status_code == 403

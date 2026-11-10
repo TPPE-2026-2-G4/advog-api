@@ -1,11 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-PERMISSOES_IMPLICADAS: dict[str, str] = {
-    "gerenciar_processos": "visualizar_processos",
-    "gerenciar_atividades": "visualizar_atividades",
-    "gerenciar_financeiro": "visualizar_financeiro",
-    "gerenciar_equipe": "visualizar_equipe",
-}
+from app.core.permissoes import PERMISSOES_IMPLICADAS
 
 
 class PermissaoBase(BaseModel):
@@ -17,6 +12,8 @@ class PermissaoBase(BaseModel):
     gerenciar_financeiro: bool = False
     visualizar_equipe: bool = False
     gerenciar_equipe: bool = False
+    visualizar_clientes: bool = False
+    gerenciar_clientes: bool = False
     gerenciar_site: bool = False
     configuracoes_sistema: bool = False
 

@@ -2,8 +2,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.cargo.schema import PERMISSOES_IMPLICADAS
+from app.cargo.schema import PermissaoBase
 from app.config.database import get_db
+from app.core.permissoes import PERMISSOES_IMPLICADAS
 from app.core.seguranca import extrair_funcionario_id_do_token
 from app.funcionario.model import Funcionario
 
@@ -35,18 +36,27 @@ def obter_funcionario_atual(
     return funcionario
 
 
-def exigir_permissao(permissao: str):
+def _concede(permissoes: dict, permissao: str) -> bool:
+    if permissoes.get(permissao, False):
+        return True
+    return any(
+        permissoes.get(gerenciar, False)
+        for gerenciar, visualizar in PERMISSOES_IMPLICADAS.items()
+        if visualizar == permissao
+    )
+
+
+def exigir_permissao(*permissoes_aceitas: str):
+    """Exige que o cargo tenha ao menos UMA das permissões informadas (ou quem a inclui)."""
+    desconhecidas = set(permissoes_aceitas) - set(PermissaoBase.model_fields)
+    if desconhecidas:
+        raise ValueError(f"Permissão inexistente em exigir_permissao: {sorted(desconhecidas)}")
 
     def verificar(
         funcionario: Funcionario = Depends(obter_funcionario_atual),
     ) -> Funcionario:
         permissoes = funcionario.cargo.permissao or {}
-        concedida = permissoes.get(permissao, False) or any(
-            permissoes.get(gerenciar, False)
-            for gerenciar, visualizar in PERMISSOES_IMPLICADAS.items()
-            if visualizar == permissao
-        )
-        if not concedida:
+        if not any(_concede(permissoes, aceita) for aceita in permissoes_aceitas):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Você não tem permissão para executar esta ação.",

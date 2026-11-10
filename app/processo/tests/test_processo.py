@@ -3186,3 +3186,37 @@ def test_controller_verificar_status_datajud(
     assert dados["online"] is online
     assert dados["status"] == status_esperado
     assert isinstance(dados["mensagem"], str)
+
+
+@pytest.mark.parametrize(
+    ("permissao", "esperado"),
+    [
+        ({"visualizar_processos": True}, 200),
+        ({"visualizar_atividades": True}, 200),
+        ({"gerenciar_atividades": True}, 200),
+        ({"visualizar_clientes": True}, 403),
+        ({"visualizar_financeiro": True}, 403),
+    ],
+)
+def test_listagem_de_processos_atende_a_tela_de_atividades(
+    client, db_session, token_acesso, funcionario_sem_permissao, permissao, esperado
+):
+    usuario = funcionario_sem_permissao
+    usuario.cargo.permissao = permissao
+    db_session.commit()
+    headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+    assert client.get("/processos/", headers=headers).status_code == esperado
+
+
+def test_permissao_de_atividades_nao_libera_demais_rotas_de_processos(
+    client, db_session, token_acesso, funcionario_sem_permissao
+):
+    usuario = funcionario_sem_permissao
+    usuario.cargo.permissao = {"gerenciar_atividades": True}
+    db_session.commit()
+    headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+    assert client.get("/processos/exportar?formato=csv", headers=headers).status_code == 403
+    assert client.get("/processos/resumo", headers=headers).status_code == 403
+    assert client.post("/processos/sincronizar", headers=headers).status_code == 403
