@@ -5,6 +5,7 @@ from app.cargo.schema import CargoCreate, CargoResponse, CargoUpdate
 from app.cargo.service import CargoService
 from app.config.database import get_db
 from app.core.dependencies import exigir_permissao, obter_funcionario_atual
+from app.core.permissoes import ACESSO_GERENCIAR_CARGOS
 
 router = APIRouter(
     prefix="/cargos",
@@ -12,7 +13,7 @@ router = APIRouter(
     dependencies=[Depends(obter_funcionario_atual)],
 )
 
-GERENCIAR_CARGOS = Depends(exigir_permissao("configuracoes_sistema"))
+GERENCIAR_CARGOS = Depends(exigir_permissao(*ACESSO_GERENCIAR_CARGOS))
 
 
 @router.get("", response_model=list[CargoResponse], status_code=status.HTTP_200_OK)

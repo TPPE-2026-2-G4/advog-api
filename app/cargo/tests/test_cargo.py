@@ -368,6 +368,7 @@ def test_repository_buscar_todos_cargos(db_session):
         ("gerenciar_financeiro", "visualizar_financeiro"),
         ("gerenciar_equipe", "visualizar_equipe"),
         ("gerenciar_atividades", "visualizar_atividades"),
+        ("gerenciar_clientes", "visualizar_clientes"),
     ],
 )
 def test_permissao_gerenciar_inclui_visualizar(gerenciar, visualizar):
@@ -405,7 +406,7 @@ def test_escrita_de_cargos_exige_configuracoes_sistema(
     corpo,
 ):
     usuario = funcionario_sem_permissao
-    usuario.cargo.permissao = {"gerenciar_equipe": True, "gerenciar_site": True}
+    usuario.cargo.permissao = {"visualizar_equipe": True, "gerenciar_site": True}
     db_session.commit()
     headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
 
@@ -423,3 +424,21 @@ def test_leitura_de_cargos_exige_apenas_login(
     headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
 
     assert client.get("/cargos", headers=headers).status_code == 200
+
+
+@pytest.mark.parametrize("permissao", ["configuracoes_sistema", "gerenciar_equipe"])
+def test_escrita_de_cargos_aceita_configuracoes_ou_gerenciar_equipe(
+    client: TestClient,
+    db_session: Session,
+    token_acesso,
+    funcionario_sem_permissao: Funcionario,
+    permissao,
+):
+    usuario = funcionario_sem_permissao
+    usuario.cargo.permissao = {permissao: True}
+    db_session.commit()
+    headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+    resposta = client.post("/cargos", json={"nome_cargo": "Cargo Novo"}, headers=headers)
+
+    assert resposta.status_code == 201

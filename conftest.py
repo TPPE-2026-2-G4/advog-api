@@ -165,6 +165,8 @@ def cargo_admin(db_session: Session) -> Cargo:
             "gerenciar_equipe": True,
             "gerenciar_atividades": True,
             "gerenciar_financeiro": True,
+            "visualizar_clientes": True,
+            "gerenciar_clientes": True,
             "gerenciar_site": True,
             "configuracoes_sistema": True,
             "visualizar_processos": True,

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.config.database import get_db
 from app.core.dependencies import exigir_permissao, obter_funcionario_atual
+from app.core.permissoes import ACESSO_LISTA_PROCESSOS
 from app.core.relatorio import FormatoRelatorio, resposta_arquivo
 from app.funcionario.model import Funcionario
 from app.processo.schema import (
@@ -73,7 +74,7 @@ def criar_processo(
 @router.get(
     "/",
     response_model=ProcessoPaginadoResponse,
-    dependencies=[Depends(exigir_permissao("visualizar_processos"))],
+    dependencies=[Depends(exigir_permissao(*ACESSO_LISTA_PROCESSOS))],
 )
 def filtrar_processos(
     filtros: ProcessoFilter = Depends(), service: ProcessoService = Depends(get_processo_service)
