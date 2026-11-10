@@ -36,7 +36,7 @@ def seed_institucional_db(institucional_padrao):
 def token_admin(db_session: Session):
     cargo = Cargo(
         nome_cargo="Administrador",
-        permissao={"configuracoes_sistema": True},
+        permissao={"gerenciar_site": True},
     )
     db_session.add(cargo)
     db_session.commit()
@@ -59,7 +59,7 @@ def token_admin(db_session: Session):
 def token_sem_permissao(db_session: Session):
     cargo = Cargo(
         nome_cargo="Assistente",
-        permissao={"configuracoes_sistema": False},
+        permissao={"gerenciar_site": False},
     )
     db_session.add(cargo)
     db_session.commit()

@@ -362,6 +362,7 @@ def test_repository_buscar_todos_cargos(db_session):
         ("gerenciar_processos", "visualizar_processos"),
         ("gerenciar_financeiro", "visualizar_financeiro"),
         ("gerenciar_equipe", "visualizar_equipe"),
+        ("gerenciar_atividades", "visualizar_atividades"),
     ],
 )
 def test_permissao_gerenciar_inclui_visualizar(gerenciar, visualizar):

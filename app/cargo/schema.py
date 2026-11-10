@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PERMISSOES_IMPLICADAS: dict[str, str] = {
     "gerenciar_processos": "visualizar_processos",
+    "gerenciar_atividades": "visualizar_atividades",
     "gerenciar_financeiro": "visualizar_financeiro",
     "gerenciar_equipe": "visualizar_equipe",
 }
@@ -10,11 +11,13 @@ PERMISSOES_IMPLICADAS: dict[str, str] = {
 class PermissaoBase(BaseModel):
     visualizar_processos: bool = False
     gerenciar_processos: bool = False
+    visualizar_atividades: bool = False
     gerenciar_atividades: bool = False
     visualizar_financeiro: bool = False
     gerenciar_financeiro: bool = False
     visualizar_equipe: bool = False
     gerenciar_equipe: bool = False
+    gerenciar_site: bool = False
     configuracoes_sistema: bool = False
 
     @model_validator(mode="after")

@@ -101,7 +101,7 @@ def mudar_cargo(funcionario_id: int, dados: FuncionarioMudarCargo, db: Session =
 @router.patch(
     "/{funcionario_id}/exibicao-institucional",
     response_model=FuncionarioResponse,
-    dependencies=[Depends(exigir_permissao("gerenciar_equipe"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_site"))],
 )
 def mudar_exibicao_institucional(
     funcionario_id: int,

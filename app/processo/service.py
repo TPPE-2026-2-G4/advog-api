@@ -57,9 +57,7 @@ class ProcessoService:
             return False
         nome_cargo = (cargo.nome_cargo or "").strip().lower()
         permissoes = cargo.permissao or {}
-        return nome_cargo in CARGOS_ADMINISTRADOR or bool(
-            permissoes.get("configuracoes_sistema", False)
-        )
+        return nome_cargo in CARGOS_ADMINISTRADOR or bool(permissoes.get("gerenciar_equipe", False))
 
     def obter_resumo_processos(
         self,

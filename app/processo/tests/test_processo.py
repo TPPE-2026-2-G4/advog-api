@@ -991,7 +991,7 @@ def test_controller_obter_resumo_processos_controller_parametrizado(
     nome_cargo = "Administrador" if eh_admin else "Advogado Associado"
     permissoes = {
         "visualizar_processos": True,
-        "configuracoes_sistema": eh_admin,
+        "gerenciar_equipe": eh_admin,
     }
     cargo_usuario = Cargo(
         nome_cargo=nome_cargo,
@@ -2800,7 +2800,7 @@ def test_service_remover_documento_sucesso(mock_remover):
     [
         ("Administrador", {}, False, False, True),
         ("  admin ", {}, False, False, True),
-        ("Advogado Sênior", {"configuracoes_sistema": True}, False, False, True),
+        ("Advogado Sênior", {"gerenciar_equipe": True}, False, False, True),
         ("Advogado Pleno", {"visualizar_processos": True}, False, False, False),
         ("", None, True, False, False),
         ("", None, False, True, True),
@@ -2889,7 +2889,7 @@ def test_service_obter_resumo_processos_parametrizado(
     usuario.funcionario_id = usuario_id
     cargo = MagicMock()
     cargo.nome_cargo = "Administrador" if eh_admin else "Advogado"
-    cargo.permissao = {"configuracoes_sistema": eh_admin}
+    cargo.permissao = {"gerenciar_equipe": eh_admin}
     usuario.cargo = cargo
 
     service.repository.contar_por_status.return_value = contagens_status

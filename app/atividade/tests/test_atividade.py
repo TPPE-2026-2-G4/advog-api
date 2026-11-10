@@ -41,7 +41,7 @@ def test_visualizar_kanban_respeita_acesso_e_contrato(
     client, db_session, funcionarios, atividades, token_acesso, permissoes, escopo, indice_usuario
 ):
     usuario = funcionarios[indice_usuario]
-    usuario.cargo.permissao = permissoes
+    usuario.cargo.permissao = {**permissoes, "visualizar_atividades": True}
     db_session.commit()
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
@@ -120,7 +120,10 @@ def test_kanban_vazio_nao_cria_etapas(
     if not com_etapas:
         db_session.execute(delete(EtapaKanban))
     usuario = funcionarios[0]
-    usuario.cargo.permissao = {"gerenciar_equipe": gerenciar_equipe}
+    usuario.cargo.permissao = {
+        "gerenciar_equipe": gerenciar_equipe,
+        "visualizar_atividades": True,
+    }
     db_session.commit()
     token = token_acesso(usuario.funcionario_id)
 
@@ -170,7 +173,10 @@ def test_kanban_com_dez_mil_atividades(
 ):
     quantidade = 10_000
     usuario = funcionarios[0]
-    usuario.cargo.permissao = {"gerenciar_equipe": gerenciar_equipe}
+    usuario.cargo.permissao = {
+        "gerenciar_equipe": gerenciar_equipe,
+        "visualizar_atividades": True,
+    }
     funcionario_id = usuario.funcionario_id
     etapa_id = etapas["Backlog"].etapa_id
     db_session.execute(
@@ -615,6 +621,32 @@ def test_gerenciar_atividades_libera_criar_editar_e_excluir(
         db_session.commit()
         response = client.request(metodo, rota, json=corpo, headers=headers)
         assert response.status_code == (esperado if gerenciar else 403)
+
+
+@pytest.mark.parametrize(
+    "rota",
+    [f"{ROTA}/kanban", ROTA + "/", f"{ROTA}/1", "/dashboard/atividades/resumo"],
+)
+@pytest.mark.parametrize(
+    ("permissao", "bloqueado"),
+    [
+        ({}, True),
+        ({"gerenciar_equipe": True}, True),
+        ({"visualizar_atividades": True}, False),
+        ({"gerenciar_atividades": True}, False),
+    ],
+)
+def test_consultas_de_atividades_exigem_visualizar_atividades(
+    client, db_session, funcionarios, atividades, token_acesso, rota, permissao, bloqueado
+):
+    usuario = funcionarios[0]
+    usuario.cargo.permissao = permissao
+    db_session.commit()
+    headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+    resposta = client.get(rota, headers=headers)
+
+    assert (resposta.status_code == 403) is bloqueado
 
 
 def test_buscar_etapas_preserva_vazias_e_desempata_por_id(db_session, etapas):

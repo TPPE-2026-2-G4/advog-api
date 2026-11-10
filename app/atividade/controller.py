@@ -30,6 +30,7 @@ def get_atividade_service(db: Session = Depends(get_db)) -> AtividadeService:
     "/kanban",
     response_model=KanbanResponse,
     summary="Visualizar o Kanban de atividades",
+    dependencies=[Depends(exigir_permissao("visualizar_atividades"))],
     responses={401: {"description": "Credenciais ausentes ou inválidas"}},
 )
 def visualizar_kanban(
@@ -86,6 +87,7 @@ def visualizar_produtividade(
     "/",
     response_model=list[AtividadeResponse],
     summary="Filtrar e pesquisar atividades",
+    dependencies=[Depends(exigir_permissao("visualizar_atividades"))],
     responses={401: {"description": "Credenciais ausentes ou inválidas"}},
 )
 def filtrar_atividades(
@@ -100,6 +102,7 @@ def filtrar_atividades(
     "/{atividade_id}",
     response_model=AtividadeResponse,
     summary="Detalhar atividade",
+    dependencies=[Depends(exigir_permissao("visualizar_atividades"))],
     responses={401: RESPOSTAS_ESCRITA[401], 404: RESPOSTAS_ESCRITA[404]},
 )
 def buscar_atividade(

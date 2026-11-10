@@ -484,6 +484,24 @@ class TestMudarExibicaoInstitucionalController:
         assert response.status_code == 400
         assert response.json()["detail"] == "Funcionário não encontrado"
 
+    def test_mudar_exibicao_institucional_exige_gerenciar_site(
+        self, client, db_session, token_acesso, funcionario_sem_permissao
+    ):
+        usuario = funcionario_sem_permissao
+        headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+        rota = f"/funcionarios/{usuario.funcionario_id}/exibicao-institucional"
+
+        usuario.cargo.permissao = {"gerenciar_equipe": True}
+        db_session.commit()
+        negado = client.patch(rota, json={"exibicaoInstitucional": True}, headers=headers)
+
+        usuario.cargo.permissao = {"gerenciar_site": True}
+        db_session.commit()
+        liberado = client.patch(rota, json={"exibicaoInstitucional": True}, headers=headers)
+
+        assert negado.status_code == 403
+        assert liberado.status_code == 200
+
 
 class TestEditarDadosController:
     def test_editar_dados_sem_token_retorna_erro(self, client):

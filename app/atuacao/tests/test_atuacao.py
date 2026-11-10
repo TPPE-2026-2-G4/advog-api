@@ -20,7 +20,7 @@ def _criar_atuacao_base(db_session: Session) -> int:
 def token_admin_sistema(db_session: Session) -> str:
     cargo = Cargo(
         nome_cargo="Administrador Sistema",
-        permissao={"configuracoes_sistema": True},
+        permissao={"gerenciar_site": True},
     )
     db_session.add(cargo)
     db_session.commit()
@@ -43,7 +43,7 @@ def token_admin_sistema(db_session: Session) -> str:
 def token_sem_permissao(db_session: Session) -> str:
     cargo = Cargo(
         nome_cargo="Estagiário",
-        permissao={"configuracoes_sistema": False},
+        permissao={"gerenciar_site": False},
     )
     db_session.add(cargo)
     db_session.commit()
