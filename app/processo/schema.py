@@ -81,6 +81,12 @@ class SincronizacaoResponse(BaseModel):
     mensagem: str
 
 
+class DatajudStatusResponse(BaseModel):
+    online: bool
+    status: str
+    mensagem: str
+
+
 class ProcessoPaginadoResponse(BaseModel):
     itens: list[ProcessoResponse]
     total: int

@@ -12,3 +12,16 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     funcionario: FuncionarioResponse
+
+
+class SolicitarRecuperacaoSenha(BaseModel):
+    email: EmailStr
+
+
+class RedefinirSenha(BaseModel):
+    token: str = Field(..., min_length=1)
+    senha: str = Field(..., min_length=8)
+
+
+class MensagemResponse(BaseModel):
+    mensagem: str

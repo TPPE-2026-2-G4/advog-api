@@ -21,6 +21,7 @@ dependencies = [
     "defusedxml>=0.7.1",
     "pillow>=12.3.0",
     "apscheduler>=3.11.3",
+    "python-dateutil>=2.9.0.post0",
     "httpx>=0.28.1",
     "openpyxl>=3.1.5",
     "reportlab>=5.1.0",

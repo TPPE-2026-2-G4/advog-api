@@ -5,13 +5,13 @@ from typing import BinaryIO
 from botocore.exceptions import ClientError
 
 from app.config.storage import (
-    MINIO_BUCKET_PUBLICO,
+    S3_BUCKET_PUBLICO,
     s3_client,
     s3_public_client,
 )
 
 
-def garantir_bucket(bucket: str = MINIO_BUCKET_PUBLICO) -> None:
+def garantir_bucket(bucket: str = S3_BUCKET_PUBLICO) -> None:
     try:
         s3_client.head_bucket(Bucket=bucket)
     except ClientError as exc:
@@ -27,7 +27,7 @@ def salvar_arquivo(
     extensao: str,
     content_type: str,
     pasta: str = "",
-    bucket: str = MINIO_BUCKET_PUBLICO,
+    bucket: str = S3_BUCKET_PUBLICO,
 ) -> str:
     garantir_bucket(bucket)
     nome_arquivo = f"{uuid.uuid4().hex}.{extensao.lstrip('.')}"
@@ -42,7 +42,7 @@ def salvar_arquivo(
     return chave
 
 
-def remover_arquivo(chave: str, bucket: str = MINIO_BUCKET_PUBLICO) -> None:
+def remover_arquivo(chave: str, bucket: str = S3_BUCKET_PUBLICO) -> None:
     if not chave:
         return
     with contextlib.suppress(ClientError):
@@ -52,7 +52,7 @@ def remover_arquivo(chave: str, bucket: str = MINIO_BUCKET_PUBLICO) -> None:
 def obter_url_publica(
     chave: str | None,
     expiracao_segundos: int = 3600,
-    bucket: str = MINIO_BUCKET_PUBLICO,
+    bucket: str = S3_BUCKET_PUBLICO,
 ) -> str | None:
     if not chave:
         return None

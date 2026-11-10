@@ -1,7 +1,8 @@
 from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import case, func, or_, select
-from sqlalchemy.orm import Query, Session
+from sqlalchemy.orm import Query, Session, aliased
 
 from app.atividade.model import Atividade
 from app.atividade_funcionario.model import AtividadeFuncionario
@@ -187,35 +188,47 @@ class AtividadeRepository:
         if data_inicio_ate is not None:
             limite = datetime.combine(data_inicio_ate + timedelta(days=1), time.min)
             query = query.filter(Atividade.data_inicio < limite)
+
+        etapa_finalizada = select(EtapaKanban.etapa_id).where(
+            EtapaKanban.etapa_id == Atividade.etapa_id,
+            EtapaKanban.nome == "Finalizado",
+        )
+
         if realizada is True:
-            query = query.filter(Atividade.data_realizado.isnot(None))
+            query = query.filter(etapa_finalizada.exists())
         elif realizada is False:
-            query = query.filter(Atividade.data_realizado.is_(None))
-        if atrasada is True:
-            agora = datetime.now()
-            query = query.filter(Atividade.data_realizado.is_(None), Atividade.data_prazo < agora)
-        elif atrasada is False:
-            agora = datetime.now()
-            query = query.filter(
-                or_(Atividade.data_realizado.isnot(None), Atividade.data_prazo >= agora)
-            )
+            query = query.filter(~etapa_finalizada.exists())
+        if atrasada is not None:
+            hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+            inicio_do_dia = datetime.combine(hoje, time.min)
+
+            if atrasada is True:
+                query = query.filter(
+                    ~etapa_finalizada.exists(),
+                    Atividade.data_prazo < inicio_do_dia,
+                )
+            else:
+                query = query.filter(
+                    or_(
+                        etapa_finalizada.exists(),
+                        Atividade.data_prazo >= inicio_do_dia,
+                    )
+                )
+
         if busca_textual:
+            af_texto = aliased(AtividadeFuncionario, flat=True)
+            func_texto = aliased(Funcionario, flat=True)
             query = (
                 query.outerjoin(Processo, Processo.processo_id == Atividade.processo_id)
-                .outerjoin(
-                    AtividadeFuncionario,
-                    AtividadeFuncionario.atividade_id == Atividade.atividade_id,
-                )
-                .outerjoin(
-                    Funcionario, Funcionario.funcionario_id == AtividadeFuncionario.funcionario_id
-                )
+                .outerjoin(af_texto, af_texto.atividade_id == Atividade.atividade_id)
+                .outerjoin(func_texto, func_texto.funcionario_id == af_texto.funcionario_id)
                 .filter(
                     or_(
                         Atividade.titulo.ilike(f"%{busca_textual}%"),
                         Atividade.descricao.ilike(f"%{busca_textual}%"),
                         Processo.titulo.ilike(f"%{busca_textual}%"),
                         Processo.cnj.ilike(f"%{busca_textual}%"),
-                        Funcionario.nome.ilike(f"%{busca_textual}%"),
+                        func_texto.nome.ilike(f"%{busca_textual}%"),
                     )
                 )
                 .distinct()

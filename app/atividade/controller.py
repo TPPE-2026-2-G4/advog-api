@@ -172,12 +172,15 @@ def deletar_etapa(
     "/{atividade_id}",
     response_model=AtividadeResponse,
     summary="Detalhar atividade",
-    dependencies=[Depends(obter_funcionario_atual)],
     responses={401: RESPOSTAS_ESCRITA[401], 404: RESPOSTAS_ESCRITA[404]},
 )
-def buscar_atividade(atividade_id: int, service: AtividadeService = Depends(get_atividade_service)):
+def buscar_atividade(
+    atividade_id: int,
+    usuario: Funcionario = Depends(obter_funcionario_atual),
+    service: AtividadeService = Depends(get_atividade_service),
+):
     try:
-        return service.buscar_atividade(atividade_id)
+        return service.buscar_atividade(atividade_id, usuario=usuario)
     except ValueError as erro:
         raise _traduzir_erro(erro) from erro
 
