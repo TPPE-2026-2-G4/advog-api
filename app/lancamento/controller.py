@@ -39,7 +39,11 @@ def _erro_http(e: ValueError) -> HTTPException:
     return HTTPException(status_code=status_code, detail=str(e))
 
 
-@router.get("/", response_model=list[LancamentoResponse])
+@router.get(
+    "/",
+    response_model=list[LancamentoResponse],
+    dependencies=[Depends(exigir_permissao("visualizar_financeiro"))],
+)
 def listar_lancamentos(filtros: LancamentoFilter = Depends(), db: Session = Depends(get_db)):
     try:
         return LancamentoService(db).listar_lancamentos(filtros)
@@ -47,7 +51,11 @@ def listar_lancamentos(filtros: LancamentoFilter = Depends(), db: Session = Depe
         raise _erro_http(e) from e
 
 
-@router.get("/paginado", response_model=LancamentoPaginadoResponse)
+@router.get(
+    "/paginado",
+    response_model=LancamentoPaginadoResponse,
+    dependencies=[Depends(exigir_permissao("visualizar_financeiro"))],
+)
 def listar_lancamentos_paginado(
     filtros: LancamentoFilter = Depends(),
     page: int = Query(1, ge=1, description="Página a ser retornada"),
@@ -87,7 +95,11 @@ def exportar_lancamentos(
     return resposta_arquivo(arquivo, "lancamentos")
 
 
-@router.get("/resumo", response_model=LancamentoResumo)
+@router.get(
+    "/resumo",
+    response_model=LancamentoResumo,
+    dependencies=[Depends(exigir_permissao("visualizar_financeiro"))],
+)
 def resumir_lancamentos(filtros: LancamentoFilter = Depends(), db: Session = Depends(get_db)):
     try:
         return LancamentoService(db).resumir_lancamentos(filtros)
@@ -95,7 +107,11 @@ def resumir_lancamentos(filtros: LancamentoFilter = Depends(), db: Session = Dep
         raise _erro_http(e) from e
 
 
-@router.get("/grafico", response_model=LancamentoGrafico)
+@router.get(
+    "/grafico",
+    response_model=LancamentoGrafico,
+    dependencies=[Depends(exigir_permissao("visualizar_financeiro"))],
+)
 def obter_grafico_lancamentos(filtros: LancamentoFilter = Depends(), db: Session = Depends(get_db)):
     try:
         return LancamentoService(db).gerar_grafico(filtros)
@@ -103,7 +119,12 @@ def obter_grafico_lancamentos(filtros: LancamentoFilter = Depends(), db: Session
         raise _erro_http(e) from e
 
 
-@router.post("/", response_model=LancamentoResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=LancamentoResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exigir_permissao("gerenciar_financeiro"))],
+)
 def criar_lancamento(dados: LancamentoCreate, db: Session = Depends(get_db)):
     try:
         return LancamentoService(db).criar_lancamento(dados)
@@ -111,7 +132,11 @@ def criar_lancamento(dados: LancamentoCreate, db: Session = Depends(get_db)):
         raise _erro_http(e) from e
 
 
-@router.put("/{lancamento_id}", response_model=LancamentoResponse)
+@router.put(
+    "/{lancamento_id}",
+    response_model=LancamentoResponse,
+    dependencies=[Depends(exigir_permissao("gerenciar_financeiro"))],
+)
 def atualizar_lancamento(
     lancamento_id: int,
     dados: LancamentoUpdate,
@@ -124,7 +149,11 @@ def atualizar_lancamento(
         raise _erro_http(e) from e
 
 
-@router.patch("/{lancamento_id}/alternar-status", response_model=LancamentoResponse)
+@router.patch(
+    "/{lancamento_id}/alternar-status",
+    response_model=LancamentoResponse,
+    dependencies=[Depends(exigir_permissao("gerenciar_financeiro"))],
+)
 def alternar_status_lancamento(lancamento_id: int, db: Session = Depends(get_db)):
     try:
         return LancamentoService(db).alternar_status(lancamento_id)
@@ -132,7 +161,11 @@ def alternar_status_lancamento(lancamento_id: int, db: Session = Depends(get_db)
         raise _erro_http(e) from e
 
 
-@router.delete("/{lancamento_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{lancamento_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exigir_permissao("gerenciar_financeiro"))],
+)
 def remover_lancamento(
     lancamento_id: int,
     db: Session = Depends(get_db),
@@ -144,7 +177,11 @@ def remover_lancamento(
         raise _erro_http(e) from e
 
 
-@router.get("/calendario", response_model=list[LancamentoCalendarioResponse])
+@router.get(
+    "/calendario",
+    response_model=list[LancamentoCalendarioResponse],
+    dependencies=[Depends(exigir_permissao("visualizar_financeiro"))],
+)
 def obter_calendario(filtros: LancamentoFilter = Depends(), db: Session = Depends(get_db)):
     try:
         repositorio = LancamentoRepository(db)
@@ -153,7 +190,11 @@ def obter_calendario(filtros: LancamentoFilter = Depends(), db: Session = Depend
         raise _erro_http(e) from e
 
 
-@router.get("/calendario/exportar", response_class=Response)
+@router.get(
+    "/calendario/exportar",
+    response_class=Response,
+    dependencies=[Depends(exigir_permissao("visualizar_financeiro"))],
+)
 def exportar_icalendar(filtros: LancamentoFilter = Depends(), db: Session = Depends(get_db)):
     try:
         repositorio = LancamentoRepository(db)

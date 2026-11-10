@@ -135,7 +135,7 @@ def mudar_cargo(funcionario_id: int, dados: FuncionarioMudarCargo, db: Session =
 @router.patch(
     "/{funcionario_id}/exibicao-institucional",
     response_model=FuncionarioResponse,
-    dependencies=[Depends(exigir_permissao("gerenciar_equipe"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_site"))],
 )
 def mudar_exibicao_institucional(
     funcionario_id: int,
@@ -152,13 +152,19 @@ def mudar_exibicao_institucional(
 @router.patch(
     "/{funcionario_id}/receber-emails",
     response_model=FuncionarioResponse,
-    dependencies=[Depends(obter_funcionario_atual)],
 )
 def mudar_receber_emails(
     funcionario_id: int,
     dados: FuncionarioMudarReceberEmails,
+    funcionario_atual: Funcionario = Depends(obter_funcionario_atual),
     db: Session = Depends(get_db),
 ):
+    if funcionario_id != funcionario_atual.funcionario_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você só pode alterar a sua própria preferência de e-mails.",
+        )
+
     service = FuncionarioService(db)
     try:
         return service.mudar_receber_emails(funcionario_id, dados.receber_emails)

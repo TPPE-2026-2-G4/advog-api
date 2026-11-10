@@ -476,6 +476,67 @@ def test_exportacao_exportar_exige_visualizar_financeiro(
     assert response.status_code == 403
 
 
+@pytest.mark.parametrize(
+    "rota",
+    [
+        "/lancamentos/",
+        "/lancamentos/paginado",
+        "/lancamentos/resumo",
+        "/lancamentos/grafico",
+        "/lancamentos/calendario",
+        "/lancamentos/calendario/exportar",
+    ],
+)
+def test_consultas_financeiras_exigem_visualizar_financeiro(
+    client, db_session, token_acesso, funcionario_sem_permissao, rota
+):
+    usuario = funcionario_sem_permissao
+    headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+    assert client.get(rota, headers=headers).status_code == 403
+
+    usuario.cargo.permissao = {"visualizar_financeiro": True}
+    db_session.commit()
+
+    assert client.get(rota, headers=headers).status_code != 403
+
+
+def test_gerenciar_financeiro_inclui_visualizacao(
+    client, db_session, token_acesso, funcionario_sem_permissao
+):
+    usuario = funcionario_sem_permissao
+    usuario.cargo.permissao = {"gerenciar_financeiro": True}
+    db_session.commit()
+    headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+    assert client.get("/lancamentos/", headers=headers).status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("metodo", "rota", "corpo", "permitido"),
+    [
+        ("post", "/lancamentos/", {}, 422),
+        ("put", "/lancamentos/1", {}, 404),
+        ("patch", "/lancamentos/1/alternar-status", None, 404),
+        ("delete", "/lancamentos/1", None, 404),
+        ("post", "/categorias-lancamento", {}, 422),
+        ("put", "/categorias-lancamento/1", {"nome_categoria": "Nova"}, 404),
+        ("delete", "/categorias-lancamento/1", None, 404),
+    ],
+)
+def test_escritas_financeiras_exigem_gerenciar_financeiro(
+    client, db_session, token_acesso, funcionario_sem_permissao, metodo, rota, corpo, permitido
+):
+    usuario = funcionario_sem_permissao
+    headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+    for permissao in ({"visualizar_financeiro": True}, {"gerenciar_financeiro": True}):
+        usuario.cargo.permissao = permissao
+        db_session.commit()
+        resposta = client.request(metodo, rota, json=corpo, headers=headers)
+        assert resposta.status_code == (permitido if "gerenciar_financeiro" in permissao else 403)
+
+
 def test_exportacao_exportar_exige_autenticacao(client):
     assert client.get(ROTA, params={"formato": "csv"}).status_code == 401
 
