@@ -4,8 +4,15 @@ from sqlalchemy.orm import Session
 from app.cargo.schema import CargoCreate, CargoResponse, CargoUpdate
 from app.cargo.service import CargoService
 from app.config.database import get_db
+from app.core.dependencies import exigir_permissao, obter_funcionario_atual
 
-router = APIRouter(prefix="/cargos", tags=["Cargos"])
+router = APIRouter(
+    prefix="/cargos",
+    tags=["Cargos"],
+    dependencies=[Depends(obter_funcionario_atual)],
+)
+
+GERENCIAR_CARGOS = Depends(exigir_permissao("configuracoes_sistema"))
 
 
 @router.get("", response_model=list[CargoResponse], status_code=status.HTTP_200_OK)
@@ -23,7 +30,12 @@ def buscar_cargo_por_id(cargo_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
-@router.post("", response_model=CargoResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=CargoResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[GERENCIAR_CARGOS],
+)
 def criar_cargo(dados: CargoCreate, db: Session = Depends(get_db)):
     service = CargoService(db)
     try:
@@ -32,7 +44,12 @@ def criar_cargo(dados: CargoCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
-@router.put("/{cargo_id}", response_model=CargoResponse, status_code=status.HTTP_200_OK)
+@router.put(
+    "/{cargo_id}",
+    response_model=CargoResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[GERENCIAR_CARGOS],
+)
 def atualizar_cargo(cargo_id: int, dados: CargoUpdate, db: Session = Depends(get_db)):
     service = CargoService(db)
     try:
@@ -46,7 +63,12 @@ def atualizar_cargo(cargo_id: int, dados: CargoUpdate, db: Session = Depends(get
         raise HTTPException(status_code=status_code, detail=str(e)) from e
 
 
-@router.delete("/{cargo_id}", response_model=CargoResponse, status_code=status.HTTP_200_OK)
+@router.delete(
+    "/{cargo_id}",
+    response_model=CargoResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[GERENCIAR_CARGOS],
+)
 def deletar_cargo(cargo_id: int, db: Session = Depends(get_db)):
     service = CargoService(db)
     try:

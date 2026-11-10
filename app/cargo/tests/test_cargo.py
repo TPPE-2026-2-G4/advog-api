@@ -12,6 +12,12 @@ from app.funcionario.model import Funcionario, StatusFuncionario
 
 
 @pytest.fixture
+def client(client: TestClient, token_admin: str) -> TestClient:
+    client.headers["Authorization"] = f"Bearer {token_admin}"
+    return client
+
+
+@pytest.fixture
 def cargo_db(db_session: Session) -> Cargo:
     cargo = Cargo()
     cargo.nome_cargo = "Advogado Pleno"
@@ -61,8 +67,7 @@ def test_controller_buscar_todos_cargos_retorna_lista(client: TestClient, cargo_
     assert response.status_code == 200
     dados = response.json()
     assert isinstance(dados, list)
-    assert len(dados) >= 1
-    assert dados[0]["nome_cargo"] == "Advogado Pleno"
+    assert "Advogado Pleno" in {cargo["nome_cargo"] for cargo in dados}
 
 
 def test_controller_criar_cargo_retorna_201(client: TestClient):
@@ -368,3 +373,53 @@ def test_repository_buscar_todos_cargos(db_session):
 def test_permissao_gerenciar_inclui_visualizar(gerenciar, visualizar):
     assert PermissaoBase(**{gerenciar: True}).model_dump()[visualizar] is True
     assert PermissaoBase(**{gerenciar: False}).model_dump()[visualizar] is False
+
+
+ROTAS_CARGOS = [
+    ("get", "/cargos", None),
+    ("get", "/cargos/1", None),
+    ("post", "/cargos", {"nome_cargo": "Novo Cargo"}),
+    ("put", "/cargos/1", {"nome_cargo": "Outro Nome"}),
+    ("delete", "/cargos/1", None),
+]
+
+
+@pytest.mark.parametrize(("metodo", "rota", "corpo"), ROTAS_CARGOS)
+def test_rotas_de_cargos_exigem_autenticacao(client: TestClient, metodo, rota, corpo):
+    client.headers.pop("Authorization")
+
+    resposta = client.request(metodo, rota, json=corpo)
+
+    assert resposta.status_code == 401
+
+
+@pytest.mark.parametrize(("metodo", "rota", "corpo"), ROTAS_CARGOS[2:])
+def test_escrita_de_cargos_exige_configuracoes_sistema(
+    client: TestClient,
+    db_session: Session,
+    token_acesso,
+    funcionario_sem_permissao: Funcionario,
+    cargo_db: Cargo,
+    metodo,
+    rota,
+    corpo,
+):
+    usuario = funcionario_sem_permissao
+    usuario.cargo.permissao = {"gerenciar_equipe": True, "gerenciar_site": True}
+    db_session.commit()
+    headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+    resposta = client.request(
+        metodo, rota.replace("/1", f"/{cargo_db.cargo_id}"), json=corpo, headers=headers
+    )
+
+    assert resposta.status_code == 403
+
+
+def test_leitura_de_cargos_exige_apenas_login(
+    client: TestClient, token_acesso, funcionario_sem_permissao: Funcionario
+):
+    usuario = funcionario_sem_permissao
+    headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+    assert client.get("/cargos", headers=headers).status_code == 200
