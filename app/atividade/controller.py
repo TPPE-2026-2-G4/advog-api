@@ -108,7 +108,7 @@ def filtrar_atividades(
     response_model=EtapaKanbanInfoResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Criar nova etapa do Kanban",
-    dependencies=[Depends(exigir_permissao("criar_atividades"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_atividades"))],
     responses=RESPOSTAS_ESCRITA,
 )
 def criar_etapa(
@@ -124,7 +124,7 @@ def criar_etapa(
     "/etapas/reordenar",
     response_model=list[EtapaKanbanInfoResponse],
     summary="Reordenar etapas do Kanban",
-    dependencies=[Depends(exigir_permissao("editar_atividades"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_atividades"))],
     responses=RESPOSTAS_ESCRITA,
 )
 def reordenar_etapas(
@@ -140,7 +140,7 @@ def reordenar_etapas(
     "/etapas/{etapa_id}",
     response_model=EtapaKanbanInfoResponse,
     summary="Renomear etapa do Kanban",
-    dependencies=[Depends(exigir_permissao("editar_atividades"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_atividades"))],
     responses=RESPOSTAS_ESCRITA,
 )
 def renomear_etapa(
@@ -158,7 +158,7 @@ def renomear_etapa(
     "/etapas/{etapa_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Excluir etapa do Kanban",
-    dependencies=[Depends(exigir_permissao("excluir_atividades"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_atividades"))],
     responses=RESPOSTAS_ESCRITA,
 )
 def deletar_etapa(
