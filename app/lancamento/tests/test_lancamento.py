@@ -17,7 +17,12 @@ from app.lancamento.schema import (
     LancamentoFilter,
     LancamentoUpdate,
 )
-from app.lancamento.service import LancamentoCalendarioService, LancamentoService
+from app.lancamento.service import (
+    LancamentoCalendarioService,
+    LancamentoService,
+    datas_recorrentes,
+    reancorar_regra,
+)
 
 
 @pytest.fixture()
@@ -1178,3 +1183,220 @@ class TestLancamentoCalendarioService:
         mock_session = MockSession()
         service = LancamentoCalendarioService(mock_session)
         assert isinstance(service.repositorio, LancamentoRepository)
+
+
+def _criar_serie(client_controller: TestClient, **campos) -> list[dict]:
+    response = client_controller.post(
+        "/lancamentos/",
+        json=_payload_lancamento(
+            titulo="Honorários",
+            descricao="Assessoria mensal",
+            valor=100,
+            tipo="e",
+            data_vencimento="2027-01-04T00:00:00",
+            rrule="FREQ=WEEKLY;BYDAY=MO;COUNT=5",
+            **campos,
+        ),
+    )
+    assert response.status_code == 201, response.text
+    return client_controller.get("/lancamentos/").json()
+
+
+class TestLancamentoControllerRecorrencia:
+    def test_cadastro_listagem_calendario_resumo(self, client_controller: TestClient):
+        itens = _criar_serie(client_controller)
+        assert len(itens) == 5
+        assert len({i["serie_id"] for i in itens}) == 1
+        assert itens[0]["serie_id"] is not None
+        assert all(i["data_pagamento"] is None for i in itens)
+        assert client_controller.get("/lancamentos/paginado?page_size=2").json()["total"] == 5
+        eventos = client_controller.get(
+            "/lancamentos/calendario?inicio=2027-01-01&fim=2027-01-31"
+        ).json()
+        assert len(eventos) == 4
+        assert eventos[0]["serie_id"] == itens[0]["serie_id"]
+        resumo = client_controller.get("/lancamentos/resumo").json()
+        assert resumo["pendente"]["total_entradas"] == 500
+
+    def test_editar_serie_preserva_anteriores_realizados_e_ids(self, client_controller: TestClient):
+        itens = _criar_serie(client_controller)
+        pago = itens[2]["lancamento_id"]
+        client_controller.patch(f"/lancamentos/{pago}/alternar-status")
+        alvo = itens[1]["lancamento_id"]
+        response = client_controller.put(
+            f"/lancamentos/{alvo}?alcance=serie",
+            json={
+                "titulo": "Novo título",
+                "descricao": "Nova descrição",
+                "valor": 200,
+                "tipo": "s",
+                "data_vencimento": "2027-01-13T00:00:00",
+            },
+        )
+        assert response.status_code == 200, response.text
+        atualizados = {i["lancamento_id"]: i for i in client_controller.get("/lancamentos/").json()}
+        assert set(atualizados) == {i["lancamento_id"] for i in itens}
+        assert atualizados[itens[0]["lancamento_id"]] == itens[0]
+        assert atualizados[pago]["status"] == "Realizado"
+        assert atualizados[pago]["data_vencimento"] == itens[2]["data_vencimento"]
+        assert atualizados[pago]["valor"] == 100
+        assert atualizados[itens[3]["lancamento_id"]]["data_vencimento"].startswith("2027-01-27")
+        assert atualizados[alvo]["valor"] == 200
+        assert atualizados[alvo]["tipo"] == "s"
+
+    def test_edicao_individual_e_exclusao_serie(self, client_controller: TestClient):
+        itens = _criar_serie(client_controller)
+        alvo = itens[1]["lancamento_id"]
+        client_controller.put(f"/lancamentos/{alvo}", json={"valor": 250})
+        assert [i["valor"] for i in client_controller.get("/lancamentos/").json()] == [
+            100,
+            250,
+            100,
+            100,
+            100,
+        ]
+        pago = itens[3]["lancamento_id"]
+        client_controller.patch(f"/lancamentos/{pago}/alternar-status")
+        assert client_controller.delete(f"/lancamentos/{alvo}?alcance=serie").status_code == 204
+        restantes = client_controller.get("/lancamentos/").json()
+        assert {i["lancamento_id"] for i in restantes} == {itens[0]["lancamento_id"], pago}
+
+    def test_exclusao_individual_nao_apaga_serie(self, client_controller: TestClient):
+        itens = _criar_serie(client_controller)
+        assert (
+            client_controller.delete(f"/lancamentos/{itens[1]['lancamento_id']}").status_code == 204
+        )
+        assert len(client_controller.get("/lancamentos/").json()) == 4
+
+    def test_regra_invalida_nao_persiste_parcialmente(self, client_controller: TestClient):
+        response = client_controller.post(
+            "/lancamentos/",
+            json=_payload_lancamento(
+                titulo="Inválido",
+                descricao="Sem persistência",
+                valor=100,
+                tipo="e",
+                data_vencimento="2027-01-01",
+                rrule="FREQ=DAILY;INTERVAL=0",
+            ),
+        )
+        assert response.status_code == 400
+        assert client_controller.get("/lancamentos/").json() == []
+
+
+class TestLancamentoServiceRecorrencia:
+    @pytest.mark.parametrize("operacao", ["criar", "editar", "excluir"])
+    def test_rollback_serie(self, operacao: str):
+        db = MagicMock()
+        db.commit.side_effect = RuntimeError("Falha ao persistir")
+        repository = LancamentoRepository(db)
+        itens = [Lancamento(status=StatusLancamento.PENDENTE)]
+        with pytest.raises(RuntimeError):
+            if operacao == "criar":
+                repository.criar_serie(itens)
+            else:
+                repository.salvar_serie(itens, excluir=operacao == "excluir")
+        db.rollback.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "inicio,regra,esperadas",
+        [
+            ("2027-01-01", "FREQ=DAILY;COUNT=3", ["2027-01-01", "2027-01-02", "2027-01-03"]),
+            (
+                "2027-01-04",
+                "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;COUNT=4",
+                ["2027-01-04", "2027-01-06", "2027-01-18", "2027-01-20"],
+            ),
+            (
+                "2027-01-31",
+                "FREQ=MONTHLY;BYMONTHDAY=-1;COUNT=3",
+                ["2027-01-31", "2027-02-28", "2027-03-31"],
+            ),
+            (
+                "2027-01-12",
+                "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=2;COUNT=3",
+                ["2027-01-12", "2027-02-09", "2027-03-09"],
+            ),
+            (
+                "2027-01-25",
+                "FREQ=MONTHLY;BYDAY=MO;BYSETPOS=-1;COUNT=3",
+                ["2027-01-25", "2027-02-22", "2027-03-29"],
+            ),
+            ("2027-01-01", "FREQ=YEARLY;COUNT=3", ["2027-01-01", "2028-01-01", "2029-01-01"]),
+            (
+                "2027-01-01",
+                "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=3",
+                ["2027-01-01", "2027-01-04", "2027-01-05"],
+            ),
+            ("2027-01-01", "FREQ=DAILY;UNTIL=20270102T235959", ["2027-01-01", "2027-01-02"]),
+            ("2027-01-01", "FREQ=DAILY;COUNT=1", ["2027-01-01"]),
+            ("2027-01-03", "FREQ=WEEKLY;BYDAY=MO;COUNT=2", ["2027-01-03", "2027-01-04"]),
+        ],
+    )
+    def test_expandir(self, inicio, regra, esperadas):
+        assert [
+            d.date().isoformat() for d in datas_recorrentes(regra, datetime.fromisoformat(inicio))
+        ] == esperadas
+
+    @pytest.mark.parametrize("termino", ["", ";COUNT=999999", ";UNTIL=20991231T235959"])
+    def test_limite_tres_anos(self, termino):
+        datas = datas_recorrentes(f"FREQ=DAILY{termino}", datetime(2027, 1, 1))
+        assert len(datas) == 1097
+        assert datas[-1] == datetime(2030, 1, 1)
+
+    @pytest.mark.parametrize(
+        "regra",
+        [
+            "",
+            "FREQ=SECONDLY",
+            "FREQ=DAILY;INTERVAL=0",
+            "FREQ=DAILY;COUNT=0",
+            "FREQ=DAILY;COUNT=2;UNTIL=20270102T235959",
+            "FREQ=DAILY;BYHOUR=10",
+            "FREQ=MONTHLY;BYMONTHDAY=0",
+            "FREQ=WEEKLY;BYDAY=INVALIDO",
+            "FREQ=DAILY;FREQ=WEEKLY",
+            "FREQ=DAILY\nRRULE:FREQ=DAILY",
+            "FREQ=DAILY;UNTIL=20260101T235959",
+            "FREQ=YEARLY;BYMONTH=13",
+        ],
+    )
+    def test_rejeitar_regra_invalida(self, regra):
+        with pytest.raises(ValueError, match="Regra de recorrência inválida"):
+            datas_recorrentes(regra, datetime(2027, 1, 1))
+
+    @pytest.mark.parametrize(
+        "regra,antes,depois,esperadas",
+        [
+            (
+                "FREQ=WEEKLY;BYDAY=MO;COUNT=8",
+                "2027-01-04",
+                "2027-01-06",
+                ["2027-01-06", "2027-01-13"],
+            ),
+            (
+                "FREQ=MONTHLY;BYMONTHDAY=15",
+                "2027-01-15",
+                "2027-01-31",
+                ["2027-01-31", "2027-02-28"],
+            ),
+            (
+                "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=2",
+                "2027-01-12",
+                "2027-01-20",
+                ["2027-01-20", "2027-02-17"],
+            ),
+            (
+                "FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=1",
+                "2027-01-01",
+                "2027-02-10",
+                ["2027-02-10", "2028-02-10"],
+            ),
+        ],
+    )
+    def test_reancorar_frequencia(self, regra, antes, depois, esperadas):
+        inicio = datetime.fromisoformat(depois)
+        nova = reancorar_regra(regra, datetime.fromisoformat(antes), inicio)
+        assert [
+            d.date().isoformat() for d in datas_recorrentes(nova + ";COUNT=2", inicio)
+        ] == esperadas

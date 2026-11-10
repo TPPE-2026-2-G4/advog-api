@@ -33,6 +33,8 @@ class Lancamento(Base):
     )
     data_vencimento: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     data_pagamento: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    serie_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    rrule: Mapped[str | None] = mapped_column(String(255), nullable=True)
     valor: Mapped[float] = mapped_column(Float, nullable=False)
     cliente_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("clientes.cliente_id"), nullable=True
