@@ -494,10 +494,10 @@ class ProcessoService:
             return DatajudStatusResponse(
                 online=True,
                 status="online",
-                mensagem="API conectada · Sincronização automática ativa",
+                mensagem="Integração conectada · Sincronização automática ativa",
             )
         return DatajudStatusResponse(
             online=False,
             status="offline",
-            mensagem="API indisponível · Sincronização automática pausada",
+            mensagem="Integração indisponível · Sincronização automática pausada",
         )

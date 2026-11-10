@@ -51,6 +51,7 @@ TRIBUNAIS_MAP: dict[tuple[str, str], str] = {
 }
 
 DEFAULT_DATAJUD_API_KEY = "cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
+DEFAULT_DATAJUD_TIMEOUT = 40.0
 
 
 class DatajudApiClient:
@@ -58,6 +59,10 @@ class DatajudApiClient:
         self.api_key = os.getenv("DATAJUD_API_KEY", DEFAULT_DATAJUD_API_KEY)
         self.base_url = os.getenv("DATAJUD_BASE_URL", "https://api-publica.datajud.cnj.jus.br")
         self.is_mock = os.getenv("DATAJUD_MOCK", "false").lower() in ("true", "1", "yes")
+        try:
+            self.timeout = float(os.getenv("DATAJUD_TIMEOUT", str(DEFAULT_DATAJUD_TIMEOUT)))
+        except (ValueError, TypeError):
+            self.timeout = DEFAULT_DATAJUD_TIMEOUT
 
     @staticmethod
     def sanitizar_cnj(cnj: str) -> str:
@@ -92,7 +97,7 @@ class DatajudApiClient:
         payload = {"query": {"match": {"numeroProcesso": cnj_limpo}}}
 
         try:
-            async with httpx.AsyncClient(timeout=20.0, verify=False) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, verify=False) as client:
                 response = await client.post(url, headers=headers, json=payload)
                 response.raise_for_status()
                 data = response.json()
@@ -168,7 +173,7 @@ class DatajudApiClient:
 
         try:
             async with httpx.AsyncClient(
-                timeout=10.0, verify=False, follow_redirects=True
+                timeout=self.timeout, verify=False, follow_redirects=True
             ) as client:
                 response = await client.post(url, headers=headers, json=payload)
                 response.raise_for_status()
