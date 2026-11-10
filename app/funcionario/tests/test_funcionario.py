@@ -486,9 +486,7 @@ class TestMudarExibicaoInstitucionalController:
 
 
 class TestMudarReceberEmailsController:
-    def test_mudar_receber_emails_sucesso(
-        self, client, cargo_padrao, atuacao_padrao, token_admin
-    ):
+    def test_mudar_receber_emails_sucesso(self, client, cargo_padrao, atuacao_padrao, token_admin):
         headers = {"Authorization": f"Bearer {token_admin}"}
         res = client.post(
             "/funcionarios",
@@ -510,9 +508,7 @@ class TestMudarReceberEmailsController:
         assert response.status_code == 200
         assert response.json()["receber_emails"] is False
 
-    def test_mudar_receber_emails_funcionario_inexistente_retorna_400(
-        self, client, token_admin
-    ):
+    def test_mudar_receber_emails_funcionario_inexistente_retorna_400(self, client, token_admin):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.patch(
             "/funcionarios/9999/receber-emails",
