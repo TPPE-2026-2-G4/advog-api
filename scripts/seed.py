@@ -14,7 +14,12 @@ from app.atuacao.model import Atuacao  # noqa: E402
 from app.cargo.model import Cargo  # noqa: E402
 from app.cargo.schema import PermissaoBase  # noqa: E402
 from app.cliente.model import Cliente  # noqa: E402, F401
-from app.config.database import Base, SessionLocal, engine  # noqa: E402
+from app.config.database import (  # noqa: E402
+    Base,
+    SessionLocal,
+    engine,
+    garantir_colunas_schema,
+)
 from app.config.storage import S3_BUCKET_PRIVADO, S3_BUCKET_PUBLICO  # noqa: E402
 from app.core.seguranca import hash_senha  # noqa: E402
 from app.core.storage import garantir_bucket, salvar_arquivo  # noqa: E402
@@ -38,6 +43,7 @@ ETAPAS_KANBAN = ("Backlog", "Em Execução", "Revisão", "Finalizado")
 
 def seed() -> None:
     Base.metadata.create_all(bind=engine)
+    garantir_colunas_schema(engine)
     Permissao = PermissaoBase(**{campo: True for campo in PermissaoBase.model_fields}).model_dump()
     db = SessionLocal()
 

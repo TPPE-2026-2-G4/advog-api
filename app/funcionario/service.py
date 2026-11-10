@@ -85,6 +85,14 @@ class FuncionarioService:
         funcionario.exibicao_institucional = exibicao
         return self.repository.atualizar(funcionario)
 
+    def mudar_receber_emails(self, funcionario_id: int, receber_emails: bool) -> Funcionario:
+        funcionario = self.repository.buscar_por_id(funcionario_id)
+        if not funcionario:
+            raise ValueError("Funcionário não encontrado")
+
+        funcionario.receber_emails = receber_emails
+        return self.repository.atualizar(funcionario)
+
     def editar_dados(self, funcionario_id: int, dados: FuncionarioUpdate) -> Funcionario:
         funcionario = self.repository.buscar_por_id(funcionario_id)
         if not funcionario:
@@ -100,6 +108,8 @@ class FuncionarioService:
             funcionario.uf_oab = dados.uf_oab
         if "numero_oab" in dados_enviados:
             funcionario.numero_oab = dados.numero_oab
+        if dados.receber_emails is not None:
+            funcionario.receber_emails = dados.receber_emails
 
         return self.repository.atualizar(funcionario)
 

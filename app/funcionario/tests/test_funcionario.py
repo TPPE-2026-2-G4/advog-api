@@ -503,6 +503,40 @@ class TestMudarExibicaoInstitucionalController:
         assert liberado.status_code == 200
 
 
+class TestMudarReceberEmailsController:
+    def test_mudar_receber_emails_sucesso(self, client, cargo_padrao, atuacao_padrao, token_admin):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        res = client.post(
+            "/funcionarios",
+            json={
+                "nome": "Func Emails",
+                "email": "emails@test.com",
+                "cargo_id": cargo_padrao.cargo_id,
+                "atuacao_id": atuacao_padrao.atuacao_id,
+            },
+            headers=headers,
+        )
+        func_id = res.json()["funcionario_id"]
+
+        response = client.patch(
+            f"/funcionarios/{func_id}/receber-emails",
+            json={"receber_emails": False},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["receber_emails"] is False
+
+    def test_mudar_receber_emails_funcionario_inexistente_retorna_400(self, client, token_admin):
+        headers = {"Authorization": f"Bearer {token_admin}"}
+        response = client.patch(
+            "/funcionarios/9999/receber-emails",
+            json={"receber_emails": False},
+            headers=headers,
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Funcionário não encontrado"
+
+
 class TestEditarDadosController:
     def test_editar_dados_sem_token_retorna_erro(self, client):
         response = client.patch("/funcionarios", json={"nome": "Novo Nome"})
@@ -1249,3 +1283,24 @@ def test_mudar_exibicao_institucional_funcionario_nao_encontrado_lanca_erro():
 
     with pytest.raises(ValueError, match="Funcionário não encontrado"):
         service.mudar_exibicao_institucional(999, True)
+
+
+def test_mudar_receber_emails_sucesso():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    funcionario = Funcionario(funcionario_id=1, nome="Teste", receber_emails=True)
+    service.repository.buscar_por_id.return_value = funcionario
+    service.repository.atualizar.return_value = funcionario
+
+    resultado = service.mudar_receber_emails(1, False)
+    assert resultado.receber_emails is False
+    service.repository.atualizar.assert_called_once_with(funcionario)
+
+
+def test_mudar_receber_emails_funcionario_nao_encontrado_lanca_erro():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    service.repository.buscar_por_id.return_value = None
+
+    with pytest.raises(ValueError, match="Funcionário não encontrado"):
+        service.mudar_receber_emails(999, False)
