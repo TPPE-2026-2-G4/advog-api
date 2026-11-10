@@ -11,11 +11,16 @@ from app.atividade.schema import (
     AtividadeKanbanResponse,
     AtividadeResponse,
     AtividadeUpdate,
+    EtapaKanbanCreate,
+    EtapaKanbanInfoResponse,
+    EtapaKanbanReorder,
     EtapaKanbanResponse,
+    EtapaKanbanUpdate,
     KanbanResponse,
     ProdutividadeResponse,
     ResponsavelKanbanResponse,
 )
+from app.etapa_kanban.model import EtapaKanban
 from app.funcionario.model import Funcionario
 
 
@@ -23,8 +28,15 @@ class AtividadeNaoEncontradaError(ValueError):
     pass
 
 
+class EtapaKanbanNaoEncontradaError(ValueError):
+    pass
+
+
 class DadosAtividadeInvalidosError(ValueError):
     pass
+
+
+ETAPAS_PROTEGIDAS = {"backlog", "finalizado"}
 
 
 class AtividadeService:
@@ -63,6 +75,58 @@ class AtividadeService:
 
     def deletar_atividade(self, atividade_id: int) -> None:
         self.repository.deletar(self._obter(atividade_id))
+
+    def _obter_etapa(self, etapa_id: int) -> EtapaKanban:
+        etapa = self.repository.buscar_etapa_por_id(etapa_id)
+        if etapa is None:
+            raise EtapaKanbanNaoEncontradaError("Etapa do Kanban não encontrada")
+        return etapa
+
+    def criar_etapa(self, dados: EtapaKanbanCreate) -> EtapaKanbanInfoResponse:
+        if self.repository.buscar_etapa_por_nome(dados.nome) is not None:
+            raise DadosAtividadeInvalidosError("Já existe uma etapa com este nome")
+        nova_ordem = self.repository.obter_maior_ordem_etapa() + 1
+        etapa = EtapaKanban(nome=dados.nome, ordem=nova_ordem)
+        return EtapaKanbanInfoResponse.model_validate(self.repository.criar_etapa(etapa))
+
+    def renomear_etapa(self, etapa_id: int, dados: EtapaKanbanUpdate) -> EtapaKanbanInfoResponse:
+        etapa = self._obter_etapa(etapa_id)
+        if etapa.nome.lower() in ETAPAS_PROTEGIDAS:
+            raise DadosAtividadeInvalidosError(
+                "As etapas Backlog e Finalizado não podem ser renomeadas"
+            )
+        existente = self.repository.buscar_etapa_por_nome(dados.nome)
+        if (existente is not None and existente.etapa_id != etapa_id) or (
+            dados.nome.lower() in ETAPAS_PROTEGIDAS
+        ):
+            raise DadosAtividadeInvalidosError("Já existe uma etapa com este nome")
+        etapa.nome = dados.nome
+        return EtapaKanbanInfoResponse.model_validate(self.repository.atualizar_etapa(etapa))
+
+    def deletar_etapa(self, etapa_id: int) -> None:
+        etapa = self._obter_etapa(etapa_id)
+        if etapa.nome.lower() in ETAPAS_PROTEGIDAS:
+            raise DadosAtividadeInvalidosError(
+                "As etapas Backlog e Finalizado não podem ser excluídas"
+            )
+        if self.repository.contar_atividades_na_etapa(etapa_id) > 0:
+            raise DadosAtividadeInvalidosError(
+                "Não é possível excluir uma etapa que possui atividades vinculadas. "
+                "Mova ou exclua as atividades antes."
+            )
+        self.repository.deletar_etapa(etapa)
+
+    def reordenar_etapas(self, dados: EtapaKanbanReorder) -> list[EtapaKanbanInfoResponse]:
+        etapas_existentes = {etapa.etapa_id: etapa for etapa in self.repository.buscar_etapas()}
+        if set(dados.etapa_ids) != set(etapas_existentes):
+            raise DadosAtividadeInvalidosError(
+                "A reordenação deve conter todas as etapas existentes do Kanban"
+            )
+        ordenadas = [etapas_existentes[etapa_id] for etapa_id in dados.etapa_ids]
+        return [
+            EtapaKanbanInfoResponse.model_validate(etapa)
+            for etapa in self.repository.reordenar_etapas(ordenadas)
+        ]
 
     def _obter(self, atividade_id: int) -> Atividade:
         atividade = self.repository.buscar_por_id(atividade_id)

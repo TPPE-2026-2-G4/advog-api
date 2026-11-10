@@ -21,6 +21,49 @@ class AtividadeKanbanResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class EtapaKanbanInfoResponse(BaseModel):
+    etapa_id: int
+    nome: str
+    ordem: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EtapaKanbanCreate(BaseModel):
+    nome: str = Field(..., min_length=1, max_length=100)
+
+    @field_validator("nome")
+    @classmethod
+    def validar_nome(cls, v: str) -> str:
+        limpo = v.strip()
+        if not limpo:
+            raise ValueError("Nome da etapa não pode ser vazio")
+        return limpo
+
+
+class EtapaKanbanUpdate(BaseModel):
+    nome: str = Field(..., min_length=1, max_length=100)
+
+    @field_validator("nome")
+    @classmethod
+    def validar_nome(cls, v: str) -> str:
+        limpo = v.strip()
+        if not limpo:
+            raise ValueError("Nome da etapa não pode ser vazio")
+        return limpo
+
+
+class EtapaKanbanReorder(BaseModel):
+    etapa_ids: list[int] = Field(..., min_length=1)
+
+    @field_validator("etapa_ids")
+    @classmethod
+    def validar_sem_duplicatas(cls, ids: list[int]) -> list[int]:
+        if len(ids) != len(set(ids)):
+            raise ValueError("Lista de etapas não pode conter IDs duplicados")
+        return ids
+
+
 class EtapaKanbanResponse(BaseModel):
     etapa_id: int
     nome: str

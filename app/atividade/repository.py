@@ -18,6 +18,44 @@ class AtividadeRepository:
         consulta = select(EtapaKanban).order_by(EtapaKanban.ordem, EtapaKanban.etapa_id)
         return list(self.db.scalars(consulta))
 
+    def buscar_etapa_por_id(self, etapa_id: int) -> EtapaKanban | None:
+        return self.db.get(EtapaKanban, etapa_id)
+
+    def buscar_etapa_por_nome(self, nome: str) -> EtapaKanban | None:
+        consulta = select(EtapaKanban).where(func.lower(EtapaKanban.nome) == nome.lower())
+        return self.db.scalars(consulta).first()
+
+    def obter_maior_ordem_etapa(self) -> int:
+        consulta = select(func.coalesce(func.max(EtapaKanban.ordem), 0))
+        return int(self.db.scalar(consulta) or 0)
+
+    def criar_etapa(self, etapa: EtapaKanban) -> EtapaKanban:
+        self.db.add(etapa)
+        self.db.commit()
+        self.db.refresh(etapa)
+        return etapa
+
+    def atualizar_etapa(self, etapa: EtapaKanban) -> EtapaKanban:
+        self.db.commit()
+        self.db.refresh(etapa)
+        return etapa
+
+    def deletar_etapa(self, etapa: EtapaKanban) -> None:
+        self.db.delete(etapa)
+        self.db.commit()
+
+    def contar_atividades_na_etapa(self, etapa_id: int) -> int:
+        consulta = select(func.count(Atividade.atividade_id)).where(Atividade.etapa_id == etapa_id)
+        return int(self.db.scalar(consulta) or 0)
+
+    def reordenar_etapas(self, etapas_ordenadas: list[EtapaKanban]) -> list[EtapaKanban]:
+        for idx, etapa in enumerate(etapas_ordenadas, start=1):
+            etapa.ordem = idx
+        self.db.commit()
+        for etapa in etapas_ordenadas:
+            self.db.refresh(etapa)
+        return etapas_ordenadas
+
     def buscar_atividades(self, funcionario_id: int | None = None) -> list[Atividade]:
         consulta = select(Atividade).order_by(Atividade.atividade_id)
         if funcionario_id is not None:
