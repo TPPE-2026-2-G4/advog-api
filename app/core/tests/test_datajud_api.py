@@ -186,3 +186,32 @@ async def test_fetch_processo_exception(mock_post, api_client_real):
 
     res = await api_client_real.fetch_processo("1000000-00.2026.8.26.0100")
     assert res is None
+
+
+@pytest.mark.asyncio
+async def test_verificar_status_mock(api_client_mock):
+    assert await api_client_mock.verificar_status() is True
+
+
+@pytest.mark.asyncio
+async def test_verificar_status_sem_configuracao(api_client_real):
+    api_client_real.api_key = ""
+    assert await api_client_real.verificar_status() is False
+
+
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.post")
+async def test_verificar_status_real_sucesso(mock_post, api_client_real):
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_post.return_value = mock_response
+
+    assert await api_client_real.verificar_status() is True
+
+
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.post")
+async def test_verificar_status_real_erro(mock_post, api_client_real):
+    mock_post.side_effect = Exception("Timeout")
+
+    assert await api_client_real.verificar_status() is False

@@ -151,3 +151,28 @@ class DatajudApiClient:
             "tribunal": tribunal_sigla,
             "data_realizado": datetime.now(UTC),
         }
+
+    async def verificar_status(self) -> bool:
+        if self.is_mock:
+            return True
+
+        if not self.api_key or not self.base_url:
+            return False
+
+        url = f"{self.base_url}/api_publica_tjdft/_search"
+        headers = {
+            "Authorization": f"ApiKey {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {"size": 1, "query": {"match": {"numeroProcesso": "00000000000000000000"}}}
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=10.0, verify=False, follow_redirects=True
+            ) as client:
+                response = await client.post(url, headers=headers, json=payload)
+                response.raise_for_status()
+                return True
+        except Exception as e:
+            logger.warning(f"Integração Datajud indisponível: {e}.")
+            return False
