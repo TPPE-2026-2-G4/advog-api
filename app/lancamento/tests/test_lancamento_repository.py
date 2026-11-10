@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session
@@ -150,6 +151,19 @@ class TestLancamentoRepositoryOperacoesBasicas:
         buscado = repo.buscar_por_id(lancamento.lancamento_id)
         assert buscado is not None
         assert buscado.status == StatusLancamento.ATRASADO
+
+    @pytest.mark.parametrize("operacao", ["criar", "editar", "excluir"])
+    def test_rollback_serie(self, operacao: str):
+        db = MagicMock()
+        db.commit.side_effect = RuntimeError("Falha ao persistir")
+        repository = LancamentoRepository(db)
+        itens = [Lancamento(status=StatusLancamento.PENDENTE)]
+        with pytest.raises(RuntimeError):
+            if operacao == "criar":
+                repository.criar_serie(itens)
+            else:
+                repository.salvar_serie(itens, excluir=operacao == "excluir")
+        db.rollback.assert_called_once()
 
 
 class TestLancamentoRepositoryFiltrosEConsultas:

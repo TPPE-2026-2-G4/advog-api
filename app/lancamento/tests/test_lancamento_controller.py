@@ -301,3 +301,92 @@ class TestLancamentoAutenticacao:
         response = funcao_http(endpoint, **kwargs)
 
         assert response.status_code == 401
+
+
+def _criar_serie(client: TestClient, **campos) -> list[dict]:
+    response = client.post(
+        "/lancamentos/",
+        json=_payload_lancamento(
+            titulo="Honorários",
+            descricao="Assessoria mensal",
+            valor=100,
+            tipo="e",
+            data_vencimento="2027-01-04T00:00:00",
+            rrule="FREQ=WEEKLY;BYDAY=MO;COUNT=5",
+            **campos,
+        ),
+    )
+    assert response.status_code == 201, response.text
+    return client.get("/lancamentos/").json()
+
+
+class TestLancamentoControllerRecorrencia:
+    def test_cadastro_listagem_calendario_resumo(self, client: TestClient):
+        itens = _criar_serie(client)
+        assert len(itens) == 5
+        assert len({i["serie_id"] for i in itens}) == 1
+        assert itens[0]["serie_id"] is not None
+        assert all(i["data_pagamento"] is None for i in itens)
+        assert client.get("/lancamentos/paginado?page_size=2").json()["total"] == 5
+        eventos = client.get("/lancamentos/calendario?inicio=2027-01-01&fim=2027-01-31").json()
+        assert len(eventos) == 4
+        assert eventos[0]["serie_id"] == itens[0]["serie_id"]
+        resumo = client.get("/lancamentos/resumo").json()
+        assert resumo["pendente"]["total_entradas"] == 500
+
+    def test_editar_serie_preserva_anteriores_realizados_e_ids(self, client: TestClient):
+        itens = _criar_serie(client)
+        pago = itens[2]["lancamento_id"]
+        client.patch(f"/lancamentos/{pago}/alternar-status")
+        alvo = itens[1]["lancamento_id"]
+        response = client.put(
+            f"/lancamentos/{alvo}?alcance=serie",
+            json={
+                "titulo": "Novo título",
+                "descricao": "Nova descrição",
+                "valor": 200,
+                "tipo": "s",
+                "data_vencimento": "2027-01-13T00:00:00",
+            },
+        )
+        assert response.status_code == 200, response.text
+        atualizados = {i["lancamento_id"]: i for i in client.get("/lancamentos/").json()}
+        assert set(atualizados) == {i["lancamento_id"] for i in itens}
+        assert atualizados[itens[0]["lancamento_id"]] == itens[0]
+        assert atualizados[pago]["status"] == "Realizado"
+        assert atualizados[pago]["data_vencimento"] == itens[2]["data_vencimento"]
+        assert atualizados[pago]["valor"] == 100
+        assert atualizados[itens[3]["lancamento_id"]]["data_vencimento"].startswith("2027-01-27")
+        assert atualizados[alvo]["valor"] == 200
+        assert atualizados[alvo]["tipo"] == "s"
+
+    def test_edicao_individual_e_exclusao_serie(self, client: TestClient):
+        itens = _criar_serie(client)
+        alvo = itens[1]["lancamento_id"]
+        client.put(f"/lancamentos/{alvo}", json={"valor": 250})
+        assert [i["valor"] for i in client.get("/lancamentos/").json()] == [100, 250, 100, 100, 100]
+        pago = itens[3]["lancamento_id"]
+        client.patch(f"/lancamentos/{pago}/alternar-status")
+        assert client.delete(f"/lancamentos/{alvo}?alcance=serie").status_code == 204
+        restantes = client.get("/lancamentos/").json()
+        assert {i["lancamento_id"] for i in restantes} == {itens[0]["lancamento_id"], pago}
+
+    def test_exclusao_individual_nao_apaga_serie(self, client: TestClient):
+        itens = _criar_serie(client)
+        assert client.delete(f"/lancamentos/{itens[1]['lancamento_id']}").status_code == 204
+        assert len(client.get("/lancamentos/").json()) == 4
+
+    def test_regra_invalida_nao_persiste_parcialmente(self, client: TestClient):
+        response = client.post(
+            "/lancamentos/",
+            json=_payload_lancamento(
+                titulo="Inválido",
+                descricao="Sem persistência",
+                valor=100,
+                tipo="e",
+                data_vencimento="2027-01-01",
+                rrule="FREQ=DAILY;INTERVAL=0",
+            ),
+        )
+        assert response.status_code == 400
+        assert client.get("/lancamentos/").json() == []

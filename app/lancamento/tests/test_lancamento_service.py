@@ -12,7 +12,12 @@ from app.lancamento.schema import (
     LancamentoFilter,
     LancamentoUpdate,
 )
-from app.lancamento.service import LancamentoCalendarioService, LancamentoService
+from app.lancamento.service import (
+    LancamentoCalendarioService,
+    LancamentoService,
+    datas_recorrentes,
+    reancorar_regra,
+)
 
 
 @pytest.fixture
@@ -434,3 +439,108 @@ class TestLancamentoCalendarioService:
         mock_session = MockSession()
         service = LancamentoCalendarioService(mock_session)
         assert isinstance(service.repositorio, LancamentoRepository)
+
+
+class TestLancamentoServiceRecorrencia:
+    @pytest.mark.parametrize(
+        "inicio,regra,esperadas",
+        [
+            ("2027-01-01", "FREQ=DAILY;COUNT=3", ["2027-01-01", "2027-01-02", "2027-01-03"]),
+            (
+                "2027-01-04",
+                "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;COUNT=4",
+                ["2027-01-04", "2027-01-06", "2027-01-18", "2027-01-20"],
+            ),
+            (
+                "2027-01-31",
+                "FREQ=MONTHLY;BYMONTHDAY=-1;COUNT=3",
+                ["2027-01-31", "2027-02-28", "2027-03-31"],
+            ),
+            (
+                "2027-01-12",
+                "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=2;COUNT=3",
+                ["2027-01-12", "2027-02-09", "2027-03-09"],
+            ),
+            (
+                "2027-01-25",
+                "FREQ=MONTHLY;BYDAY=MO;BYSETPOS=-1;COUNT=3",
+                ["2027-01-25", "2027-02-22", "2027-03-29"],
+            ),
+            ("2027-01-01", "FREQ=YEARLY;COUNT=3", ["2027-01-01", "2028-01-01", "2029-01-01"]),
+            (
+                "2027-01-01",
+                "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=3",
+                ["2027-01-01", "2027-01-04", "2027-01-05"],
+            ),
+            ("2027-01-01", "FREQ=DAILY;UNTIL=20270102T235959", ["2027-01-01", "2027-01-02"]),
+            ("2027-01-01", "FREQ=DAILY;COUNT=1", ["2027-01-01"]),
+            ("2027-01-03", "FREQ=WEEKLY;BYDAY=MO;COUNT=2", ["2027-01-03", "2027-01-04"]),
+        ],
+    )
+    def test_expandir(self, inicio, regra, esperadas):
+        assert [
+            d.date().isoformat() for d in datas_recorrentes(regra, datetime.fromisoformat(inicio))
+        ] == esperadas
+
+    @pytest.mark.parametrize("termino", ["", ";COUNT=999999", ";UNTIL=20991231T235959"])
+    def test_limite_tres_anos(self, termino):
+        datas = datas_recorrentes(f"FREQ=DAILY{termino}", datetime(2027, 1, 1))
+        assert len(datas) == 1097
+        assert datas[-1] == datetime(2030, 1, 1)
+
+    @pytest.mark.parametrize(
+        "regra",
+        [
+            "",
+            "FREQ=SECONDLY",
+            "FREQ=DAILY;INTERVAL=0",
+            "FREQ=DAILY;COUNT=0",
+            "FREQ=DAILY;COUNT=2;UNTIL=20270102T235959",
+            "FREQ=DAILY;BYHOUR=10",
+            "FREQ=MONTHLY;BYMONTHDAY=0",
+            "FREQ=WEEKLY;BYDAY=INVALIDO",
+            "FREQ=DAILY;FREQ=WEEKLY",
+            "FREQ=DAILY\nRRULE:FREQ=DAILY",
+            "FREQ=DAILY;UNTIL=20260101T235959",
+            "FREQ=YEARLY;BYMONTH=13",
+        ],
+    )
+    def test_rejeitar_regra_invalida(self, regra):
+        with pytest.raises(ValueError, match="Regra de recorrência inválida"):
+            datas_recorrentes(regra, datetime(2027, 1, 1))
+
+    @pytest.mark.parametrize(
+        "regra,antes,depois,esperadas",
+        [
+            (
+                "FREQ=WEEKLY;BYDAY=MO;COUNT=8",
+                "2027-01-04",
+                "2027-01-06",
+                ["2027-01-06", "2027-01-13"],
+            ),
+            (
+                "FREQ=MONTHLY;BYMONTHDAY=15",
+                "2027-01-15",
+                "2027-01-31",
+                ["2027-01-31", "2027-02-28"],
+            ),
+            (
+                "FREQ=MONTHLY;BYDAY=TU;BYSETPOS=2",
+                "2027-01-12",
+                "2027-01-20",
+                ["2027-01-20", "2027-02-17"],
+            ),
+            (
+                "FREQ=YEARLY;BYMONTH=1;BYMONTHDAY=1",
+                "2027-01-01",
+                "2027-02-10",
+                ["2027-02-10", "2028-02-10"],
+            ),
+        ],
+    )
+    def test_reancorar_frequencia(self, regra, antes, depois, esperadas):
+        inicio = datetime.fromisoformat(depois)
+        nova = reancorar_regra(regra, datetime.fromisoformat(antes), inicio)
+        assert [
+            d.date().isoformat() for d in datas_recorrentes(nova + ";COUNT=2", inicio)
+        ] == esperadas
