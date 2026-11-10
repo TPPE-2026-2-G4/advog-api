@@ -24,6 +24,7 @@ TABELAS_DO_DLD = {
     "processos",
     "processos_arquivos",
     "processos_movimentacoes",
+    "tokens_recuperacao_senha",
 }
 
 
@@ -56,12 +57,12 @@ def test_dependencia_esta_instalada(modulo):
 @pytest.mark.parametrize(
     "variavel",
     [
-        "MINIO_ENDPOINT",
-        "MINIO_PUBLIC_URL",
-        "MINIO_BUCKET_PUBLICO",
-        "MINIO_BUCKET_PRIVADO",
-        "MINIO_ROOT_USER",
-        "MINIO_ROOT_PASSWORD",
+        "S3_ENDPOINT",
+        "S3_PUBLIC_URL",
+        "S3_BUCKET_PUBLICO",
+        "S3_BUCKET_PRIVADO",
+        "S3_ACCESS_KEY_ID",
+        "S3_SECRET_ACCESS_KEY",
     ],
 )
 def test_variavel_de_ambiente_obrigatoria_esta_definida(variavel):
@@ -93,3 +94,16 @@ def test_banco_cria_todas_as_tabelas_do_dld(db_session):
 
     assert set(Base.metadata.tables) == TABELAS_DO_DLD
     assert tabelas_no_banco == TABELAS_DO_DLD
+
+
+def test_endpoints_de_health_estao_registrados(client):
+    resposta_liveness = client.get("/health")
+    assert resposta_liveness.status_code == 200
+    assert resposta_liveness.json() == {"status": "ok", "service": "advog-api"}
+
+
+def test_cors_origins_e_frontend_url_desacoplados():
+    from main import CORS_ORIGINS
+
+    assert isinstance(CORS_ORIGINS, list)
+    assert len(CORS_ORIGINS) > 0
