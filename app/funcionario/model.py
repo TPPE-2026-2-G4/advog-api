@@ -11,8 +11,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.arquivo.model import Arquivo  # noqa: F401  (destino da FK de foto_perfil)
-from app.atuacao.model import Atuacao  # noqa: F401  (destino da FK de atuacao_id)
+from app.arquivo.model import Arquivo
+from app.atuacao.model import Atuacao
 from app.config.database import Base
 
 if TYPE_CHECKING:
@@ -47,10 +47,21 @@ class Funcionario(Base):
     foto_perfil: Mapped[int] = mapped_column(
         Integer, ForeignKey("arquivos.arquivo_id"), nullable=False
     )
-    atuacao_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("atuacoes.atuacao_id"), nullable=False
+    atuacao_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("atuacoes.atuacao_id"), nullable=True
     )
     cargo: Mapped["Cargo"] = relationship("Cargo", back_populates="funcionarios")
+    atuacao: Mapped[Atuacao | None] = relationship("Atuacao")
+    arquivo_perfil: Mapped[Arquivo] = relationship("Arquivo", foreign_keys=[foto_perfil])
+
+    @property
+    def foto_perfil_url(self) -> str | None:
+        if not self.arquivo_perfil or not self.arquivo_perfil.bucket_link:
+            return None
+
+        from app.core.storage import obter_url_publica
+
+        return obter_url_publica(self.arquivo_perfil.bucket_link)
 
     __table_args__ = (
         CheckConstraint("uf_oab IS NULL OR length(uf_oab) = 2", name="ck_uf_oab_tamanho"),
