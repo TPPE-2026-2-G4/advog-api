@@ -34,6 +34,7 @@ ETAPAS_CLIENTE = (
 )
 
 ETAPAS_KANBAN = ("Backlog", "Em Execução", "Revisão", "Finalizado")
+ETAPAS_KANBAN_OBRIGATORIAS = ("Backlog", "Finalizado")
 
 
 def seed() -> None:
@@ -163,12 +164,19 @@ def seed() -> None:
         else:
             print("Informações institucionais já existem.")
 
-        nomes_kanban_existentes = {etapa.nome for etapa in db.query(EtapaKanban)}
-        db.add_all(
-            EtapaKanban(nome=nome, ordem=ordem)
-            for ordem, nome in enumerate(ETAPAS_KANBAN, start=1)
-            if nome not in nomes_kanban_existentes
-        )
+        etapas_kanban = db.query(EtapaKanban).all()
+        if not etapas_kanban:
+            db.add_all(
+                EtapaKanban(nome=nome, ordem=ordem)
+                for ordem, nome in enumerate(ETAPAS_KANBAN, start=1)
+            )
+        else:
+            nomes_kanban_existentes = {etapa.nome.lower() for etapa in etapas_kanban}
+            maior_ordem = max((etapa.ordem for etapa in etapas_kanban), default=0)
+            for nome in ETAPAS_KANBAN_OBRIGATORIAS:
+                if nome.lower() not in nomes_kanban_existentes:
+                    maior_ordem += 1
+                    db.add(EtapaKanban(nome=nome, ordem=maior_ordem))
 
         etapas_existentes = {etapa.etapa_id for etapa in db.query(EtapaCliente)}
         db.add_all(

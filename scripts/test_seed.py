@@ -70,9 +70,12 @@ def test_seed_preserva_etapas_kanban_existentes_e_nao_duplica(
     seed_com_banco_de_teste()
 
     etapas = {etapa.nome: etapa.ordem for etapa in db_session.query(EtapaKanban)}
-    esperado = {nome: ordem for ordem, nome in enumerate(ETAPAS_KANBAN, start=1)}
-    if nome_existente is not None:
-        esperado[nome_existente] = 10
+    if nome_existente is None:
+        esperado = {nome: ordem for ordem, nome in enumerate(ETAPAS_KANBAN, start=1)}
+    elif nome_existente == "Backlog":
+        esperado = {"Backlog": 10, "Finalizado": 11}
+    else:
+        esperado = {nome_existente: 10, "Backlog": 11, "Finalizado": 12}
     assert etapas == esperado
     assert db_session.query(Atividade).count() == 0
 
