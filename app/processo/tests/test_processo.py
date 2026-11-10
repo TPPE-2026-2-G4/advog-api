@@ -3167,3 +3167,24 @@ async def test_sync_sincronizar_processos_com_api_exception(mock_fetch, sync_db_
 
     db.refresh(p1)
     assert p1.status == StatusProcesso.ATIVO
+
+
+@pytest.mark.parametrize("online,status_esperado", [(True, "online"), (False, "offline")])
+def test_controller_verificar_status_datajud(
+    client, db_session, token_acesso, online, status_esperado
+):
+    cargo = criar_cargo(db_session, {})
+    usuario = criar_funcionario(db_session, cargo, f"status.{status_esperado}@test.com")
+    token = token_acesso(usuario.funcionario_id, usuario.email)
+
+    with patch(
+        "app.processo.service.DatajudApiClient.verificar_status",
+        return_value=online,
+    ):
+        response = client.get("/processos/datajud/status", headers=auth_header(token))
+
+    assert response.status_code == 200
+    dados = response.json()
+    assert dados["online"] is online
+    assert dados["status"] == status_esperado
+    assert isinstance(dados["mensagem"], str)

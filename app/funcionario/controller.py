@@ -12,6 +12,7 @@ from app.funcionario.schema import (
     FuncionarioCreate,
     FuncionarioMudarCargo,
     FuncionarioMudarExibicao,
+    FuncionarioMudarReceberEmails,
     FuncionarioPerfilResponse,
     FuncionarioPerfilUpdate,
     FuncionarioPrimeiroAcesso,
@@ -144,6 +145,23 @@ def mudar_exibicao_institucional(
     service = FuncionarioService(db)
     try:
         return service.mudar_exibicao_institucional(funcionario_id, dados.exibicao_institucional)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.patch(
+    "/{funcionario_id}/receber-emails",
+    response_model=FuncionarioResponse,
+    dependencies=[Depends(obter_funcionario_atual)],
+)
+def mudar_receber_emails(
+    funcionario_id: int,
+    dados: FuncionarioMudarReceberEmails,
+    db: Session = Depends(get_db),
+):
+    service = FuncionarioService(db)
+    try:
+        return service.mudar_receber_emails(funcionario_id, dados.receber_emails)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 

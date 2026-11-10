@@ -1,7 +1,7 @@
 import os
 from typing import Any
 
-from sqlalchemy import create_engine
+from sqlalchemy import Engine, create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config.ambiente import obter_environment
@@ -46,6 +46,23 @@ engine = create_engine(DATABASE_URL, connect_args=connect_args, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
+
+
+def garantir_colunas_schema(bind_engine: Engine = engine) -> None:
+    try:
+        inspector = inspect(bind_engine)
+        if inspector.has_table("funcionarios"):
+            colunas = {col["name"] for col in inspector.get_columns("funcionarios")}
+            if "receber_emails" not in colunas:
+                with bind_engine.begin() as conn:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE funcionarios "
+                            "ADD COLUMN receber_emails BOOLEAN NOT NULL DEFAULT TRUE"
+                        )
+                    )
+    except Exception:
+        pass
 
 
 def get_db():

@@ -40,6 +40,9 @@ class Funcionario(Base):
     exibicao_institucional: Mapped[bool] = mapped_column(
         "exibicao_institucional", Boolean, nullable=False, default=False
     )
+    receber_emails: Mapped[bool] = mapped_column(
+        "receber_emails", Boolean, nullable=False, default=True
+    )
     cargo_id: Mapped[int] = mapped_column(Integer, ForeignKey("cargos.cargo_id"), nullable=False)
     foto_perfil: Mapped[int] = mapped_column(
         Integer, ForeignKey("arquivos.arquivo_id"), nullable=False
