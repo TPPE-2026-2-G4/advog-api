@@ -120,8 +120,7 @@ class FuncionarioResponse(FuncionarioBase):
 
 class FuncionarioPerfilResponse(FuncionarioResponse):
     atuacao: AtuacaoResponse | None = None
-      
-      
+
     @field_validator("receber_emails", mode="before")
     @classmethod
     def _default_receber_emails(cls, valor: bool | None) -> bool:
