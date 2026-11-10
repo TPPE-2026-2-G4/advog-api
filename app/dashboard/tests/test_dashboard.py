@@ -66,7 +66,7 @@ def test_resumo_respeita_abrangencia_sem_duplicar_atividades(
     indice_usuario,
 ):
     usuario = funcionarios[indice_usuario]
-    usuario.cargo.permissao = permissoes
+    usuario.cargo.permissao = {**permissoes, "visualizar_atividades": True}
     db_session.commit()
     token = token_acesso(usuario.funcionario_id, usuario.email)
 
@@ -98,7 +98,10 @@ def test_resumo_sem_atividades_retorna_zeros(
     client, db_session, funcionarios, token_acesso, gerenciar_equipe
 ):
     usuario = funcionarios[0]
-    usuario.cargo.permissao = {"gerenciar_equipe": gerenciar_equipe}
+    usuario.cargo.permissao = {
+        "gerenciar_equipe": gerenciar_equipe,
+        "visualizar_atividades": True,
+    }
     db_session.commit()
     token = token_acesso(usuario.funcionario_id, usuario.email)
 

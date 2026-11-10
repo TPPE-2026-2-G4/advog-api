@@ -30,6 +30,7 @@ def get_atividade_service(db: Session = Depends(get_db)) -> AtividadeService:
     "/kanban",
     response_model=KanbanResponse,
     summary="Visualizar o Kanban de atividades",
+    dependencies=[Depends(exigir_permissao("visualizar_atividades"))],
     responses={401: {"description": "Credenciais ausentes ou inválidas"}},
 )
 def visualizar_kanban(
@@ -58,7 +59,7 @@ def _traduzir_erro(erro: ValueError) -> HTTPException:
     response_model=AtividadeResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Criar atividade e delegar responsáveis",
-    dependencies=[Depends(exigir_permissao("criar_atividades"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_atividades"))],
     responses=RESPOSTAS_ESCRITA,
 )
 def criar_atividade(
@@ -86,6 +87,7 @@ def visualizar_produtividade(
     "/",
     response_model=list[AtividadeResponse],
     summary="Filtrar e pesquisar atividades",
+    dependencies=[Depends(exigir_permissao("visualizar_atividades"))],
     responses={401: {"description": "Credenciais ausentes ou inválidas"}},
 )
 def filtrar_atividades(
@@ -100,6 +102,7 @@ def filtrar_atividades(
     "/{atividade_id}",
     response_model=AtividadeResponse,
     summary="Detalhar atividade",
+    dependencies=[Depends(exigir_permissao("visualizar_atividades"))],
     responses={401: RESPOSTAS_ESCRITA[401], 404: RESPOSTAS_ESCRITA[404]},
 )
 def buscar_atividade(
@@ -117,7 +120,7 @@ def buscar_atividade(
     "/{atividade_id}",
     response_model=AtividadeResponse,
     summary="Editar, mover de etapa ou redelegar atividade",
-    dependencies=[Depends(exigir_permissao("editar_atividades"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_atividades"))],
     responses=RESPOSTAS_ESCRITA,
 )
 def atualizar_atividade(
@@ -135,7 +138,7 @@ def atualizar_atividade(
     "/{atividade_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Excluir atividade",
-    dependencies=[Depends(exigir_permissao("excluir_atividades"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_atividades"))],
     responses=RESPOSTAS_ESCRITA,
 )
 def deletar_atividade(

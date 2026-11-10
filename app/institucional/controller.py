@@ -43,7 +43,7 @@ def obter_atuacoes_publicas(db: Session = Depends(get_db)):
 @router.put(
     "",
     response_model=InstitucionalResponse,
-    dependencies=[Depends(exigir_permissao("configuracoes_sistema"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_site"))],
 )
 def atualizar_configuracoes(
     dados: InstitucionalUpdate,
@@ -55,7 +55,7 @@ def atualizar_configuracoes(
 @router.post(
     "/upload/{tipo}",
     response_model=InstitucionalUploadResponse,
-    dependencies=[Depends(exigir_permissao("configuracoes_sistema"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_site"))],
 )
 def upload_midia(
     tipo: str,

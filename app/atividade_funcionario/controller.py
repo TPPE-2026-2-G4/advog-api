@@ -25,7 +25,7 @@ def get_atividade_funcionario_service(
     "/{atividade_id}/responsaveis/{funcionario_id}",
     response_model=AtividadeResponse,
     summary="Trocar um responsável da atividade por outro funcionário",
-    dependencies=[Depends(exigir_permissao("editar_atividades"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_atividades"))],
     responses={
         401: {"description": "Credenciais ausentes ou inválidas"},
         403: {"description": "Sem permissão para editar atividades"},

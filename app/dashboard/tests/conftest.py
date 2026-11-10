@@ -12,6 +12,7 @@ def etapas(db_session, etapas_kanban_padrao):
 
 @pytest.fixture
 def funcionarios(db_session, cargo_padrao):
+    cargo_padrao.permissao = {"visualizar_atividades": True}
     usuarios = [
         Funcionario(
             atuacao_id=1,

@@ -2,6 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.cargo.schema import PERMISSOES_IMPLICADAS
 from app.config.database import get_db
 from app.core.seguranca import extrair_funcionario_id_do_token
 from app.funcionario.model import Funcionario
@@ -40,7 +41,12 @@ def exigir_permissao(permissao: str):
         funcionario: Funcionario = Depends(obter_funcionario_atual),
     ) -> Funcionario:
         permissoes = funcionario.cargo.permissao or {}
-        if not permissoes.get(permissao, False):
+        concedida = permissoes.get(permissao, False) or any(
+            permissoes.get(gerenciar, False)
+            for gerenciar, visualizar in PERMISSOES_IMPLICADAS.items()
+            if visualizar == permissao
+        )
+        if not concedida:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Você não tem permissão para executar esta ação.",
