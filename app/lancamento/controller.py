@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
@@ -111,10 +113,13 @@ def criar_lancamento(dados: LancamentoCreate, db: Session = Depends(get_db)):
 
 @router.put("/{lancamento_id}", response_model=LancamentoResponse)
 def atualizar_lancamento(
-    lancamento_id: int, dados: LancamentoUpdate, db: Session = Depends(get_db)
+    lancamento_id: int,
+    dados: LancamentoUpdate,
+    db: Session = Depends(get_db),
+    alcance: Literal["individual", "serie"] = "individual",
 ):
     try:
-        return LancamentoService(db).atualizar_lancamento(lancamento_id, dados)
+        return LancamentoService(db).atualizar_lancamento(lancamento_id, dados, alcance)
     except ValueError as e:
         raise _erro_http(e) from e
 
@@ -128,9 +133,13 @@ def alternar_status_lancamento(lancamento_id: int, db: Session = Depends(get_db)
 
 
 @router.delete("/{lancamento_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remover_lancamento(lancamento_id: int, db: Session = Depends(get_db)):
+def remover_lancamento(
+    lancamento_id: int,
+    db: Session = Depends(get_db),
+    alcance: Literal["individual", "serie"] = "individual",
+):
     try:
-        LancamentoService(db).deletar_lancamento(lancamento_id)
+        LancamentoService(db).deletar_lancamento(lancamento_id, alcance)
     except ValueError as e:
         raise _erro_http(e) from e
 
