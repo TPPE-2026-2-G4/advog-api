@@ -14,6 +14,7 @@ from app.config import database
 from app.config.database import Base, get_db
 from app.core.seguranca import criar_token_acesso, criar_token_primeiro_acesso
 from app.etapa_kanban.model import EtapaKanban
+from app.funcionario.model import Funcionario, StatusFuncionario
 from app.institucional.model import Institucional
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -185,9 +186,7 @@ def cargo_admin(db_session: Session) -> Cargo:
 def funcionario_admin(
     db_session: Session,
     cargo_admin: Cargo,
-):
-    from app.funcionario.model import Funcionario, StatusFuncionario
-
+) -> Funcionario:
     funcionario = Funcionario(
         atuacao_id=1,
         foto_perfil=1,
@@ -237,9 +236,7 @@ def cargo_processos(db_session: Session) -> Cargo:
 def funcionario_processos(
     db_session: Session,
     cargo_processos: Cargo,
-):
-    from app.funcionario.model import Funcionario, StatusFuncionario
-
+) -> Funcionario:
     funcionario = Funcionario(
         atuacao_id=1,
         foto_perfil=1,
@@ -268,9 +265,10 @@ def token_processos(
 
 
 @pytest.fixture()
-def funcionario_sem_permissao(db_session: Session, cargo_padrao: Cargo):
-    from app.funcionario.model import Funcionario, StatusFuncionario
-
+def funcionario_sem_permissao(
+    db_session: Session,
+    cargo_padrao: Cargo,
+) -> Funcionario:
     funcionario = Funcionario(
         atuacao_id=1,
         foto_perfil=1,
