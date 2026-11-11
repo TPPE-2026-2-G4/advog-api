@@ -1,7 +1,12 @@
 import urllib.parse
+from calendar import monthrange
 from datetime import date, datetime, timedelta
+from itertools import islice
 from math import ceil
+from uuid import uuid4
 
+from dateutil.relativedelta import relativedelta
+from dateutil.rrule import rrulestr
 from sqlalchemy.orm import Session
 
 from app.core.relatorio import (
@@ -27,6 +32,89 @@ from app.lancamento.schema import (
     PontoGrafico,
     ResumoStatus,
 )
+
+MAX_OCORRENCIAS = 1100
+DIAS = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+
+
+def datas_recorrentes(regra: str, inicio: datetime) -> list[datetime]:
+    """Expande apenas as frequências do formulário, dentro da janela de três anos."""
+    inicio = inicio.replace(tzinfo=None)
+    try:
+        pares = [parte.split("=") for parte in regra.split(";")]
+        campos = dict(pares)
+        permitidos = {
+            "FREQ",
+            "INTERVAL",
+            "BYDAY",
+            "BYMONTHDAY",
+            "BYMONTH",
+            "BYSETPOS",
+            "COUNT",
+            "UNTIL",
+        }
+        if len(pares) != len(campos) or campos.keys() - permitidos:
+            raise ValueError
+        if campos.get("FREQ") not in {"DAILY", "WEEKLY", "MONTHLY", "YEARLY"}:
+            raise ValueError
+        if "BYDAY" in campos and not set(campos["BYDAY"].split(",")) <= set(DIAS):
+            raise ValueError
+        for campo, minimo, maximo in (
+            ("BYMONTH", 1, 12),
+            ("BYMONTHDAY", -31, 31),
+            ("BYSETPOS", -5, 5),
+        ):
+            if campo in campos and any(
+                not minimo <= int(v) <= maximo or int(v) == 0 for v in campos[campo].split(",")
+            ):
+                raise ValueError
+        if not 1 <= int(campos.get("INTERVAL", "1")) <= MAX_OCORRENCIAS:
+            raise ValueError
+        quantidade = int(campos.get("COUNT", str(MAX_OCORRENCIAS)))
+        if quantidade < 1 or ("COUNT" in campos and "UNTIL" in campos):
+            raise ValueError
+        if "UNTIL" in campos and datetime.strptime(campos["UNTIL"], "%Y%m%dT%H%M%S") < inicio:
+            raise ValueError
+        # O primeiro vencimento conta mesmo quando não pertence aos dias selecionados.
+        campos.pop("COUNT", None)
+        campos["UNTIL"] = min(
+            datetime.strptime(campos.get("UNTIL", "99991231T235959"), "%Y%m%dT%H%M%S"),
+            inicio + relativedelta(years=3),
+        ).strftime("%Y%m%dT%H%M%S")
+        recorrencia = rrulestr(";".join(f"{k}={v}" for k, v in campos.items()), dtstart=inicio)
+        limite = min(quantidade, MAX_OCORRENCIAS)
+        datas = [inicio]
+        for data in islice(recorrencia, MAX_OCORRENCIAS):
+            if data > inicio:
+                datas.append(data)
+            if len(datas) >= limite:
+                break
+        return datas[:limite]
+    except (ValueError, TypeError, OverflowError) as e:
+        raise ValueError("Regra de recorrência inválida") from e
+
+
+def reancorar_regra(regra: str, anterior: datetime, novo: datetime) -> str:
+    campos = dict(parte.split("=") for parte in regra.split(";"))
+    # A edição redistribui apenas as ocorrências existentes, sem reiniciar COUNT/UNTIL.
+    campos.pop("COUNT", None)
+    campos.pop("UNTIL", None)
+    frequencia = campos["FREQ"]
+    if frequencia == "WEEKLY" and "BYDAY" in campos:
+        dias = campos["BYDAY"].split(",")
+        if set(dias) != {"MO", "TU", "WE", "TH", "FR"}:
+            deslocamento = novo.weekday() - anterior.weekday()
+            campos["BYDAY"] = ",".join(DIAS[(DIAS.index(d) + deslocamento) % 7] for d in dias)
+    if frequencia in {"MONTHLY", "YEARLY"}:
+        ultimo = monthrange(novo.year, novo.month)[1]
+        if "BYSETPOS" in campos:
+            campos["BYDAY"] = DIAS[novo.weekday()]
+            campos["BYSETPOS"] = str(-1 if novo.day + 7 > ultimo else (novo.day - 1) // 7 + 1)
+        else:
+            campos["BYMONTHDAY"] = str(-1 if novo.day == ultimo else novo.day)
+        if frequencia == "YEARLY":
+            campos["BYMONTH"] = str(novo.month)
+    return ";".join(f"{k}={v}" for k, v in campos.items())
 
 
 class FormatadorEventoCalendario:
@@ -256,13 +344,28 @@ class LancamentoService:
 
     def criar_lancamento(self, dados: LancamentoCreate) -> Lancamento:
         self._validar_referencias(dados.categoria_id, dados.cliente_id)
+        if dados.rrule:
+            serie_id = str(uuid4())
+            campos = dados.model_dump(exclude={"data_vencimento"})
+            lancamentos = [
+                Lancamento(
+                    **campos,
+                    serie_id=serie_id,
+                    data_vencimento=data,
+                    status=Lancamento.status_para_vencimento(data),
+                )
+                for data in datas_recorrentes(dados.rrule, dados.data_vencimento)
+            ]
+            return self.repository.criar_serie(lancamentos)
         lancamento = Lancamento(
-            **dados.model_dump(),
+            **dados.model_dump(exclude={"rrule"}),
             status=Lancamento.status_para_vencimento(dados.data_vencimento),
         )
         return self.repository.criar(lancamento)
 
-    def atualizar_lancamento(self, lancamento_id: int, dados: LancamentoUpdate) -> Lancamento:
+    def atualizar_lancamento(
+        self, lancamento_id: int, dados: LancamentoUpdate, alcance: str = "individual"
+    ) -> Lancamento:
         lancamento = self.buscar_por_id(lancamento_id)
         campos = dados.model_dump(exclude_unset=True)
 
@@ -278,12 +381,41 @@ class LancamentoService:
                 raise ValueError(f"O campo '{obrigatorio}' não pode ser nulo")
         self._validar_referencias(campos.get("categoria_id"), campos.get("cliente_id"))
 
+        if alcance == "serie":
+            self._atualizar_serie(lancamento, campos)
+            return lancamento
+
         for campo, valor in campos.items():
             setattr(lancamento, campo, valor)
 
         if "data_vencimento" in campos and lancamento.status != StatusLancamento.REALIZADO:
             lancamento.status = Lancamento.status_para_vencimento(lancamento.data_vencimento)
         return self.repository.atualizar(lancamento)
+
+    def _atualizar_serie(self, lancamento: Lancamento, campos: dict) -> None:
+        if not lancamento.serie_id:
+            raise ValueError("O lançamento não pertence a uma série")
+        futuros = self.repository.buscar_futuros_da_serie(lancamento)
+        regra = lancamento.rrule
+        if not regra:
+            raise ValueError("A série não possui uma regra de recorrência")
+        datas = [item.data_vencimento for item in futuros]
+        nova_data = campos.get("data_vencimento")
+        if nova_data and nova_data.replace(tzinfo=None) != lancamento.data_vencimento:
+            regra = reancorar_regra(regra, lancamento.data_vencimento, nova_data)
+            datas = datas_recorrentes(f"{regra};COUNT={len(futuros)}", nova_data)
+            if len(datas) != len(futuros):
+                raise ValueError("Os novos vencimentos excedem o limite de três anos")
+        for item, data in zip(futuros, datas, strict=True):
+            if item.status == StatusLancamento.REALIZADO:
+                continue
+            for campo, valor in campos.items():
+                if campo != "data_vencimento":
+                    setattr(item, campo, valor)
+            item.data_vencimento = data
+            item.rrule = regra
+            item.status = Lancamento.status_para_vencimento(data)
+        self.repository.salvar_serie(futuros)
 
     def alternar_status(self, lancamento_id: int) -> Lancamento:
         lancamento = self.buscar_por_id(lancamento_id)
@@ -295,8 +427,18 @@ class LancamentoService:
             lancamento.data_pagamento = datetime.now()
         return self.repository.atualizar(lancamento)
 
-    def deletar_lancamento(self, lancamento_id: int) -> None:
-        self.repository.deletar(self.buscar_por_id(lancamento_id))
+    def deletar_lancamento(self, lancamento_id: int, alcance: str = "individual") -> None:
+        lancamento = self.buscar_por_id(lancamento_id)
+        if alcance == "serie":
+            if not lancamento.serie_id:
+                raise ValueError("O lançamento não pertence a uma série")
+            futuros = self.repository.buscar_futuros_da_serie(lancamento)
+            self.repository.salvar_serie(
+                [item for item in futuros if item.status != StatusLancamento.REALIZADO],
+                excluir=True,
+            )
+        else:
+            self.repository.deletar(lancamento)
 
 
 class LancamentoCalendarioService:
@@ -363,6 +505,7 @@ class LancamentoCalendarioService:
         outlook_url = GeradorUrlCalendario.gerar_url_outlook_calendar(lancamento)
         return LancamentoCalendarioResponse(
             lancamento_id=lancamento.lancamento_id,
+            serie_id=lancamento.serie_id,
             titulo=lancamento.titulo,
             descricao=lancamento.descricao,
             tipo=lancamento.tipo,

@@ -87,7 +87,9 @@ class TestCriarFuncionarioController:
         assert response.status_code == 400
         assert response.json()["detail"] == "Área de atuação não encontrada"
 
-    def test_criar_funcionario_sem_atuacao_retorna_422(self, client, token_admin, cargo_padrao):
+    def test_criar_funcionario_sem_atuacao_retorna_perfil_sem_area(
+        self, client, token_admin, cargo_padrao
+    ):
         headers = {"Authorization": f"Bearer {token_admin}"}
         response = client.post(
             "/funcionarios",
@@ -98,7 +100,8 @@ class TestCriarFuncionarioController:
             },
             headers=headers,
         )
-        assert response.status_code == 422
+        assert response.status_code == 201
+        assert response.json()["atuacao_id"] is None
 
     def test_criar_funcionario_usa_foto_de_perfil_padrao(
         self, client, db_session, token_admin, cargo_padrao, atuacao_padrao
@@ -484,6 +487,70 @@ class TestMudarExibicaoInstitucionalController:
         assert response.status_code == 400
         assert response.json()["detail"] == "Funcionário não encontrado"
 
+    def test_mudar_exibicao_institucional_exige_gerenciar_site(
+        self, client, db_session, token_acesso, funcionario_sem_permissao
+    ):
+        usuario = funcionario_sem_permissao
+        headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+        rota = f"/funcionarios/{usuario.funcionario_id}/exibicao-institucional"
+
+        usuario.cargo.permissao = {"gerenciar_equipe": True}
+        db_session.commit()
+        negado = client.patch(rota, json={"exibicaoInstitucional": True}, headers=headers)
+
+        usuario.cargo.permissao = {"gerenciar_site": True}
+        db_session.commit()
+        liberado = client.patch(rota, json={"exibicaoInstitucional": True}, headers=headers)
+
+        assert negado.status_code == 403
+        assert liberado.status_code == 200
+
+
+class TestMudarReceberEmailsController:
+    def test_mudar_receber_emails_do_proprio_usuario(
+        self, client, token_acesso, funcionario_sem_permissao
+    ):
+        usuario = funcionario_sem_permissao
+        headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+        response = client.patch(
+            f"/funcionarios/{usuario.funcionario_id}/receber-emails",
+            json={"receber_emails": False},
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json()["receber_emails"] is False
+
+    def test_mudar_receber_emails_de_outro_funcionario_retorna_403(
+        self, client, db_session, cargo_padrao, atuacao_padrao, token_admin
+    ):
+        outro = Funcionario(
+            nome="Outro",
+            email="outro.emails@test.com",
+            foto_perfil=1,
+            cargo_id=cargo_padrao.cargo_id,
+            atuacao_id=atuacao_padrao.atuacao_id,
+            receber_emails=True,
+        )
+        db_session.add(outro)
+        db_session.commit()
+
+        response = client.patch(
+            f"/funcionarios/{outro.funcionario_id}/receber-emails",
+            json={"receber_emails": False},
+            headers={"Authorization": f"Bearer {token_admin}"},
+        )
+
+        assert response.status_code == 403
+        db_session.refresh(outro)
+        assert outro.receber_emails is True
+
+    def test_mudar_receber_emails_exige_autenticacao(self, client):
+        response = client.patch("/funcionarios/1/receber-emails", json={"receber_emails": False})
+
+        assert response.status_code == 401
+
 
 class TestEditarDadosController:
     def test_editar_dados_sem_token_retorna_erro(self, client):
@@ -565,6 +632,22 @@ class TestEditarDadosController:
             )
             assert response.status_code == 400
             assert response.json()["detail"] == "Erro ao editar"
+
+
+class TestEditarMeuPerfilController:
+    def test_email_nao_pode_ser_alterado_pelo_perfil(
+        self, client, token_admin, funcionario_admin, db_session
+    ):
+        email_original = funcionario_admin.email
+        response = client.patch(
+            "/funcionarios/perfil",
+            json={"email": "novo.email@test.com"},
+            headers={"Authorization": f"Bearer {token_admin}"},
+        )
+
+        assert response.status_code == 422
+        db_session.refresh(funcionario_admin)
+        assert funcionario_admin.email == email_original
 
 
 class TestApagarFuncionarioController:
@@ -1231,3 +1314,24 @@ def test_mudar_exibicao_institucional_funcionario_nao_encontrado_lanca_erro():
 
     with pytest.raises(ValueError, match="Funcionário não encontrado"):
         service.mudar_exibicao_institucional(999, True)
+
+
+def test_mudar_receber_emails_sucesso():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    funcionario = Funcionario(funcionario_id=1, nome="Teste", receber_emails=True)
+    service.repository.buscar_por_id.return_value = funcionario
+    service.repository.atualizar.return_value = funcionario
+
+    resultado = service.mudar_receber_emails(1, False)
+    assert resultado.receber_emails is False
+    service.repository.atualizar.assert_called_once_with(funcionario)
+
+
+def test_mudar_receber_emails_funcionario_nao_encontrado_lanca_erro():
+    service = FuncionarioService.__new__(FuncionarioService)
+    service.repository = MagicMock(spec=FuncionarioRepository)
+    service.repository.buscar_por_id.return_value = None
+
+    with pytest.raises(ValueError, match="Funcionário não encontrado"):
+        service.mudar_receber_emails(999, False)

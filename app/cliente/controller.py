@@ -5,27 +5,35 @@ from app.cliente.schema import ClienteCreate, ClienteFilter, ClienteResponse, Cl
 from app.cliente.service import ClienteNaoEncontradoError, ClienteService
 from app.config.database import get_db
 from app.config.limiter import limiter
-from app.core.dependencies import obter_funcionario_atual
-from app.funcionario.model import Funcionario
+from app.core.dependencies import exigir_permissao
+from app.core.permissoes import ACESSO_LISTA_CLIENTES
 
 router = APIRouter(prefix="/clientes", tags=["Clientes"])
 
+LER_CLIENTES = Depends(exigir_permissao(*ACESSO_LISTA_CLIENTES))
 
-@router.get("/", response_model=list[ClienteResponse])
+
+@router.get(
+    "/",
+    response_model=list[ClienteResponse],
+    dependencies=[LER_CLIENTES],
+)
 def listar_clientes(
     filters: ClienteFilter = Depends(),
     db: Session = Depends(get_db),
-    current_user: Funcionario = Depends(obter_funcionario_atual),
 ):
     service = ClienteService(db)
     return service.search_clientes(filters)
 
 
-@router.get("/{cliente_id}", response_model=ClienteResponse)
+@router.get(
+    "/{cliente_id}",
+    response_model=ClienteResponse,
+    dependencies=[LER_CLIENTES],
+)
 def obter_cliente(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: Funcionario = Depends(obter_funcionario_atual),
 ):
     service = ClienteService(db)
     try:
@@ -45,12 +53,15 @@ def criar_cliente(
     return service.create_cliente(cliente_data)
 
 
-@router.put("/{cliente_id}", response_model=ClienteResponse)
+@router.put(
+    "/{cliente_id}",
+    response_model=ClienteResponse,
+    dependencies=[Depends(exigir_permissao("gerenciar_clientes"))],
+)
 def atualizar_cliente(
     cliente_id: int,
     cliente_data: ClienteUpdate,
     db: Session = Depends(get_db),
-    current_user: Funcionario = Depends(obter_funcionario_atual),
 ):
     service = ClienteService(db)
     try:
@@ -59,11 +70,14 @@ def atualizar_cliente(
         raise HTTPException(status_code=404, detail=str(e)) from e
 
 
-@router.delete("/{cliente_id}", status_code=204)
+@router.delete(
+    "/{cliente_id}",
+    status_code=204,
+    dependencies=[Depends(exigir_permissao("gerenciar_clientes"))],
+)
 def excluir_cliente(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: Funcionario = Depends(obter_funcionario_atual),
 ):
     service = ClienteService(db)
     try:

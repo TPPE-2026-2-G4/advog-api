@@ -123,6 +123,37 @@ class LancamentoRepository:
         self.db.refresh(lancamento)
         return lancamento
 
+    def criar_serie(self, lancamentos: list[Lancamento]) -> Lancamento:
+        try:
+            self.db.add_all(lancamentos)
+            self.db.commit()
+            self.db.refresh(lancamentos[0])
+            return lancamentos[0]
+        except Exception:
+            self.db.rollback()
+            raise
+
+    def buscar_futuros_da_serie(self, lancamento: Lancamento) -> list[Lancamento]:
+        return (
+            self.db.query(Lancamento)
+            .filter(
+                Lancamento.serie_id == lancamento.serie_id,
+                Lancamento.data_vencimento >= lancamento.data_vencimento,
+            )
+            .order_by(Lancamento.data_vencimento, Lancamento.lancamento_id)
+            .all()
+        )
+
+    def salvar_serie(self, lancamentos: list[Lancamento], excluir: bool = False) -> None:
+        try:
+            if excluir:
+                for lancamento in lancamentos:
+                    self.db.delete(lancamento)
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+
     def deletar(self, lancamento: Lancamento) -> None:
         self.db.delete(lancamento)
         self.db.commit()

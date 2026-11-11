@@ -40,7 +40,7 @@ def buscar_atuacao_por_id(atuacao_id: int, db: Session = Depends(get_db)):
     "",
     response_model=AtuacaoResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(exigir_permissao("configuracoes_sistema"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_site"))],
 )
 def criar_atuacao(dados: AtuacaoCreate, db: Session = Depends(get_db)):
     try:
@@ -53,7 +53,7 @@ def criar_atuacao(dados: AtuacaoCreate, db: Session = Depends(get_db)):
     "/{atuacao_id}",
     response_model=AtuacaoResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(exigir_permissao("configuracoes_sistema"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_site"))],
 )
 def atualizar_atuacao(atuacao_id: int, dados: AtuacaoUpdate, db: Session = Depends(get_db)):
     try:
@@ -66,7 +66,7 @@ def atualizar_atuacao(atuacao_id: int, dados: AtuacaoUpdate, db: Session = Depen
     "/{atuacao_id}/exibicao-institucional",
     response_model=AtuacaoResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(exigir_permissao("configuracoes_sistema"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_site"))],
 )
 def mudar_exibicao_institucional(
     atuacao_id: int, dados: AtuacaoMudarExibicao, db: Session = Depends(get_db)
@@ -83,7 +83,7 @@ def mudar_exibicao_institucional(
     "/{atuacao_id}",
     response_model=AtuacaoResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(exigir_permissao("configuracoes_sistema"))],
+    dependencies=[Depends(exigir_permissao("gerenciar_site"))],
 )
 def deletar_atuacao(atuacao_id: int, db: Session = Depends(get_db)):
     try:

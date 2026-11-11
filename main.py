@@ -27,7 +27,7 @@ from app.cargo.controller import router as cargo_router  # noqa: E402
 from app.categoria_lancamento.controller import router as categoria_lancamento_router  # noqa: E402
 from app.cliente.controller import router as cliente_router  # noqa: E402
 from app.cliente_arquivo.model import ClienteArquivo  # noqa: E402, F401
-from app.config.database import Base, engine  # noqa: E402
+from app.config.database import Base, engine, garantir_colunas_schema  # noqa: E402
 from app.config.limiter import limiter  # noqa: E402
 from app.dashboard.controller import router as dashboard_router  # noqa: E402
 from app.funcionario.controller import router as funcionario_router  # noqa: E402
@@ -40,6 +40,7 @@ from app.processo.service import ProcessoService  # noqa: E402
 from app.processo_movimentacao.model import ProcessoMovimentacao  # noqa: E402, F401
 
 Base.metadata.create_all(bind=engine)
+garantir_colunas_schema(engine)
 
 
 logger = logging.getLogger("advog-api")

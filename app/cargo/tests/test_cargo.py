@@ -12,15 +12,19 @@ from app.funcionario.model import Funcionario, StatusFuncionario
 
 
 @pytest.fixture
+def client(client: TestClient, token_admin: str) -> TestClient:
+    client.headers["Authorization"] = f"Bearer {token_admin}"
+    return client
+
+
+@pytest.fixture
 def cargo_db(db_session: Session) -> Cargo:
     cargo = Cargo()
     cargo.nome_cargo = "Advogado Pleno"
     cargo.descricao = "Descrição inicial"
     cargo.permissao = {
         "visualizar_processos": True,
-        "criar_processos": False,
-        "editar_processos": False,
-        "excluir_processos": False,
+        "gerenciar_processos": False,
         "visualizar_financeiro": False,
         "gerenciar_financeiro": False,
         "visualizar_equipe": False,
@@ -63,8 +67,7 @@ def test_controller_buscar_todos_cargos_retorna_lista(client: TestClient, cargo_
     assert response.status_code == 200
     dados = response.json()
     assert isinstance(dados, list)
-    assert len(dados) >= 1
-    assert dados[0]["nome_cargo"] == "Advogado Pleno"
+    assert "Advogado Pleno" in {cargo["nome_cargo"] for cargo in dados}
 
 
 def test_controller_criar_cargo_retorna_201(client: TestClient):
@@ -110,9 +113,7 @@ def test_controller_atualizar_cargo_retorna_dados_atualizados(client: TestClient
         "descricao": "Descrição atualizada",
         "permissao": {
             "visualizar_processos": True,
-            "criar_processos": True,
-            "editar_processos": True,
-            "excluir_processos": False,
+            "gerenciar_processos": True,
             "visualizar_financeiro": True,
             "gerenciar_financeiro": False,
             "visualizar_equipe": True,
@@ -127,7 +128,7 @@ def test_controller_atualizar_cargo_retorna_dados_atualizados(client: TestClient
     dados = response.json()
     assert dados["nome_cargo"] == "Advogado Senior"
     assert dados["descricao"] == "Descrição atualizada"
-    assert dados["permissao"]["criar_processos"] is True
+    assert dados["permissao"]["gerenciar_processos"] is True
     assert dados["permissao"]["visualizar_financeiro"] is True
 
 
@@ -358,3 +359,86 @@ def test_repository_buscar_todos_cargos(db_session):
 
     todos = repository.buscar_todos()
     assert len(todos) >= 2
+
+
+@pytest.mark.parametrize(
+    ("gerenciar", "visualizar"),
+    [
+        ("gerenciar_processos", "visualizar_processos"),
+        ("gerenciar_financeiro", "visualizar_financeiro"),
+        ("gerenciar_equipe", "visualizar_equipe"),
+        ("gerenciar_atividades", "visualizar_atividades"),
+        ("gerenciar_clientes", "visualizar_clientes"),
+    ],
+)
+def test_permissao_gerenciar_inclui_visualizar(gerenciar, visualizar):
+    assert PermissaoBase(**{gerenciar: True}).model_dump()[visualizar] is True
+    assert PermissaoBase(**{gerenciar: False}).model_dump()[visualizar] is False
+
+
+ROTAS_CARGOS = [
+    ("get", "/cargos", None),
+    ("get", "/cargos/1", None),
+    ("post", "/cargos", {"nome_cargo": "Novo Cargo"}),
+    ("put", "/cargos/1", {"nome_cargo": "Outro Nome"}),
+    ("delete", "/cargos/1", None),
+]
+
+
+@pytest.mark.parametrize(("metodo", "rota", "corpo"), ROTAS_CARGOS)
+def test_rotas_de_cargos_exigem_autenticacao(client: TestClient, metodo, rota, corpo):
+    client.headers.pop("Authorization")
+
+    resposta = client.request(metodo, rota, json=corpo)
+
+    assert resposta.status_code == 401
+
+
+@pytest.mark.parametrize(("metodo", "rota", "corpo"), ROTAS_CARGOS[2:])
+def test_escrita_de_cargos_exige_configuracoes_sistema(
+    client: TestClient,
+    db_session: Session,
+    token_acesso,
+    funcionario_sem_permissao: Funcionario,
+    cargo_db: Cargo,
+    metodo,
+    rota,
+    corpo,
+):
+    usuario = funcionario_sem_permissao
+    usuario.cargo.permissao = {"visualizar_equipe": True, "gerenciar_site": True}
+    db_session.commit()
+    headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+    resposta = client.request(
+        metodo, rota.replace("/1", f"/{cargo_db.cargo_id}"), json=corpo, headers=headers
+    )
+
+    assert resposta.status_code == 403
+
+
+def test_leitura_de_cargos_exige_apenas_login(
+    client: TestClient, token_acesso, funcionario_sem_permissao: Funcionario
+):
+    usuario = funcionario_sem_permissao
+    headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+    assert client.get("/cargos", headers=headers).status_code == 200
+
+
+@pytest.mark.parametrize("permissao", ["configuracoes_sistema", "gerenciar_equipe"])
+def test_escrita_de_cargos_aceita_configuracoes_ou_gerenciar_equipe(
+    client: TestClient,
+    db_session: Session,
+    token_acesso,
+    funcionario_sem_permissao: Funcionario,
+    permissao,
+):
+    usuario = funcionario_sem_permissao
+    usuario.cargo.permissao = {permissao: True}
+    db_session.commit()
+    headers = {"Authorization": f"Bearer {token_acesso(usuario.funcionario_id, usuario.email)}"}
+
+    resposta = client.post("/cargos", json={"nome_cargo": "Cargo Novo"}, headers=headers)
+
+    assert resposta.status_code == 201

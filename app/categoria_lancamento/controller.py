@@ -8,7 +8,7 @@ from app.categoria_lancamento.schema import (
 )
 from app.categoria_lancamento.service import CategoriaLancamentoService
 from app.config.database import get_db
-from app.core.dependencies import obter_funcionario_atual
+from app.core.dependencies import exigir_permissao, obter_funcionario_atual
 
 router = APIRouter(
     prefix="/categorias-lancamento",
@@ -39,7 +39,12 @@ def buscar_categoria_por_id(categoria_id: int, db: Session = Depends(get_db)):
         raise _erro_http(e) from e
 
 
-@router.post("", response_model=CategoriaLancamentoResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=CategoriaLancamentoResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exigir_permissao("gerenciar_financeiro"))],
+)
 def criar_categoria(dados: CategoriaLancamentoCreate, db: Session = Depends(get_db)):
     try:
         return CategoriaLancamentoService(db).criar_categoria(dados)
@@ -47,7 +52,11 @@ def criar_categoria(dados: CategoriaLancamentoCreate, db: Session = Depends(get_
         raise _erro_http(e) from e
 
 
-@router.put("/{categoria_id}", response_model=CategoriaLancamentoResponse)
+@router.put(
+    "/{categoria_id}",
+    response_model=CategoriaLancamentoResponse,
+    dependencies=[Depends(exigir_permissao("gerenciar_financeiro"))],
+)
 def atualizar_categoria(
     categoria_id: int, dados: CategoriaLancamentoUpdate, db: Session = Depends(get_db)
 ):
@@ -57,7 +66,11 @@ def atualizar_categoria(
         raise _erro_http(e) from e
 
 
-@router.delete("/{categoria_id}", response_model=CategoriaLancamentoResponse)
+@router.delete(
+    "/{categoria_id}",
+    response_model=CategoriaLancamentoResponse,
+    dependencies=[Depends(exigir_permissao("gerenciar_financeiro"))],
+)
 def deletar_categoria(categoria_id: int, db: Session = Depends(get_db)):
     try:
         return CategoriaLancamentoService(db).deletar_categoria(categoria_id)

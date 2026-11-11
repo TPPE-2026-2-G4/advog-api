@@ -102,6 +102,7 @@ class MembroEquipePublicaResponse(BaseModel):
     cargo: str | None = None
     uf_oab: str | None = None
     numero_oab: str | None = None
+    foto_perfil_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

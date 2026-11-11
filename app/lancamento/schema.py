@@ -18,7 +18,7 @@ class LancamentoBase(BaseModel):
 
 
 class LancamentoCreate(LancamentoBase):
-    pass
+    rrule: str | None = Field(default=None, min_length=1, max_length=255)
 
 
 class LancamentoUpdate(BaseModel):
@@ -33,6 +33,7 @@ class LancamentoUpdate(BaseModel):
 
 class LancamentoResponse(LancamentoBase):
     lancamento_id: int
+    serie_id: str | None = None
     status: StatusLancamento
     data_pagamento: datetime | None = None
 
@@ -95,6 +96,7 @@ class LancamentoResumo(BaseModel):
 
 class LancamentoCalendarioResponse(BaseModel):
     lancamento_id: int
+    serie_id: str | None = None
     titulo: str
     descricao: str
     tipo: TipoLancamento

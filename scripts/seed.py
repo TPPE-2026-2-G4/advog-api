@@ -14,7 +14,12 @@ from app.atuacao.model import Atuacao  # noqa: E402
 from app.cargo.model import Cargo  # noqa: E402
 from app.cargo.schema import PermissaoBase  # noqa: E402
 from app.cliente.model import Cliente  # noqa: E402, F401
-from app.config.database import Base, SessionLocal, engine  # noqa: E402
+from app.config.database import (  # noqa: E402
+    Base,
+    SessionLocal,
+    engine,
+    garantir_colunas_schema,
+)
 from app.config.storage import S3_BUCKET_PRIVADO, S3_BUCKET_PUBLICO  # noqa: E402
 from app.core.seguranca import hash_senha  # noqa: E402
 from app.core.storage import garantir_bucket, salvar_arquivo  # noqa: E402
@@ -34,10 +39,12 @@ ETAPAS_CLIENTE = (
 )
 
 ETAPAS_KANBAN = ("Backlog", "Em Execução", "Revisão", "Finalizado")
+ETAPAS_KANBAN_OBRIGATORIAS = ("Backlog", "Finalizado")
 
 
 def seed() -> None:
     Base.metadata.create_all(bind=engine)
+    garantir_colunas_schema(engine)
     Permissao = PermissaoBase(**{campo: True for campo in PermissaoBase.model_fields}).model_dump()
     db = SessionLocal()
 
@@ -163,12 +170,19 @@ def seed() -> None:
         else:
             print("Informações institucionais já existem.")
 
-        nomes_kanban_existentes = {etapa.nome for etapa in db.query(EtapaKanban)}
-        db.add_all(
-            EtapaKanban(nome=nome, ordem=ordem)
-            for ordem, nome in enumerate(ETAPAS_KANBAN, start=1)
-            if nome not in nomes_kanban_existentes
-        )
+        etapas_kanban = db.query(EtapaKanban).all()
+        if not etapas_kanban:
+            db.add_all(
+                EtapaKanban(nome=nome, ordem=ordem)
+                for ordem, nome in enumerate(ETAPAS_KANBAN, start=1)
+            )
+        else:
+            nomes_kanban_existentes = {etapa.nome.lower() for etapa in etapas_kanban}
+            maior_ordem = max((etapa.ordem for etapa in etapas_kanban), default=0)
+            for nome in ETAPAS_KANBAN_OBRIGATORIAS:
+                if nome.lower() not in nomes_kanban_existentes:
+                    maior_ordem += 1
+                    db.add(EtapaKanban(nome=nome, ordem=maior_ordem))
 
         etapas_existentes = {etapa.etapa_id for etapa in db.query(EtapaCliente)}
         db.add_all(
