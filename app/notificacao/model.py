@@ -30,9 +30,9 @@ class Notificacao(Base):
         default=uuid.uuid4,
         index=True,
     )
-    usuario_id: Mapped[uuid.UUID] = mapped_column(
+    funcionario_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("usuarios.id", ondelete="CASCADE"),
+        ForeignKey("funcionarios.funcionario_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

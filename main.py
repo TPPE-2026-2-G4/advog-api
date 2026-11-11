@@ -34,6 +34,7 @@ from app.funcionario.controller import router as funcionario_router  # noqa: E40
 from app.health.controller import router as health_router  # noqa: E402
 from app.institucional.controller import router as institucional_router  # noqa: E402
 from app.lancamento.controller import router as lancamento_router  # noqa: E402
+from app.notificacao.controller import router as notificacao_router  # noqa: E402
 from app.processo.controller import router as processo_router  # noqa: E402
 from app.processo.service import ProcessoService  # noqa: E402
 from app.processo_movimentacao.model import ProcessoMovimentacao  # noqa: E402, F401
@@ -95,6 +96,7 @@ app.include_router(institucional_router)
 app.include_router(lancamento_router)
 app.include_router(categoria_lancamento_router)
 app.include_router(cliente_router)
+app.include_router(notificacao_router)
 app.include_router(processo_router)
 app.include_router(dashboard_router)
 app.include_router(health_router)

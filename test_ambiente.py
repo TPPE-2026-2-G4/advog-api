@@ -21,6 +21,7 @@ TABELAS_DO_DLD = {
     "funcionarios",
     "institucional",
     "lancamentos",
+    "notificacoes",
     "processos",
     "processos_arquivos",
     "processos_movimentacoes",

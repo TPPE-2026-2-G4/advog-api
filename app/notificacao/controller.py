@@ -36,7 +36,7 @@ RESPOSTAS_NOTIFICACAO: dict[int | str, dict[str, Any]] = {
 }
 
 
-def _extrair_usuario_id(usuario: Funcionario) -> uuid.UUID:
+def _extrair_funcionario_id(usuario: Funcionario) -> uuid.UUID:
     identificador = getattr(usuario, "id", None) or getattr(usuario, "funcionario_id", None)
     if isinstance(identificador, uuid.UUID):
         return identificador
@@ -51,7 +51,7 @@ def _traduzir_erro(erro: ValueError) -> HTTPException:
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(erro))
     if isinstance(erro, NotificacaoAcessoNegadoError):
         return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(erro))
-    return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(erro))
+    return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(erro))
 
 
 @router.get(
@@ -68,9 +68,9 @@ def listar_notificacoes(
     usuario: Funcionario = Depends(obter_funcionario_atual),
     service: NotificacaoService = Depends(get_notificacao_service),
 ) -> list[NotificacaoRead]:
-    usuario_id = _extrair_usuario_id(usuario)
+    funcionario_id = _extrair_funcionario_id(usuario)
     return service.listar_notificacoes(
-        usuario_id=usuario_id,
+        funcionario_id=funcionario_id,
         apenas_nao_lidas=apenas_nao_lidas,
         tipo=tipo,
         limite=limite,
@@ -88,8 +88,8 @@ def obter_contagem_nao_lidas(
     usuario: Funcionario = Depends(obter_funcionario_atual),
     service: NotificacaoService = Depends(get_notificacao_service),
 ) -> ContagemNaoLidasResponse:
-    usuario_id = _extrair_usuario_id(usuario)
-    return service.obter_contagem_nao_lidas(usuario_id)
+    funcionario_id = _extrair_funcionario_id(usuario)
+    return service.obter_contagem_nao_lidas(funcionario_id)
 
 
 @router.post(
@@ -120,8 +120,8 @@ def marcar_todas_como_lidas(
     usuario: Funcionario = Depends(obter_funcionario_atual),
     service: NotificacaoService = Depends(get_notificacao_service),
 ) -> dict[str, int]:
-    usuario_id = _extrair_usuario_id(usuario)
-    total_alterado = service.marcar_todas_como_lidas(usuario_id)
+    funcionario_id = _extrair_funcionario_id(usuario)
+    total_alterado = service.marcar_todas_como_lidas(funcionario_id)
     return {"alteradas": total_alterado}
 
 
@@ -136,8 +136,8 @@ def marcar_como_lida(
     usuario: Funcionario = Depends(obter_funcionario_atual),
     service: NotificacaoService = Depends(get_notificacao_service),
 ) -> NotificacaoRead:
-    usuario_id = _extrair_usuario_id(usuario)
+    funcionario_id = _extrair_funcionario_id(usuario)
     try:
-        return service.marcar_como_lida(notificacao_id, usuario_id)
+        return service.marcar_como_lida(notificacao_id, funcionario_id)
     except ValueError as erro:
         raise _traduzir_erro(erro) from erro

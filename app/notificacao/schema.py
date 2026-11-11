@@ -28,7 +28,7 @@ class NotificacaoBase(BaseModel):
 
 
 class NotificacaoCreate(NotificacaoBase):
-    usuario_id: uuid.UUID = Field(
+    funcionario_id: uuid.UUID = Field(
         ...,
         description="UUID do usuário destinatário da notificação",
     )
@@ -38,7 +38,7 @@ class NotificacaoRead(NotificacaoBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    usuario_id: uuid.UUID
+    funcionario_id: uuid.UUID
     lida: bool
     criado_em: datetime
 
