@@ -1,7 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.cliente.schema import ClienteCreate, ClienteFilter, ClienteResponse, ClienteUpdate
+from app.cliente.schema import (
+    ClienteCreate,
+    ClienteFilter,
+    ClientePaginadoFilter,
+    ClientePaginadoResponse,
+    ClienteResponse,
+    ClienteUpdate,
+)
 from app.cliente.service import ClienteNaoEncontradoError, ClienteService
 from app.config.database import get_db
 from app.config.limiter import limiter
@@ -24,6 +31,19 @@ def listar_clientes(
 ):
     service = ClienteService(db)
     return service.search_clientes(filters)
+
+
+@router.get(
+    "/paginado",
+    response_model=ClientePaginadoResponse,
+    dependencies=[LER_CLIENTES],
+)
+def listar_clientes_paginado(
+    filters: ClientePaginadoFilter = Depends(),
+    db: Session = Depends(get_db),
+):
+    service = ClienteService(db)
+    return service.search_clientes_paginado(filters)
 
 
 @router.get(
