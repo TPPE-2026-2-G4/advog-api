@@ -37,6 +37,14 @@ class ClienteResponse(ClienteBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ClientePaginadoResponse(BaseModel):
+    itens: list[ClienteResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class ClienteFilter:
     def __init__(
         self,
@@ -47,3 +55,17 @@ class ClienteFilter:
         self.busca = busca
         self.responsavel_id = responsavel_id
         self.etapa_id = etapa_id
+
+
+class ClientePaginadoFilter(ClienteFilter):
+    def __init__(
+        self,
+        busca: str | None = Query(None, description="Buscar por nome, email ou documento"),
+        responsavel_id: int | None = Query(None, description="Filtrar por responsável"),
+        etapa_id: int | None = Query(None, description="Filtrar por etapa"),
+        page: int = Query(1, ge=1, description="Página a ser retornada"),
+        page_size: int = Query(10, ge=1, le=100, description="Quantidade de itens por página"),
+    ):
+        super().__init__(busca=busca, responsavel_id=responsavel_id, etapa_id=etapa_id)
+        self.page = page
+        self.page_size = page_size

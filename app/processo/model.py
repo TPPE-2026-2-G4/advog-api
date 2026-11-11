@@ -22,7 +22,7 @@ class Processo(Base):
     )
     cnj: Mapped[str] = mapped_column(String(25), unique=True, index=True, nullable=False)
     titulo: Mapped[str] = mapped_column(String(100), nullable=False)
-    descricao: Mapped[str] = mapped_column(String(255), nullable=False)
+    descricao: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[StatusProcesso] = mapped_column(
         Enum(
             StatusProcesso,
@@ -39,6 +39,6 @@ class Processo(Base):
     cliente_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("clientes.cliente_id"), nullable=False
     )
-    funcionario_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("funcionarios.funcionario_id"), nullable=False
+    funcionario_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("funcionarios.funcionario_id"), nullable=True
     )

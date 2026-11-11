@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 STATUS_FINALIZADOS = [StatusProcesso.CONCLUIDO, StatusProcesso.ARQUIVADO]
 TAMANHO_MAXIMO_DOCUMENTO = 25 * 1024 * 1024  # 25MB
 EXTENSOES_PERMITIDAS = {"pdf", "docx", "doc", "png", "jpg", "jpeg"}
-CAMPOS_OBRIGATORIOS_ATUALIZACAO = ("descricao", "data_inicio", "data_prazo", "funcionario_id")
+CAMPOS_OBRIGATORIOS_ATUALIZACAO = ("data_inicio", "data_prazo")
 CARGOS_ADMINISTRADOR = ("administrador", "admin")
 
 

@@ -64,6 +64,32 @@ def garantir_colunas_schema(bind_engine: Engine = engine) -> None:
     except Exception:
         pass
 
+    _tornar_colunas_processo_opcionais(bind_engine)
+
+
+COLUNAS_OPCIONAIS_PROCESSOS = ("descricao", "funcionario_id")
+
+
+def _tornar_colunas_processo_opcionais(bind_engine: Engine) -> None:
+    """Remove o NOT NULL de colunas que passaram a ser opcionais em bancos já existentes.
+
+    O SQLite não suporta ALTER COLUMN; nele a restrição só some ao recriar o banco.
+    """
+    if bind_engine.dialect.name != "postgresql":
+        return
+
+    try:
+        inspector = inspect(bind_engine)
+        if not inspector.has_table("processos"):
+            return
+        colunas = {col["name"]: col for col in inspector.get_columns("processos")}
+        for nome in COLUNAS_OPCIONAIS_PROCESSOS:
+            if nome in colunas and not colunas[nome]["nullable"]:
+                with bind_engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE processos ALTER COLUMN {nome} DROP NOT NULL"))
+    except Exception:
+        pass
+
 
 def get_db():
     db = SessionLocal()
