@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -30,8 +30,8 @@ class Notificacao(Base):
         default=uuid.uuid4,
         index=True,
     )
-    funcionario_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    funcionario_id: Mapped[int] = mapped_column(
+        Integer,
         ForeignKey("funcionarios.funcionario_id", ondelete="CASCADE"),
         nullable=False,
         index=True,

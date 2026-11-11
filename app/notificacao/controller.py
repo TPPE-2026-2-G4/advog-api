@@ -36,13 +36,13 @@ RESPOSTAS_NOTIFICACAO: dict[int | str, dict[str, Any]] = {
 }
 
 
-def _extrair_funcionario_id(usuario: Funcionario) -> uuid.UUID:
-    identificador = getattr(usuario, "id", None) or getattr(usuario, "funcionario_id", None)
-    if isinstance(identificador, uuid.UUID):
+def _extrair_funcionario_id(usuario: Funcionario) -> int:
+    identificador = getattr(usuario, "funcionario_id", None)
+    if isinstance(identificador, int):
         return identificador
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Identificador de usuário inválido.",
+        detail="Identificador de funcionário inválido.",
     )
 
 

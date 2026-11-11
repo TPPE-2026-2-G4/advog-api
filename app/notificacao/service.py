@@ -25,7 +25,7 @@ class NotificacaoService:
 
     def listar_notificacoes(
         self,
-        funcionario_id: uuid.UUID,
+        funcionario_id: int,
         apenas_nao_lidas: bool = False,
         tipo: TipoNotificacao | None = None,
         limite: int = 50,
@@ -40,7 +40,7 @@ class NotificacaoService:
         )
         return [NotificacaoRead.model_validate(notificacao) for notificacao in notificacoes]
 
-    def obter_contagem_nao_lidas(self, funcionario_id: uuid.UUID) -> ContagemNaoLidasResponse:
+    def obter_contagem_nao_lidas(self, funcionario_id: int) -> ContagemNaoLidasResponse:
         total = self.repository.contar_nao_lidas(funcionario_id)
         return ContagemNaoLidasResponse(total_nao_lidas=total)
 
@@ -49,9 +49,7 @@ class NotificacaoService:
         nova_notificacao = self.repository.criar(notificacao)
         return NotificacaoRead.model_validate(nova_notificacao)
 
-    def marcar_como_lida(
-        self, notificacao_id: uuid.UUID, funcionario_id: uuid.UUID
-    ) -> NotificacaoRead:
+    def marcar_como_lida(self, notificacao_id: uuid.UUID, funcionario_id: int) -> NotificacaoRead:
         notificacao = self.repository.buscar_por_id(notificacao_id)
         if not notificacao:
             raise NotificacaoNaoEncontradaError("Notificação não encontrada.")
@@ -63,5 +61,5 @@ class NotificacaoService:
         notificacao.lida = True
         return NotificacaoRead.model_validate(notificacao)
 
-    def marcar_todas_como_lidas(self, funcionario_id: uuid.UUID) -> int:
+    def marcar_todas_como_lidas(self, funcionario_id: int) -> int:
         return self.repository.marcar_todas_como_lidas(funcionario_id)

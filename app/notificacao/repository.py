@@ -17,7 +17,7 @@ class NotificacaoRepository:
 
     def listar_por_usuario(
         self,
-        funcionario_id: uuid.UUID,
+        funcionario_id: int,
         apenas_nao_lidas: bool = False,
         tipo: TipoNotificacao | None = None,
         limite: int = 50,
@@ -37,7 +37,7 @@ class NotificacaoRepository:
         consulta = consulta.offset(offset).limit(limite)
         return list(self.db.scalars(consulta))
 
-    def contar_nao_lidas(self, funcionario_id: uuid.UUID) -> int:
+    def contar_nao_lidas(self, funcionario_id: int) -> int:
         consulta = (
             select(func.count(Notificacao.id))
             .where(Notificacao.funcionario_id == funcionario_id)
@@ -51,7 +51,7 @@ class NotificacaoRepository:
         self.db.refresh(notificacao)
         return notificacao
 
-    def marcar_como_lida(self, notificacao_id: uuid.UUID, funcionario_id: uuid.UUID) -> bool:
+    def marcar_como_lida(self, notificacao_id: uuid.UUID, funcionario_id: int) -> bool:
         comando = (
             update(Notificacao)
             .where(
@@ -64,7 +64,7 @@ class NotificacaoRepository:
         self.db.commit()
         return (resultado.rowcount or 0) > 0
 
-    def marcar_todas_como_lidas(self, funcionario_id: uuid.UUID) -> int:
+    def marcar_todas_como_lidas(self, funcionario_id: int) -> int:
         comando = (
             update(Notificacao)
             .where(

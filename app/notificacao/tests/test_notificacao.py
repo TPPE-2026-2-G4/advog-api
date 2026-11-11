@@ -30,8 +30,8 @@ from app.notificacao.service import (
 )
 from main import app
 
-funcionario_id_PRINCIPAL = uuid.UUID("a1111111-1111-1111-1111-111111111111")
-funcionario_id_SECUNDARIO = uuid.UUID("b2222222-2222-2222-2222-222222222222")
+funcionario_id_PRINCIPAL = 1
+funcionario_id_SECUNDARIO = 2
 
 NOTIFICACAO_ID_UM = uuid.UUID("c3333333-3333-3333-3333-333333333333")
 NOTIFICACAO_ID_DOIS = uuid.UUID("d4444444-4444-4444-4444-444444444444")
@@ -43,14 +43,14 @@ NOTIFICACAO_ID_INEXISTENTE = uuid.UUID("f9999999-9999-9999-9999-999999999999")
 @pytest.fixture
 def funcionario_autenticado() -> Funcionario:
     funcionario = Funcionario()
-    funcionario.__dict__["id"] = funcionario_id_PRINCIPAL
+    funcionario.__dict__["funcionario_id"] = funcionario_id_PRINCIPAL
     return funcionario
 
 
 @pytest.fixture
 def funcionario_terceiro_autenticado() -> Funcionario:
     funcionario = Funcionario()
-    funcionario.__dict__["id"] = funcionario_id_SECUNDARIO
+    funcionario.__dict__["funcionario_id"] = funcionario_id_SECUNDARIO
     return funcionario
 
 
@@ -323,7 +323,7 @@ class TestNotificacaoRepository:
 
         contagem_principal = repositorio.contar_nao_lidas(funcionario_id_PRINCIPAL)
         contagem_secundario = repositorio.contar_nao_lidas(funcionario_id_SECUNDARIO)
-        contagem_usuario_sem_notificacao = repositorio.contar_nao_lidas(uuid.uuid4())
+        contagem_usuario_sem_notificacao = repositorio.contar_nao_lidas(999)
 
         assert contagem_principal == 2
         assert contagem_secundario == 1
@@ -438,7 +438,7 @@ class TestNotificacaoService:
         db_session: Any,
         notificacoes_semeadas: list[Notificacao],
         notificacao_id: uuid.UUID,
-        funcionario_id: uuid.UUID,
+        funcionario_id: int,
         excecao_esperada: type[Exception] | None,
     ) -> None:
         servico = NotificacaoService(db_session)
@@ -464,22 +464,16 @@ class TestNotificacaoService:
 
 class TestNotificacaoController:
     def test_extrair_funcionario_id_sucesso_e_falha(self) -> None:
-        usuario_valido_com_id = Funcionario()
-        usuario_valido_com_id.__dict__["id"] = funcionario_id_PRINCIPAL
-
         usuario_valido_com_funcionario_id = Funcionario()
         usuario_valido_com_funcionario_id.__dict__["funcionario_id"] = funcionario_id_PRINCIPAL
 
-        usuario_invalido_sem_uuid = Funcionario()
-        usuario_invalido_sem_uuid.__dict__["funcionario_id"] = 123
-
-        assert _extrair_funcionario_id(usuario_valido_com_id) == funcionario_id_PRINCIPAL
         assert (
             _extrair_funcionario_id(usuario_valido_com_funcionario_id) == funcionario_id_PRINCIPAL
         )
 
+        usuario_invalido_sem_id = Funcionario()
         with pytest.raises(HTTPException) as excecao_info:
-            _extrair_funcionario_id(usuario_invalido_sem_uuid)
+            _extrair_funcionario_id(usuario_invalido_sem_id)
         assert excecao_info.value.status_code == 401
 
     @pytest.mark.parametrize(
@@ -572,7 +566,7 @@ class TestNotificacaoController:
             "titulo": "Nova Notificação Endpoint",
             "mensagem": "Criada com sucesso via HTTP.",
             "tipo": "NOVO_CLIENTE",
-            "funcionario_id": str(funcionario_id_PRINCIPAL),
+            "funcionario_id": funcionario_id_PRINCIPAL,
         }
 
         resposta = client.post("/notificacoes", json=payload)
@@ -644,7 +638,7 @@ class TestNotificacaoController:
                 "titulo": "Nova notificação",
                 "mensagem": "Mensagem de teste",
                 "tipo": "SISTEMA",
-                "funcionario_id": str(funcionario_id_PRINCIPAL),
+                "funcionario_id": funcionario_id_PRINCIPAL,
             },
         )
 
