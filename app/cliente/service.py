@@ -1,8 +1,17 @@
+from math import ceil
+
 from sqlalchemy.orm import Session
 
 from app.cliente.model import Cliente
 from app.cliente.repository import ClienteRepository
-from app.cliente.schema import ClienteCreate, ClienteFilter, ClienteUpdate
+from app.cliente.schema import (
+    ClienteCreate,
+    ClienteFilter,
+    ClientePaginadoFilter,
+    ClientePaginadoResponse,
+    ClienteResponse,
+    ClienteUpdate,
+)
 
 
 class ClienteNaoEncontradoError(Exception):
@@ -18,6 +27,22 @@ class ClienteService:
             busca=filters.busca,
             responsavel_id=filters.responsavel_id,
             etapa_id=filters.etapa_id,
+        )
+
+    def search_clientes_paginado(self, filters: ClientePaginadoFilter) -> ClientePaginadoResponse:
+        itens, total = self.repository.find_paginated_by_filters(
+            page=filters.page,
+            page_size=filters.page_size,
+            busca=filters.busca,
+            responsavel_id=filters.responsavel_id,
+            etapa_id=filters.etapa_id,
+        )
+        return ClientePaginadoResponse(
+            itens=[ClienteResponse.model_validate(cliente) for cliente in itens],
+            total=total,
+            page=filters.page,
+            page_size=filters.page_size,
+            total_pages=max(1, ceil(total / filters.page_size)),
         )
 
     def create_cliente(self, cliente_data: ClienteCreate) -> Cliente:

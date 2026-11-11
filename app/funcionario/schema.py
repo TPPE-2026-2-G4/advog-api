@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import (
     AliasChoices,
     BaseModel,
@@ -125,3 +127,33 @@ class FuncionarioPerfilResponse(FuncionarioResponse):
     @classmethod
     def _default_receber_emails(cls, valor: bool | None) -> bool:
         return True if valor is None else valor
+
+
+class FuncionarioInstitucionalResponse(BaseModel):
+    """Dados públicos de um membro da equipe, exibidos nos cards da página institucional.
+
+    Mantém os mesmos nomes de campo que o frontend já lê (``funcionario_id``, ``nome``,
+    ``cargo``, ``atuacao``, ``uf_oab``, ``numero_oab`` e ``foto_perfil_url``), mas expõe
+    ``cargo`` e ``atuacao`` apenas como o nome (texto) e omite e-mail, status, permissões
+    e demais dados internos.
+    """
+
+    funcionario_id: int
+    nome: str
+    cargo: str | None = None
+    atuacao: str | None = None
+    uf_oab: str | None = None
+    numero_oab: str | None = None
+    foto_perfil_url: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("cargo", mode="before")
+    @classmethod
+    def _extrair_nome_cargo(cls, cargo: Any) -> str | None:
+        return getattr(cargo, "nome_cargo", cargo)
+
+    @field_validator("atuacao", mode="before")
+    @classmethod
+    def _extrair_nome_atuacao(cls, atuacao: Any) -> str | None:
+        return getattr(atuacao, "nome", atuacao)

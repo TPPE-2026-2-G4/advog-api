@@ -5,12 +5,12 @@ from app.atuacao.schema import AtuacaoResponse
 from app.atuacao.service import AtuacaoService
 from app.config.database import get_db
 from app.core.dependencies import exigir_permissao
+from app.funcionario.schema import FuncionarioInstitucionalResponse
 from app.funcionario.service import FuncionarioService
 from app.institucional.schema import (
     InstitucionalResponse,
     InstitucionalUpdate,
     InstitucionalUploadResponse,
-    MembroEquipePublicaResponse,
 )
 from app.institucional.service import InstitucionalService, UploadInvalidoError
 
@@ -28,7 +28,7 @@ def obter_configuracoes(
     return service.obter_configuracoes()
 
 
-@router.get("/equipe", response_model=list[MembroEquipePublicaResponse])
+@router.get("/equipe", response_model=list[FuncionarioInstitucionalResponse])
 def obter_equipe_publica(db: Session = Depends(get_db)):
     service = FuncionarioService(db)
     return service.buscar_visiveis_institucional()

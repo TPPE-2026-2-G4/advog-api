@@ -397,7 +397,7 @@ def test_controller_criar_processo_sem_cliente(
     assert response.status_code == 422
 
 
-@pytest.mark.parametrize("campo", ["descricao", "data_inicio", "data_prazo", "funcionario_id"])
+@pytest.mark.parametrize("campo", ["data_inicio", "data_prazo"])
 def test_controller_criar_processo_sem_campo_obrigatorio_retorna_422(
     client,
     usuario_processos,
@@ -1098,7 +1098,7 @@ def test_controller_obter_resumo_processos_sem_autenticacao_e_sem_permissao(
     assert resp_403.status_code == 403
 
 
-@pytest.mark.parametrize("campo", ["descricao", "data_inicio", "data_prazo", "funcionario_id"])
+@pytest.mark.parametrize("campo", ["data_inicio", "data_prazo"])
 def test_controller_atualizar_processo_campo_obrigatorio_nulo_retorna_422(
     client, db_session, usuario_processos, cliente_processo, funcionario_responsavel, campo
 ):
@@ -2020,10 +2020,7 @@ def test_schema_limite_maximo_dos_campos(campo, tamanho):
         ProcessoCreate(**dados)
 
 
-@pytest.mark.parametrize(
-    "campo",
-    ["descricao", "data_inicio", "data_prazo", "funcionario_id"],
-)
+@pytest.mark.parametrize("campo", ["data_inicio", "data_prazo"])
 def test_schema_campos_obrigatorios_nao_aceitam_nulo_nem_ausencia(campo):
     dados = processo_valido()
     dados[campo] = None
@@ -2033,6 +2030,49 @@ def test_schema_campos_obrigatorios_nao_aceitam_nulo_nem_ausencia(campo):
     dados.pop(campo)
     with pytest.raises(ValidationError):
         ProcessoCreate(**dados)
+
+
+@pytest.mark.parametrize("campo", ["descricao", "funcionario_id"])
+def test_schema_campos_opcionais_aceitam_nulo_e_ausencia(campo):
+    dados = processo_valido()
+    dados[campo] = None
+    assert getattr(ProcessoCreate(**dados), campo) is None
+
+    dados.pop(campo)
+    assert getattr(ProcessoCreate(**dados), campo) is None
+
+
+@pytest.mark.parametrize("campo", ["descricao", "funcionario_id"])
+def test_controller_atualizar_processo_permite_limpar_campo_opcional(
+    client, db_session, usuario_processos, cliente_processo, funcionario_responsavel, campo
+):
+    _, token = usuario_processos
+    processo = criar_processo(
+        db_session, cliente_processo.cliente_id, funcionario_responsavel.funcionario_id
+    )
+
+    response = client.patch(
+        f"/processos/{processo.processo_id}", json={campo: None}, headers=auth_header(token)
+    )
+
+    assert response.status_code == 200
+    assert response.json()[campo] is None
+
+
+def test_controller_criar_processo_sem_descricao_e_funcionario(
+    client, db_session, usuario_processos, cliente_processo
+):
+    _, token = usuario_processos
+    dados = processo_valido()
+    dados["cliente_id"] = cliente_processo.cliente_id
+    dados.pop("descricao")
+    dados.pop("funcionario_id")
+
+    response = client.post("/processos/", json=dados, headers=auth_header(token))
+
+    assert response.status_code == 201
+    assert response.json()["descricao"] is None
+    assert response.json()["funcionario_id"] is None
 
 
 def test_schema_data_realizado_pode_ser_nula():
@@ -2428,7 +2468,7 @@ def test_service_atualizar_processo_sem_mudar_status_nao_registra_movimentacao()
     service.repository.registrar_movimentacao.assert_not_called()
 
 
-@pytest.mark.parametrize("campo", ["descricao", "data_inicio", "data_prazo", "funcionario_id"])
+@pytest.mark.parametrize("campo", ["data_inicio", "data_prazo"])
 def test_service_atualizar_processo_campo_obrigatorio_nulo_lanca_erro(campo):
     service = criar_service()
     service.repository.buscar_por_id.return_value = MagicMock(spec=Processo)

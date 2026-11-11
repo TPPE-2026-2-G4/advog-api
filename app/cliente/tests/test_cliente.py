@@ -76,6 +76,130 @@ def test_listar_clientes():
     assert len(data) == 2
 
 
+def _criar_clientes_extras(quantidade: int) -> None:
+    db = SessionLocal()
+    for indice in range(quantidade):
+        db.add(
+            Cliente(
+                nome=f"Extra {indice}",
+                telefone="(33) 93333-3333",
+                email=f"extra{indice}@teste.com",
+                ultima_interacao=datetime(2026, 3, 1),
+                responsavel_id=3,
+                etapa_id=3,
+            )
+        )
+    db.commit()
+    db.close()
+
+
+def test_listar_clientes_paginado_retorna_metadados_e_ordem_decrescente():
+    _criar_clientes_extras(3)
+
+    response = client.get("/clientes/paginado?page=1&page_size=2")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 5
+    assert data["page"] == 1
+    assert data["page_size"] == 2
+    assert data["total_pages"] == 3
+    assert len(data["itens"]) == 2
+    ids = [item["cliente_id"] for item in data["itens"]]
+    assert ids == sorted(ids, reverse=True)
+
+
+def test_listar_clientes_paginado_ultima_pagina_tem_itens_restantes():
+    _criar_clientes_extras(3)
+
+    pagina_1 = client.get("/clientes/paginado?page=1&page_size=2").json()
+    pagina_3 = client.get("/clientes/paginado?page=3&page_size=2").json()
+    pagina_4 = client.get("/clientes/paginado?page=4&page_size=2").json()
+
+    assert len(pagina_3["itens"]) == 1
+    assert pagina_4["itens"] == []
+    assert pagina_4["total"] == 5
+    ids_pagina_1 = {item["cliente_id"] for item in pagina_1["itens"]}
+    assert pagina_3["itens"][0]["cliente_id"] not in ids_pagina_1
+
+
+def test_listar_clientes_paginado_aplica_filtros_antes_de_paginar():
+    _criar_clientes_extras(3)
+
+    response = client.get("/clientes/paginado?busca=Extra&etapa_id=3&page_size=2")
+
+    data = response.json()
+    assert data["total"] == 3
+    assert data["total_pages"] == 2
+    assert all(item["nome"].startswith("Extra") for item in data["itens"])
+
+    response = client.get("/clientes/paginado?responsavel_id=1")
+    assert response.json()["total"] == 1
+
+
+@pytest.mark.parametrize(
+    "busca",
+    ["123.456.789-00", "12345678900", "123456789", "123 456"],
+)
+def test_busca_por_documento_ignora_pontuacao(busca):
+    db = SessionLocal()
+    db.add(
+        Cliente(
+            nome="Com Máscara",
+            telefone="(44) 94444-4444",
+            email="mascara@teste.com",
+            documento="123.456.789-00",
+            ultima_interacao=datetime(2026, 3, 1),
+            etapa_id=1,
+        )
+    )
+    db.commit()
+    db.close()
+
+    nomes = [i["nome"] for i in client.get(f"/clientes/paginado?busca={busca}").json()["itens"]]
+
+    assert "Com Máscara" in nomes
+
+
+def test_busca_por_documento_formatado_encontra_documento_sem_mascara():
+    nomes = [
+        i["nome"] for i in client.get("/clientes/paginado?busca=123.456.789-01").json()["itens"]
+    ]
+
+    assert nomes == ["Cliente Teste 1"]
+
+
+def test_busca_com_texto_e_digitos_nao_vira_busca_de_documento():
+    # "1" aparece em ambos os documentos, mas "Teste 1" é busca por nome, não por documento.
+    nomes = [i["nome"] for i in client.get("/clientes/paginado?busca=Teste 1").json()["itens"]]
+
+    assert nomes == ["Cliente Teste 1"]
+
+
+def test_listar_clientes_paginado_sem_resultados_tem_uma_pagina():
+    response = client.get("/clientes/paginado?busca=inexistente")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "itens": [],
+        "total": 0,
+        "page": 1,
+        "page_size": 10,
+        "total_pages": 1,
+    }
+
+
+@pytest.mark.parametrize("query", ["page=0", "page_size=0", "page_size=101"])
+def test_listar_clientes_paginado_rejeita_parametros_invalidos(query):
+    assert client.get(f"/clientes/paginado?{query}").status_code == 422
+
+
+def test_listar_clientes_paginado_exige_autenticacao():
+    app.dependency_overrides.pop(obter_funcionario_atual, None)
+
+    assert client.get("/clientes/paginado").status_code == 401
+
+
 def test_filtrar_clientes_por_busca_nome():
     response = client.get("/clientes/?busca=Teste 1")
     assert response.status_code == 200

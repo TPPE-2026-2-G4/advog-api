@@ -78,3 +78,84 @@ def test_banco_reconecta_automaticamente_apos_desconexao_simulada(tmp_path):
     with engine.connect() as conn2:
         res2 = conn2.execute(text("SELECT 1")).scalar()
         assert res2 == 1
+
+
+def _engine_postgres_falso(colunas: list[dict], tem_tabela: bool = True):
+    from unittest.mock import MagicMock
+
+    engine = MagicMock()
+    engine.dialect.name = "postgresql"
+    inspetor = MagicMock()
+    inspetor.has_table.return_value = tem_tabela
+    inspetor.get_columns.return_value = colunas
+    return engine, inspetor
+
+
+def test_tornar_colunas_processo_opcionais_remove_not_null_no_postgres():
+    from unittest.mock import patch
+
+    from app.config.database import _tornar_colunas_processo_opcionais
+
+    engine, inspetor = _engine_postgres_falso(
+        [
+            {"name": "descricao", "nullable": False},
+            {"name": "funcionario_id", "nullable": False},
+        ]
+    )
+
+    with patch("app.config.database.inspect", return_value=inspetor):
+        _tornar_colunas_processo_opcionais(engine)
+
+    comandos = [
+        str(chamada.args[0])
+        for chamada in engine.begin.return_value.__enter__.return_value.execute.call_args_list
+    ]
+    assert comandos == [
+        "ALTER TABLE processos ALTER COLUMN descricao DROP NOT NULL",
+        "ALTER TABLE processos ALTER COLUMN funcionario_id DROP NOT NULL",
+    ]
+
+
+def test_tornar_colunas_processo_opcionais_ignora_colunas_ja_opcionais():
+    from unittest.mock import patch
+
+    from app.config.database import _tornar_colunas_processo_opcionais
+
+    engine, inspetor = _engine_postgres_falso(
+        [
+            {"name": "descricao", "nullable": True},
+            {"name": "funcionario_id", "nullable": True},
+        ]
+    )
+
+    with patch("app.config.database.inspect", return_value=inspetor):
+        _tornar_colunas_processo_opcionais(engine)
+
+    engine.begin.assert_not_called()
+
+
+def test_tornar_colunas_processo_opcionais_ignora_sqlite_e_tabela_ausente():
+    from unittest.mock import MagicMock, patch
+
+    from app.config.database import _tornar_colunas_processo_opcionais
+
+    sqlite = MagicMock()
+    sqlite.dialect.name = "sqlite"
+    _tornar_colunas_processo_opcionais(sqlite)
+    sqlite.begin.assert_not_called()
+
+    engine, inspetor = _engine_postgres_falso([], tem_tabela=False)
+    with patch("app.config.database.inspect", return_value=inspetor):
+        _tornar_colunas_processo_opcionais(engine)
+    engine.begin.assert_not_called()
+
+
+def test_tornar_colunas_processo_opcionais_nao_propaga_erros():
+    from unittest.mock import patch
+
+    from app.config.database import _tornar_colunas_processo_opcionais
+
+    engine, _ = _engine_postgres_falso([])
+
+    with patch("app.config.database.inspect", side_effect=RuntimeError("falha")):
+        _tornar_colunas_processo_opcionais(engine)

@@ -9,7 +9,7 @@ from app.processo.model import StatusProcesso
 class ProcessoBase(BaseModel):
     cnj: str = Field(max_length=25)
     titulo: str = Field(max_length=100)
-    descricao: str = Field(max_length=255)
+    descricao: str | None = Field(default=None, max_length=255)
     status: StatusProcesso = StatusProcesso.EM_ANALISE
     tribunal: str = Field(max_length=100)
     area: str = Field(max_length=100)
@@ -17,7 +17,7 @@ class ProcessoBase(BaseModel):
     data_realizado: datetime | None = None
     data_prazo: datetime
     cliente_id: int
-    funcionario_id: int
+    funcionario_id: int | None = None
 
 
 class ProcessoCreate(ProcessoBase):

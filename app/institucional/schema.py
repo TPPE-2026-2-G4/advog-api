@@ -1,6 +1,5 @@
 import re
 from datetime import datetime
-from typing import Any, cast
 
 from pydantic import (
     BaseModel,
@@ -95,20 +94,3 @@ class InstitucionalResponse(InstitucionalBase):
 class InstitucionalUploadResponse(BaseModel):
     url: str
     warning: str | None = None
-
-
-class MembroEquipePublicaResponse(BaseModel):
-    nome: str
-    cargo: str | None = None
-    uf_oab: str | None = None
-    numero_oab: str | None = None
-    foto_perfil_url: str | None = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-    @field_validator("cargo", mode="before")
-    @classmethod
-    def _extrair_nome_cargo(cls, cargo_ou_objeto: Any) -> str | None:
-        if hasattr(cargo_ou_objeto, "nome_cargo"):
-            return cargo_ou_objeto.nome_cargo
-        return cast(str | None, cargo_ou_objeto)

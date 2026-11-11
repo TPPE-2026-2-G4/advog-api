@@ -1,4 +1,5 @@
 import io
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,6 +13,7 @@ from app.arquivo.repository import ArquivoRepository
 from app.cargo.model import Cargo
 from app.core.seguranca import criar_token_acesso
 from app.funcionario.model import Funcionario, StatusFuncionario
+from app.funcionario.schema import FuncionarioInstitucionalResponse
 from app.funcionario.service import FuncionarioService
 from app.institucional.model import Institucional
 from app.institucional.repository import (
@@ -22,7 +24,6 @@ from app.institucional.schema import (
     InstitucionalBase,
     InstitucionalResponse,
     InstitucionalUpdate,
-    MembroEquipePublicaResponse,
 )
 from app.institucional.service import InstitucionalService, UploadInvalidoError
 
@@ -136,7 +137,16 @@ class TestObterInstitucionalController:
         dados = response.json()
         assert len(dados) == 1
         assert dados[0]["nome"] == "Dr. Alexandre"
-        assert "exibicaoInstitucional" not in dados[0]
+        assert set(dados[0]) == {
+            "funcionario_id",
+            "nome",
+            "cargo",
+            "atuacao",
+            "uf_oab",
+            "numero_oab",
+            "foto_perfil_url",
+        }
+        assert isinstance(dados[0]["cargo"], str)
 
 
 class TestAtualizarInstitucionalController:
@@ -642,9 +652,31 @@ def test_schema_institucional_validador_entrada_nao_string():
         InstitucionalUpdate(email=12345)  # type: ignore
 
 
-def test_membro_equipe_publica_schema_cargo_string_direta():
-    membro = MembroEquipePublicaResponse(nome="Dr. Pedro", cargo="Advogado Sênior")
+def test_funcionario_institucional_schema_cargo_e_atuacao_em_texto():
+    membro = FuncionarioInstitucionalResponse(
+        funcionario_id=1, nome="Dr. Pedro", cargo="Advogado Sênior", atuacao="Direito Civil"
+    )
     assert membro.cargo == "Advogado Sênior"
+    assert membro.atuacao == "Direito Civil"
+
+
+def test_funcionario_institucional_schema_extrai_nome_de_objetos():
+    funcionario = SimpleNamespace(
+        funcionario_id=2,
+        nome="Dra. Ana",
+        cargo=SimpleNamespace(nome_cargo="Sócia"),
+        atuacao=SimpleNamespace(nome="Direito Trabalhista"),
+        uf_oab="SP",
+        numero_oab="12345",
+        foto_perfil_url=None,
+        email="ana@teste.com",
+    )
+
+    membro = FuncionarioInstitucionalResponse.model_validate(funcionario)
+
+    assert membro.cargo == "Sócia"
+    assert membro.atuacao == "Direito Trabalhista"
+    assert "email" not in membro.model_dump()
 
 
 def _gerar_imagem_bytes(
