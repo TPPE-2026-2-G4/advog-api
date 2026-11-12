@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -23,6 +23,9 @@ class TipoNotificacao(StrEnum):
 
 class Notificacao(Base):
     __tablename__ = "notificacoes"
+    __table_args__ = (
+        UniqueConstraint("funcionario_id", "chave", name="uq_notificacao_funcionario_chave"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -46,6 +49,9 @@ class Notificacao(Base):
     )
     lida: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     link_destino: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Identifica o fato que gerou o aviso (ex.: "prazo:processo:12:2026-11-20:VENCIMENTO_1D").
+    # Evita avisar a mesma pessoa duas vezes pelo mesmo motivo quando o job roda de novo.
+    chave: Mapped[str | None] = mapped_column(String(160), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

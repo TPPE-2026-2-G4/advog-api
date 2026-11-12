@@ -159,3 +159,30 @@ def test_tornar_colunas_processo_opcionais_nao_propaga_erros():
 
     with patch("app.config.database.inspect", side_effect=RuntimeError("falha")):
         _tornar_colunas_processo_opcionais(engine)
+
+
+def test_garantir_colunas_schema_acrescenta_colunas_novas_em_banco_antigo(tmp_path):
+    from sqlalchemy import create_engine, inspect, text
+
+    from app.config.database import garantir_colunas_schema
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'antigo.sqlite'}")
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE funcionarios (funcionario_id INTEGER PRIMARY KEY)"))
+        conn.execute(text("CREATE TABLE institucional (institucional_id INTEGER PRIMARY KEY)"))
+        conn.execute(
+            text("CREATE TABLE notificacoes (id INTEGER PRIMARY KEY, funcionario_id INTEGER)")
+        )
+
+    garantir_colunas_schema(engine)
+    garantir_colunas_schema(engine)  # rodar de novo não pode falhar nem duplicar
+
+    inspetor = inspect(engine)
+    funcionarios = {c["name"] for c in inspetor.get_columns("funcionarios")}
+    assert "receber_emails" in funcionarios
+    institucional = {c["name"] for c in inspetor.get_columns("institucional")}
+    assert {"dias_prazo_proximo", "dias_processo_critico"} <= institucional
+    assert "chave" in {c["name"] for c in inspetor.get_columns("notificacoes")}
+    assert "uq_notificacao_funcionario_chave" in {
+        i["name"] for i in inspetor.get_indexes("notificacoes")
+    }

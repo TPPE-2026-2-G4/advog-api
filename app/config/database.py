@@ -48,21 +48,45 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
+# Colunas acrescentadas depois da criação das tabelas: (tabela, coluna, definição SQL).
+COLUNAS_ADICIONADAS = (
+    ("funcionarios", "receber_emails", "BOOLEAN NOT NULL DEFAULT TRUE"),
+    ("institucional", "dias_prazo_proximo", "INTEGER NOT NULL DEFAULT 15"),
+    ("institucional", "dias_processo_critico", "INTEGER NOT NULL DEFAULT 15"),
+    ("notificacoes", "chave", "VARCHAR(160)"),
+)
+
+INDICES_ADICIONADOS = (
+    (
+        "notificacoes",
+        "uq_notificacao_funcionario_chave",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_notificacao_funcionario_chave "
+        "ON notificacoes (funcionario_id, chave)",
+    ),
+)
+
+
 def garantir_colunas_schema(bind_engine: Engine = engine) -> None:
-    try:
-        inspector = inspect(bind_engine)
-        if inspector.has_table("funcionarios"):
-            colunas = {col["name"] for col in inspector.get_columns("funcionarios")}
-            if "receber_emails" not in colunas:
+    """Acrescenta em bancos já existentes as colunas/índices criados depois (sem migração)."""
+    for tabela, coluna, definicao in COLUNAS_ADICIONADAS:
+        try:
+            inspector = inspect(bind_engine)
+            if not inspector.has_table(tabela):
+                continue
+            colunas = {col["name"] for col in inspector.get_columns(tabela)}
+            if coluna not in colunas:
                 with bind_engine.begin() as conn:
-                    conn.execute(
-                        text(
-                            "ALTER TABLE funcionarios "
-                            "ADD COLUMN receber_emails BOOLEAN NOT NULL DEFAULT TRUE"
-                        )
-                    )
-    except Exception:
-        pass
+                    conn.execute(text(f"ALTER TABLE {tabela} ADD COLUMN {coluna} {definicao}"))
+        except Exception:
+            pass
+
+    for tabela, _nome, comando in INDICES_ADICIONADOS:
+        try:
+            if inspect(bind_engine).has_table(tabela):
+                with bind_engine.begin() as conn:
+                    conn.execute(text(comando))
+        except Exception:
+            pass
 
     _tornar_colunas_processo_opcionais(bind_engine)
 

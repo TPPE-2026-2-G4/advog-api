@@ -4,10 +4,14 @@ from sqlalchemy.orm import Session
 from app.atuacao.schema import AtuacaoResponse
 from app.atuacao.service import AtuacaoService
 from app.config.database import get_db
-from app.core.dependencies import exigir_permissao
+from app.core.dependencies import exigir_permissao, obter_funcionario_atual
+from app.funcionario.model import Funcionario
 from app.funcionario.schema import FuncionarioInstitucionalResponse
 from app.funcionario.service import FuncionarioService
+from app.institucional.repository import InstitucionalNaoEncontradoError
 from app.institucional.schema import (
+    AlertasConfigResponse,
+    AlertasConfigUpdate,
     InstitucionalResponse,
     InstitucionalUpdate,
     InstitucionalUploadResponse,
@@ -38,6 +42,30 @@ def obter_equipe_publica(db: Session = Depends(get_db)):
 def obter_atuacoes_publicas(db: Session = Depends(get_db)):
     service = AtuacaoService(db)
     return service.buscar_visiveis_institucional()
+
+
+@router.get("/alertas", response_model=AlertasConfigResponse)
+def obter_configuracao_de_alertas(
+    _: Funcionario = Depends(obter_funcionario_atual),
+    service: InstitucionalService = Depends(obter_institucional_service),
+):
+    return service.obter_configuracao_de_alertas()
+
+
+@router.patch(
+    "/alertas",
+    response_model=AlertasConfigResponse,
+    summary="Definir antecedência dos prazos e dias para um processo ficar crítico",
+    dependencies=[Depends(exigir_permissao("configuracoes_sistema"))],
+)
+def atualizar_configuracao_de_alertas(
+    dados: AlertasConfigUpdate,
+    service: InstitucionalService = Depends(obter_institucional_service),
+):
+    try:
+        return service.atualizar_configuracao_de_alertas(dados.model_dump(exclude_none=True))
+    except InstitucionalNaoEncontradoError as erro:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(erro)) from erro
 
 
 @router.put(

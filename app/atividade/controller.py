@@ -68,10 +68,12 @@ def _traduzir_erro(erro: ValueError) -> HTTPException:
     responses=RESPOSTAS_ESCRITA,
 )
 def criar_atividade(
-    dados: AtividadeCreate, service: AtividadeService = Depends(get_atividade_service)
+    dados: AtividadeCreate,
+    service: AtividadeService = Depends(get_atividade_service),
+    usuario: Funcionario = Depends(obter_funcionario_atual),
 ):
     try:
-        return service.criar_atividade(dados)
+        return service.criar_atividade(dados, ator_id=usuario.funcionario_id)
     except ValueError as erro:
         raise _traduzir_erro(erro) from erro
 
@@ -199,9 +201,10 @@ def atualizar_atividade(
     atividade_id: int,
     dados: AtividadeUpdate,
     service: AtividadeService = Depends(get_atividade_service),
+    usuario: Funcionario = Depends(obter_funcionario_atual),
 ):
     try:
-        return service.atualizar_atividade(atividade_id, dados)
+        return service.atualizar_atividade(atividade_id, dados, ator_id=usuario.funcionario_id)
     except ValueError as erro:
         raise _traduzir_erro(erro) from erro
 

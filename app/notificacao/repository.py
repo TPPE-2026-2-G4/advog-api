@@ -2,6 +2,7 @@ import uuid
 from typing import cast
 
 from sqlalchemy import CursorResult, func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.notificacao.model import Notificacao, TipoNotificacao
@@ -50,6 +51,42 @@ class NotificacaoRepository:
         self.db.commit()
         self.db.refresh(notificacao)
         return notificacao
+
+    def chaves_existentes(
+        self, funcionario_ids: set[int], chaves: set[str]
+    ) -> set[tuple[int, str]]:
+        """Pares (funcionario_id, chave) que já foram avisados."""
+        existentes: set[tuple[int, str]] = set()
+        if not funcionario_ids or not chaves:
+            return existentes
+        lista = sorted(chaves)
+        for inicio in range(0, len(lista), 500):
+            consulta = select(Notificacao.funcionario_id, Notificacao.chave).where(
+                Notificacao.funcionario_id.in_(funcionario_ids),
+                Notificacao.chave.in_(lista[inicio : inicio + 500]),
+            )
+            existentes.update((fid, chave) for fid, chave in self.db.execute(consulta).all())
+        return existentes
+
+    def criar_varias(self, notificacoes: list[Notificacao]) -> int:
+        """Grava as notificações de uma vez; se houver conflito de chave, grava uma a uma."""
+        if not notificacoes:
+            return 0
+        try:
+            self.db.add_all(notificacoes)
+            self.db.commit()
+            return len(notificacoes)
+        except IntegrityError:
+            self.db.rollback()
+        criadas = 0
+        for notificacao in notificacoes:
+            try:
+                self.db.add(notificacao)
+                self.db.commit()
+                criadas += 1
+            except IntegrityError:
+                self.db.rollback()  # outra execução já avisou esta pessoa sobre o mesmo fato
+        return criadas
 
     def marcar_como_lida(self, notificacao_id: uuid.UUID, funcionario_id: int) -> bool:
         comando = (
