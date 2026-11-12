@@ -12,6 +12,7 @@ from app.cliente.schema import (
     ClienteResponse,
     ClienteUpdate,
 )
+from app.notificacao.eventos import NotificacaoEventos
 
 
 class ClienteNaoEncontradoError(Exception):
@@ -21,6 +22,7 @@ class ClienteNaoEncontradoError(Exception):
 class ClienteService:
     def __init__(self, db: Session):
         self.repository = ClienteRepository(db)
+        self.eventos = NotificacaoEventos(db)
 
     def search_clientes(self, filters: ClienteFilter) -> list[Cliente]:
         return self.repository.find_all_by_filters(
@@ -46,7 +48,9 @@ class ClienteService:
         )
 
     def create_cliente(self, cliente_data: ClienteCreate) -> Cliente:
-        return self.repository.create(cliente_data)
+        cliente = self.repository.create(cliente_data)
+        self.eventos.cliente_criado(cliente)
+        return cliente
 
     def get_cliente_by_id(self, cliente_id: int) -> Cliente:
         cliente = self.repository.get_by_id(cliente_id)
@@ -54,10 +58,16 @@ class ClienteService:
             raise ClienteNaoEncontradoError("Cliente não encontrado")
         return cliente
 
-    def update_cliente(self, cliente_id: int, cliente_data: ClienteUpdate) -> Cliente:
+    def update_cliente(
+        self, cliente_id: int, cliente_data: ClienteUpdate, ator_id: int | None = None
+    ) -> Cliente:
+        existente = self.repository.get_by_id(cliente_id)
+        responsavel_anterior = existente.responsavel_id if existente else None
         cliente = self.repository.update(cliente_id, cliente_data.model_dump(exclude_unset=True))
         if not cliente:
             raise ClienteNaoEncontradoError("Cliente não encontrado")
+        if cliente.responsavel_id is not None and cliente.responsavel_id != responsavel_anterior:
+            self.eventos.cliente_atribuido(cliente, ator_id)
         return cliente
 
     def delete_cliente(self, cliente_id: int) -> bool:

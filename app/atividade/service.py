@@ -22,6 +22,7 @@ from app.atividade.schema import (
 )
 from app.etapa_kanban.model import EtapaKanban
 from app.funcionario.model import Funcionario
+from app.notificacao.eventos import NotificacaoEventos
 
 
 class AtividadeNaoEncontradaError(ValueError):
@@ -42,6 +43,7 @@ ETAPAS_PROTEGIDAS = {"backlog", "finalizado"}
 class AtividadeService:
     def __init__(self, db: Session):
         self.repository = AtividadeRepository(db)
+        self.eventos = NotificacaoEventos(db)
 
     def buscar_atividade(
         self, atividade_id: int, usuario: Funcionario | None = None
@@ -58,15 +60,22 @@ class AtividadeService:
 
         return AtividadeResponse.model_validate(atividade)
 
-    def criar_atividade(self, dados: AtividadeCreate) -> AtividadeResponse:
+    def criar_atividade(
+        self, dados: AtividadeCreate, ator_id: int | None = None
+    ) -> AtividadeResponse:
         campos = dados.model_dump(exclude={"responsaveis_ids"})
         self._validar_referencias(campos["etapa_id"], campos["processo_id"])
         atividade = Atividade(**campos)
         atividade.funcionarios = self._obter_responsaveis(dados.responsaveis_ids)
-        return AtividadeResponse.model_validate(self.repository.criar(atividade))
+        criada = self.repository.criar(atividade)
+        self.eventos.atividade_criada(criada, ator_id)
+        return AtividadeResponse.model_validate(criada)
 
-    def atualizar_atividade(self, atividade_id: int, dados: AtividadeUpdate) -> AtividadeResponse:
+    def atualizar_atividade(
+        self, atividade_id: int, dados: AtividadeUpdate, ator_id: int | None = None
+    ) -> AtividadeResponse:
         atividade = self._obter(atividade_id)
+        responsaveis_antes = {f.funcionario_id for f in atividade.funcionarios}
         alteracoes = dados.model_dump(exclude_unset=True, exclude={"responsaveis_ids"})
 
         inicio = alteracoes.get("data_inicio", atividade.data_inicio)
@@ -83,7 +92,11 @@ class AtividadeService:
 
         for campo, valor in alteracoes.items():
             setattr(atividade, campo, valor)
-        return AtividadeResponse.model_validate(self.repository.atualizar(atividade))
+        atualizada = self.repository.atualizar(atividade)
+        novos = {f.funcionario_id for f in atualizada.funcionarios} - responsaveis_antes
+        if novos:
+            self.eventos.atividade_atribuida(atualizada, novos, ator_id)
+        return AtividadeResponse.model_validate(atualizada)
 
     def deletar_atividade(self, atividade_id: int) -> None:
         self.repository.deletar(self._obter(atividade_id))

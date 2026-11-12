@@ -12,8 +12,9 @@ from app.cliente.schema import (
 from app.cliente.service import ClienteNaoEncontradoError, ClienteService
 from app.config.database import get_db
 from app.config.limiter import limiter
-from app.core.dependencies import exigir_permissao
+from app.core.dependencies import exigir_permissao, obter_funcionario_atual
 from app.core.permissoes import ACESSO_LISTA_CLIENTES
+from app.funcionario.model import Funcionario
 
 router = APIRouter(prefix="/clientes", tags=["Clientes"])
 
@@ -82,10 +83,11 @@ def atualizar_cliente(
     cliente_id: int,
     cliente_data: ClienteUpdate,
     db: Session = Depends(get_db),
+    usuario: Funcionario = Depends(obter_funcionario_atual),
 ):
     service = ClienteService(db)
     try:
-        return service.update_cliente(cliente_id, cliente_data)
+        return service.update_cliente(cliente_id, cliente_data, ator_id=usuario.funcionario_id)
     except ClienteNaoEncontradoError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 

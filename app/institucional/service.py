@@ -8,7 +8,8 @@ from app.arquivo.model import Arquivo
 from app.arquivo.repository import ArquivoRepository
 from app.core.storage import obter_url_publica, remover_arquivo, salvar_arquivo
 from app.institucional.model import Institucional
-from app.institucional.repository import InstitucionalRepository
+from app.institucional.repository import InstitucionalNaoEncontradoError, InstitucionalRepository
+from app.institucional.schema import AlertasConfigResponse
 
 
 class UploadInvalidoError(ValueError):
@@ -26,6 +27,16 @@ class InstitucionalService:
     def atualizar_configuracoes(self, dados: dict) -> Institucional:
         dados_filtrados = {k: v for k, v in dados.items() if v is not None}
         return self.repository.atualizar_configuracoes(dados_filtrados)
+
+    def obter_configuracao_de_alertas(self) -> AlertasConfigResponse:
+        try:
+            return AlertasConfigResponse.model_validate(self.repository.buscar_configuracoes())
+        except InstitucionalNaoEncontradoError:
+            return AlertasConfigResponse()
+
+    def atualizar_configuracao_de_alertas(self, dados: dict) -> AlertasConfigResponse:
+        configuracao = self.repository.atualizar_configuracoes(dados)
+        return AlertasConfigResponse.model_validate(configuracao)
 
     def upload_midia(self, file: UploadFile, tipo: str) -> tuple[str, str | None]:
         if tipo not in ("logo", "banner", "sobre"):

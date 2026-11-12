@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -559,7 +560,9 @@ class TestNotificacaoController:
         client: TestClient,
         funcionario_autenticado: Funcionario,
     ) -> None:
-
+        funcionario_autenticado.__dict__["cargo"] = SimpleNamespace(
+            nome_cargo="Administrador", permissao={}
+        )
         app.dependency_overrides[obter_funcionario_atual] = lambda: funcionario_autenticado
 
         payload = {
@@ -575,6 +578,29 @@ class TestNotificacaoController:
 
         assert resposta.status_code == 201
         assert resposta.json()["titulo"] == "Nova Notificação Endpoint"
+
+    def test_criar_notificacao_endpoint_nega_usuario_comum(
+        self,
+        client: TestClient,
+        funcionario_autenticado: Funcionario,
+    ) -> None:
+        funcionario_autenticado.__dict__["cargo"] = SimpleNamespace(
+            nome_cargo="Advogado", permissao={"gerenciar_equipe": False}
+        )
+        app.dependency_overrides[obter_funcionario_atual] = lambda: funcionario_autenticado
+
+        resposta = client.post(
+            "/notificacoes",
+            json={
+                "titulo": "Intrusa",
+                "mensagem": "Um usuário comum não pode criar avisos.",
+                "funcionario_id": funcionario_id_SECUNDARIO,
+            },
+        )
+
+        app.dependency_overrides.clear()
+
+        assert resposta.status_code == 403
 
     def test_marcar_todas_como_lidas_endpoint(
         self,
@@ -625,7 +651,9 @@ class TestNotificacaoController:
         client: TestClient,
         funcionario_autenticado: Funcionario,
     ) -> None:
-
+        funcionario_autenticado.__dict__["cargo"] = SimpleNamespace(
+            nome_cargo="Administrador", permissao={}
+        )
         app.dependency_overrides[obter_funcionario_atual] = lambda: funcionario_autenticado
 
         mock_service = MagicMock()

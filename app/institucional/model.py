@@ -23,6 +23,14 @@ class Institucional(Base):
     cor_primaria: Mapped[str] = mapped_column(String(7), nullable=False, default="#1B2A4A")
     cor_secundaria: Mapped[str] = mapped_column(String(7), nullable=False, default="#B79A63")
 
+    # Quando o escritório quer ser avisado (tela Ajustes): vale para todos os usuários.
+    dias_prazo_proximo: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=15, server_default="15"
+    )
+    dias_processo_critico: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=15, server_default="15"
+    )
+
     imagem_logotipo: Mapped[int] = mapped_column(
         Integer, ForeignKey("arquivos.arquivo_id"), nullable=False
     )

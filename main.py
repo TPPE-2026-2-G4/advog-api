@@ -7,6 +7,7 @@ load_dotenv(".env.local", override=True)
 
 import logging  # noqa: E402
 from contextlib import asynccontextmanager  # noqa: E402
+from datetime import UTC, datetime  # noqa: E402
 from typing import cast  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
@@ -34,6 +35,7 @@ from app.funcionario.controller import router as funcionario_router  # noqa: E40
 from app.health.controller import router as health_router  # noqa: E402
 from app.institucional.controller import router as institucional_router  # noqa: E402
 from app.lancamento.controller import router as lancamento_router  # noqa: E402
+from app.notificacao.alertas import executar_alertas  # noqa: E402
 from app.notificacao.controller import router as notificacao_router  # noqa: E402
 from app.processo.controller import router as processo_router  # noqa: E402
 from app.processo.service import ProcessoService  # noqa: E402
@@ -52,6 +54,17 @@ async def lifespan(app: FastAPI):
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         ProcessoService.sincronizar_processos_com_api, "interval", hours=12, id="sync_datajud"
+    )
+    # Alertas de prazo e de processos críticos. O plano gratuito do Render dorme quando fica
+    # sem acesso, então também rodamos logo ao subir (as chaves evitam avisos repetidos).
+    scheduler.add_job(
+        executar_alertas,
+        "interval",
+        hours=6,
+        id="alertas_notificacoes",
+        next_run_time=(
+            datetime.now(UTC) if os.getenv("ALERTAS_AO_INICIAR", "true").lower() == "true" else None
+        ),
     )
     scheduler.start()
     logger.info("Scheduler iniciado para jobs em background.")

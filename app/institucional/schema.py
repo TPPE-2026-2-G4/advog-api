@@ -91,6 +91,33 @@ class InstitucionalResponse(InstitucionalBase):
         return obter_url_publica(caminho_midia)
 
 
+DIAS_PRAZO_PROXIMO_PERMITIDOS = (7, 15, 30, 60)
+
+
+class AlertasConfigResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    dias_prazo_proximo: int = 15
+    dias_processo_critico: int = 15
+
+
+class AlertasConfigUpdate(BaseModel):
+    """Define a antecedência dos avisos de prazo e quando um processo vira "crítico"."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    dias_prazo_proximo: int | None = None
+    dias_processo_critico: int | None = Field(default=None, ge=1, le=365)
+
+    @field_validator("dias_prazo_proximo")
+    @classmethod
+    def _validar_dias_prazo(cls, dias: int | None) -> int | None:
+        if dias is not None and dias not in DIAS_PRAZO_PROXIMO_PERMITIDOS:
+            opcoes = ", ".join(str(d) for d in DIAS_PRAZO_PROXIMO_PERMITIDOS)
+            raise ValueError(f"A antecedência dos prazos deve ser uma destas: {opcoes} dias")
+        return dias
+
+
 class InstitucionalUploadResponse(BaseModel):
     url: str
     warning: str | None = None

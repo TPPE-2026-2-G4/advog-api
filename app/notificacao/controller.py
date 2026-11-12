@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.config.database import get_db
 from app.core.dependencies import obter_funcionario_atual
+from app.core.permissoes import eh_administrador
 from app.funcionario.model import Funcionario
 from app.notificacao.model import TipoNotificacao
 from app.notificacao.schema import (
@@ -96,14 +97,19 @@ def obter_contagem_nao_lidas(
     "",
     response_model=NotificacaoRead,
     status_code=status.HTTP_201_CREATED,
-    summary="Criar notificação",
+    summary="Criar notificação (somente administradores)",
     responses=RESPOSTAS_NOTIFICACAO,
 )
 def criar_notificacao(
     dados: NotificacaoCreate,
-    _: Funcionario = Depends(obter_funcionario_atual),
+    usuario: Funcionario = Depends(obter_funcionario_atual),
     service: NotificacaoService = Depends(get_notificacao_service),
 ) -> NotificacaoRead:
+    if not eh_administrador(usuario):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Somente administradores podem criar notificações manualmente.",
+        )
     try:
         return service.criar_notificacao(dados)
     except ValueError as erro:

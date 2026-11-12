@@ -21,6 +21,7 @@ from app.core.relatorio import (
 )
 from app.core.storage import obter_url_publica, remover_arquivo, salvar_arquivo
 from app.funcionario.model import Funcionario
+from app.notificacao.eventos import NotificacaoEventos
 from app.processo.model import Processo, StatusProcesso
 from app.processo.repository import ProcessoRepository
 from app.processo.schema import (
@@ -48,6 +49,7 @@ CARGOS_ADMINISTRADOR = ("administrador", "admin")
 class ProcessoService:
     def __init__(self, db_session: Session):
         self.repository = ProcessoRepository(db_session)
+        self.eventos = NotificacaoEventos(db_session)
 
     @staticmethod
     def _eh_administrador(usuario: Funcionario | None) -> bool:
@@ -212,6 +214,7 @@ class ProcessoService:
             raise ValueError("Processo já cadastrado")
         processo_model = Processo(**dados.model_dump())
         processo_criado = self.repository.criar(processo_model)
+        self.eventos.processo_atribuido(processo_criado, novo=True, ator_id=funcionario_id)
         self.registrar_movimentacao(
             processo_id=processo_criado.processo_id,
             tipo_movimentacao=TipoMovimentacaoProcesso.CRIACAO_PROCESSO,
@@ -243,11 +246,22 @@ class ProcessoService:
                 raise ValueError("CNJ já cadastrado")
 
         status_anterior = processo.status
+        responsavel_anterior = processo.funcionario_id
         novo_status = dados_atualizacao.get("status")
 
         for key, value in dados_atualizacao.items():
             setattr(processo, key, value)
         processo_atualizado = self.repository.atualizar(processo)
+        if (
+            "funcionario_id" in dados_atualizacao
+            and processo_atualizado.funcionario_id is not None
+            and processo_atualizado.funcionario_id != responsavel_anterior
+        ):
+            self.eventos.processo_atribuido(processo_atualizado, ator_id=funcionario_id)
+        if novo_status is not None and novo_status != status_anterior:
+            self.eventos.processo_status_alterado(
+                processo_atualizado, status_anterior, ator_id=funcionario_id
+            )
         if novo_status is not None and novo_status != status_anterior:
             valor_anterior = (
                 status_anterior.value
@@ -431,6 +445,7 @@ class ProcessoService:
             processos = db.query(Processo).filter(Processo.cnj.is_not(None)).all()
 
             updates_count = 0
+            mudancas_de_status: list[tuple[Processo, StatusProcesso]] = []
             for processo in processos:
                 if not processo.cnj:
                     continue
@@ -457,6 +472,7 @@ class ProcessoService:
                         processo.tribunal = data["tribunal"]
 
                     if processo.status != status_anterior:
+                        mudancas_de_status.append((processo, status_anterior))
                         db.add(
                             ProcessoMovimentacao(
                                 processo_id=processo.processo_id,
@@ -473,6 +489,9 @@ class ProcessoService:
 
             if updates_count > 0:
                 db.commit()
+                eventos = NotificacaoEventos(db)
+                for processo, anterior in mudancas_de_status:
+                    eventos.processo_status_alterado(processo, anterior)
                 logger.info(
                     f"[JOB SYNC] {updates_count} processos atualizados com sucesso via Datajud API."
                 )
