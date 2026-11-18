@@ -20,7 +20,7 @@ class AtuacaoRepository:
         )
 
     def buscar_disponiveis_para_perfil(self) -> list[Atuacao]:
-        return self.buscar_visiveis_institucional()
+        return self.buscar_todas()
 
     def buscar_por_id(self, atuacao_id: int) -> Atuacao | None:
         return self.db.get(Atuacao, atuacao_id)

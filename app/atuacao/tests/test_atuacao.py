@@ -289,8 +289,8 @@ def test_listar_atuacoes_disponiveis_para_perfil(client, db_session):
                 exibicao_institucional=True,
             ),
             Atuacao(
-                nome="Área não salva",
-                descricao="Não disponível para seleção",
+                nome="Área oculta na landing",
+                descricao="Ainda disponível para seleção",
                 exibicao_institucional=False,
             ),
         ]
@@ -300,7 +300,10 @@ def test_listar_atuacoes_disponiveis_para_perfil(client, db_session):
     resposta = client.get("/atuacoes/disponiveis")
 
     assert resposta.status_code == 200
-    assert [atuacao["nome"] for atuacao in resposta.json()] == ["Área visível"]
+    assert [atuacao["nome"] for atuacao in resposta.json()] == [
+        "Área visível",
+        "Área oculta na landing",
+    ]
 
 
 @pytest.mark.parametrize(
