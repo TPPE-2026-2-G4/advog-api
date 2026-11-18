@@ -15,6 +15,9 @@ class AtuacaoService:
     def buscar_visiveis_institucional(self) -> list[Atuacao]:
         return self.repository.buscar_visiveis_institucional()
 
+    def buscar_disponiveis_para_perfil(self) -> list[Atuacao]:
+        return self.repository.buscar_disponiveis_para_perfil()
+
     def buscar_por_id(self, atuacao_id: int) -> Atuacao:
         atuacao = self.repository.buscar_por_id(atuacao_id)
         if not atuacao:
@@ -57,6 +60,5 @@ class AtuacaoService:
 
     def deletar_atuacao(self, atuacao_id: int) -> Atuacao:
         atuacao = self.buscar_por_id(atuacao_id)
-        if self.repository.possui_funcionarios(atuacao_id):
-            raise ValueError("Área de atuação está vinculada a funcionários")
+        self.repository.desassociar_funcionarios(atuacao_id)
         return self.repository.deletar(atuacao)

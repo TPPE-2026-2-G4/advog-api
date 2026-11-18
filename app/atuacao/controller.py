@@ -28,6 +28,11 @@ def buscar_todas_atuacoes(db: Session = Depends(get_db)):
     return AtuacaoService(db).buscar_todas()
 
 
+@router.get("/disponiveis", response_model=list[AtuacaoResponse], status_code=status.HTTP_200_OK)
+def buscar_atuacoes_disponiveis_para_perfil(db: Session = Depends(get_db)):
+    return AtuacaoService(db).buscar_disponiveis_para_perfil()
+
+
 @router.get("/{atuacao_id}", response_model=AtuacaoResponse, status_code=status.HTTP_200_OK)
 def buscar_atuacao_por_id(atuacao_id: int, db: Session = Depends(get_db)):
     try:
