@@ -11,7 +11,7 @@ class AtuacaoBase(BaseModel):
         validation_alias=AliasChoices("nome", "titulo"),
     )
     descricao: str = Field(..., min_length=2, max_length=255)
-    exibicao_institucional: bool = Field(default=True, alias="exibicaoInstitucional")
+    exibicao_institucional: bool = Field(default=False, alias="exibicaoInstitucional")
 
 
 class AtuacaoCreate(AtuacaoBase):
@@ -44,4 +44,4 @@ class AtuacaoResponse(BaseModel):
     nome: str
     titulo: str
     descricao: str
-    exibicao_institucional: bool = Field(default=True, alias="exibicaoInstitucional")
+    exibicao_institucional: bool = Field(default=False, alias="exibicaoInstitucional")

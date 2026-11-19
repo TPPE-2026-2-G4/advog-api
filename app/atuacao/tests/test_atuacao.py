@@ -180,7 +180,11 @@ def test_atualizar_atuacao_parametrizado(
 ):
     criado = client.post(
         "/atuacoes",
-        json={"nome": "Direito Civil", "descricao": "Descrição inicial."},
+        json={
+            "nome": "Direito Civil",
+            "descricao": "Descrição inicial.",
+            "exibicaoInstitucional": True,
+        },
         headers=headers_admin,
     ).json()
 
@@ -266,13 +270,40 @@ def test_deletar_atuacao(client, headers_admin):
     )
 
 
-def test_nao_deleta_atuacao_vinculada_a_funcionario(client, headers_admin, db_session):
+def test_deletar_atuacao_desassocia_funcionarios(client, headers_admin, db_session):
     atuacao_id = db_session.query(Atuacao).filter_by(nome="Atuação Base").one().atuacao_id
 
     resposta = client.delete(f"/atuacoes/{atuacao_id}", headers=headers_admin)
 
-    assert resposta.status_code == 400
-    assert resposta.json()["detail"] == "Área de atuação está vinculada a funcionários"
+    assert resposta.status_code == 200
+    assert db_session.query(Funcionario).filter_by(atuacao_id=atuacao_id).count() == 0
+    assert db_session.query(Atuacao).filter_by(atuacao_id=atuacao_id).first() is None
+
+
+def test_listar_atuacoes_disponiveis_para_perfil(client, db_session):
+    db_session.add_all(
+        [
+            Atuacao(
+                nome="Área visível",
+                descricao="Disponível para seleção",
+                exibicao_institucional=True,
+            ),
+            Atuacao(
+                nome="Área oculta na landing",
+                descricao="Ainda disponível para seleção",
+                exibicao_institucional=False,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    resposta = client.get("/atuacoes/disponiveis")
+
+    assert resposta.status_code == 200
+    assert [atuacao["nome"] for atuacao in resposta.json()] == [
+        "Área visível",
+        "Área oculta na landing",
+    ]
 
 
 @pytest.mark.parametrize(

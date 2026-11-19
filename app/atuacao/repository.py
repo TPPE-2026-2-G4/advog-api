@@ -19,6 +19,9 @@ class AtuacaoRepository:
             .all()
         )
 
+    def buscar_disponiveis_para_perfil(self) -> list[Atuacao]:
+        return self.buscar_todas()
+
     def buscar_por_id(self, atuacao_id: int) -> Atuacao | None:
         return self.db.get(Atuacao, atuacao_id)
 
@@ -27,6 +30,11 @@ class AtuacaoRepository:
 
     def possui_funcionarios(self, atuacao_id: int) -> bool:
         return self.db.query(Funcionario).filter_by(atuacao_id=atuacao_id).first() is not None
+
+    def desassociar_funcionarios(self, atuacao_id: int) -> None:
+        self.db.query(Funcionario).filter_by(atuacao_id=atuacao_id).update(
+            {Funcionario.atuacao_id: None}, synchronize_session=False
+        )
 
     def criar(self, atuacao: Atuacao) -> Atuacao:
         self.db.add(atuacao)
